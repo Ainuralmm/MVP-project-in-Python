@@ -22,26 +22,27 @@ class View(Protocol):
     def mainloop(self) -> None:
         ...
 
-    class Presenter:
-        def __init__(self, model:Model, view:View) -> None:
-            self.model = model
-            self.view = view
+class Presenter:
+    def __init__(self, model:Model, view:View) -> None:
+        self.model = model
+        self.view = view
 
-        def handle_add_task(self, event=None) -> None:
-            task = self.view.get_entry_text()
-            self.view.clear_entry()
-            self.model.add_task(task)
-            self.update_task_list()
+    def handle_add_task(self, event=None) -> None:
+        task = self.view.get_entry_text()
+        self.view.clear_entry()
+        self.model.add_task(task)
+        self.update_task_list()
 
-        def handle_update_task(self, event=None) -> None:
-            self.model.delete_task(self.view.selected_tasks)
-            self.update_task_list()
+    def handle_delete_task(self, event=None) -> None:
+        self.model.delete_task(self.view.selected_task)
+        self.update_task_list()
 
-        def update_task_list(self) -> None:
-            tasks = self.model.get_tasks()
-            self.view.update_task_list(tasks)
 
-        def run(self) -> None:
-            self.view.init_ui(self)
-            self.update_task_list()
-            self.view.mainloop()
+    def update_task_list(self) -> None:
+        tasks = self.model.get_tasks()
+        self.view.update_task_list(tasks)
+
+    def run(self) -> None:
+        self.view.init_ui(self)
+        self.update_task_list()
+        self.view.mainloop()

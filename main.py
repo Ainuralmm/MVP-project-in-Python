@@ -2,11 +2,11 @@ from model import Model
 from presenter import Presenter
 from view import TodoList
 
-def main():-> None:
+def main()-> None:
     model = Model()
-    presenter = Presenter(model,view)
     view = TodoList()
-    presenter.run
+    presenter = Presenter(model, view)
+    presenter.run()
 
 if __name__ == '__main__':
     main()
