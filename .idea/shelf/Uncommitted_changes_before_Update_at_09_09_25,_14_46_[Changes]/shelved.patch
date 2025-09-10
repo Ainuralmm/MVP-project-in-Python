@@ -1,0 +1,67 @@
+Index: README.md
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/README.md b/README.md
+new file mode 100644
+--- /dev/null	(date 1757421736681)
++++ b/README.md	(date 1757421736681)
+@@ -0,0 +1,1 @@
++# simple-MVP-project-in-Python
+\ No newline at end of file
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"AutoImportSettings\">\n    <option name=\"autoReloadType\" value=\"SELECTIVE\" />\n  </component>\n  <component name=\"ChangeListManager\">\n    <list default=\"true\" id=\"2a89f539-94d1-40e0-a4a8-496469bbd118\" name=\"Changes\" comment=\"Created a new Project\">\n      <change afterPath=\"$PROJECT_DIR$/simple.py\" afterDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/.idea/workspace.xml\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/.idea/workspace.xml\" afterDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/main.py\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/main.py\" afterDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/model.py\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/model.py\" afterDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/presenter.py\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/presenter.py\" afterDir=\"false\" />\n    </list>\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\n  </component>\n  <component name=\"FileTemplateManagerImpl\">\n    <option name=\"RECENT_TEMPLATES\">\n      <list>\n        <option value=\"Python Script\" />\n      </list>\n    </option>\n  </component>\n  <component name=\"Git.Settings\">\n    <option name=\"PREVIEW_PUSH_PROTECTED_ONLY\" value=\"true\" />\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$\" />\n  </component>\n  <component name=\"GitHubPullRequestSearchHistory\"><![CDATA[{\n  \"lastFilter\": {\n    \"state\": \"OPEN\",\n    \"assignee\": \"Ainuralmm\"\n  }\n}]]></component>\n  <component name=\"GithubPullRequestsUISettings\"><![CDATA[{\n  \"selectedUrlAndAccountId\": {\n    \"url\": \"https://github.com/Ainuralmm/simple-MVP-project-in-Python.git\",\n    \"accountId\": \"ea734be7-7a0d-4368-b975-df89f13704a0\"\n  }\n}]]></component>\n  <component name=\"ProjectColorInfo\"><![CDATA[{\n  \"associatedIndex\": 7\n}]]></component>\n  <component name=\"ProjectId\" id=\"32SDoQfWAy2owFbPdbO8uPKb7LG\" />\n  <component name=\"ProjectViewState\">\n    <option name=\"hideEmptyMiddlePackages\" value=\"true\" />\n    <option name=\"showLibraryContents\" value=\"true\" />\n  </component>\n  <component name=\"PropertiesComponent\"><![CDATA[{\n  \"keyToString\": {\n    \"ModuleVcsDetector.initialDetectionPerformed\": \"true\",\n    \"Python.main.executor\": \"Run\",\n    \"Python.simple.executor\": \"Run\",\n    \"RunOnceActivity.ShowReadmeOnStart\": \"true\",\n    \"RunOnceActivity.git.unshallow\": \"true\",\n    \"git-widget-placeholder\": \"main\"\n  }\n}]]></component>\n  <component name=\"SharedIndexes\">\n    <attachedChunks>\n      <set>\n        <option value=\"bundled-python-sdk-41e8cd69c857-64d779b69b7a-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26927.90\" />\n      </set>\n    </attachedChunks>\n  </component>\n  <component name=\"TaskManager\">\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\n      <changelist id=\"2a89f539-94d1-40e0-a4a8-496469bbd118\" name=\"Changes\" comment=\"\" />\n      <created>1757405254462</created>\n      <option name=\"number\" value=\"Default\" />\n      <option name=\"presentableId\" value=\"Default\" />\n      <updated>1757405254462</updated>\n    </task>\n    <task id=\"LOCAL-00001\" summary=\"Created a new Project\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1757411097736</created>\n      <option name=\"number\" value=\"00001\" />\n      <option name=\"presentableId\" value=\"LOCAL-00001\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1757411097736</updated>\n    </task>\n    <option name=\"localTasksCounter\" value=\"2\" />\n    <servers />\n  </component>\n  <component name=\"VcsManagerConfiguration\">\n    <MESSAGE value=\"Created a new Project\" />\n    <option name=\"LAST_COMMIT_MESSAGE\" value=\"Created a new Project\" />\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+--- a/.idea/workspace.xml	(revision c78ca394aab286aafed12e8eb50c73d61343e245)
++++ b/.idea/workspace.xml	(date 1757421961539)
+@@ -5,11 +5,7 @@
+   </component>
+   <component name="ChangeListManager">
+     <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Created a new Project">
+-      <change afterPath="$PROJECT_DIR$/simple.py" afterDir="false" />
+-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+-      <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
+-      <change beforePath="$PROJECT_DIR$/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/presenter.py" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+     </list>
+     <option name="SHOW_DIALOG" value="false" />
+     <option name="HIGHLIGHT_CONFLICTS" value="true" />
+@@ -51,10 +47,13 @@
+   "keyToString": {
+     "ModuleVcsDetector.initialDetectionPerformed": "true",
+     "Python.main.executor": "Run",
++    "Python.model.executor": "Run",
++    "Python.presenter.executor": "Run",
+     "Python.simple.executor": "Run",
+     "RunOnceActivity.ShowReadmeOnStart": "true",
++    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+     "RunOnceActivity.git.unshallow": "true",
+-    "git-widget-placeholder": "main"
++    "git-widget-placeholder": "Merging main"
+   }
+ }]]></component>
+   <component name="SharedIndexes">
+@@ -80,7 +79,15 @@
+       <option name="project" value="LOCAL" />
+       <updated>1757411097736</updated>
+     </task>
+-    <option name="localTasksCounter" value="2" />
++    <task id="LOCAL-00002" summary="Created a new Project">
++      <option name="closed" value="true" />
++      <created>1757413892348</created>
++      <option name="number" value="00002" />
++      <option name="presentableId" value="LOCAL-00002" />
++      <option name="project" value="LOCAL" />
++      <updated>1757413892348</updated>
++    </task>
++    <option name="localTasksCounter" value="3" />
+     <servers />
+   </component>
+   <component name="VcsManagerConfiguration">
