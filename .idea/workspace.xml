@@ -4,7 +4,23 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Created a new Project" />
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Moved to new folder">
+      <change afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/draft MVP (Selenium, Streamlit)/.streamlit/secrets.toml.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/draft MVP (Selenium, Streamlit)/main.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/draft MVP (Selenium, Streamlit)/model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/draft MVP (Selenium, Streamlit)/presenter.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/draft MVP (Selenium, Streamlit)/view.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/DesignPattern.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/DesignPattern.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/To-Dos MVP /main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Project &quot;create To-Do list&quot; using MVP/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/To-Dos MVP /model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Project &quot;create To-Do list&quot; using MVP/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/To-Dos MVP /presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Project &quot;create To-Do list&quot; using MVP/presenter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/To-Dos MVP /simple.py" beforeDir="false" afterPath="$PROJECT_DIR$/Project &quot;create To-Do list&quot; using MVP/simple.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/To-Dos MVP /tasks.db" beforeDir="false" afterPath="$PROJECT_DIR$/Project &quot;create To-Do list&quot; using MVP/tasks.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/To-Dos MVP /view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Project &quot;create To-Do list&quot; using MVP/view.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -41,16 +57,25 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.simple.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.main.executor": "Run",
+    "Python.model.executor": "Run",
+    "Python.simple.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/ainuralmukambetova/PycharmProjects/DesignPattern",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -74,7 +99,23 @@
       <option name="project" value="LOCAL" />
       <updated>1757411097736</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Moved to new folder">
+      <option name="closed" value="true" />
+      <created>1758021002720</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1758021002720</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Moved to new folder">
+      <option name="closed" value="true" />
+      <created>1758021333993</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1758021333996</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -90,6 +131,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Created a new Project" />
-    <option name="LAST_COMMIT_MESSAGE" value="Created a new Project" />
+    <MESSAGE value="Moved to new folder" />
+    <option name="LAST_COMMIT_MESSAGE" value="Moved to new folder" />
   </component>
 </project>
