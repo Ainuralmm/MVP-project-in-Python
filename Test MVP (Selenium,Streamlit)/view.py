@@ -49,5 +49,5 @@ class CourseView:
         else:
             st.info(message)
 
-view=CourseView()
-view.render_form()#call the method that renders the form
+#view=CourseView()
+#view.render_form()#call the method that renders the form
