@@ -26,6 +26,28 @@ class CourseView:
             # This is the button that will trigger the automation.
             submitted = st.form_submit_button("Create Course in Oracle")
 
+        #when the button is pressed,'submitted' becomes True
+        if submitted:
+            #package the ollected data into a dict
+            course_details = {
+                "title": course_title,
+                "programme": programme,
+                "short_description": short_desc,
+                "start_date": start_date
+            }
+            return course_details
+
+        #if the button has not been pressed,return None
+        return None
+
+    def display_form(self,message):
+        #this method show a message to the user-->Presenter call this method to provide feedback
+        if 'Success' in message:
+            st.success(message)
+        elif 'Error' in message:
+            st.error(message)
+        else:
+            st.info(message)
 
 view=CourseView()
 view.render_form()#call the method that renders the form

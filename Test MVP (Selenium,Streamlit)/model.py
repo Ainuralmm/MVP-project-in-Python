@@ -40,3 +40,7 @@ class OracleAutomator:
         except Exception as e:
             print(f"Model: Error during login: {e}")
             return False
+
+    def close_driver(self):
+        print("Model: Closing driver.")
+        self.driver.quit()

@@ -1,0 +1,36 @@
+#presenter connects the View and the Model
+import streamlit as st
+
+class Presenter:
+    def __init__(self,model,view):
+        #the presenter holds references to the model and the view
+        self.model = model
+        self.view = view
+
+    def run(self):
+        #main method that runs the application
+        #1.render the form and wait for user input after clicking submit
+        course_details = self.view.render_form()
+        #2.if the form was submitted
+        if course_details:
+            #get the credentials securely from Streamlit's secrets management
+            oracle_url=st.secrets['ORACLE_URL']
+            oracle_user=st.secrets['ORACLE_USER']
+            oracle_pass=st.secrets['ORACLE_PASS']
+
+            #3.A spinner to show the user that process is proceeding
+            with st.spinner('Authorizing...'):
+                try:
+                    #telling the model to perform the authorising process
+                    login_success = self.model.login(oracle_url,oracle_user,oracle_pass)
+                    if login_success:
+                        self.view.display_message('Login Successful')
+                    else:
+                        self.view.display_error('Login Failed')
+                except Exception as e:
+                    self.view.display_error(str(e))
+
+                finally:
+                    self.model.close_driver()
+
+
