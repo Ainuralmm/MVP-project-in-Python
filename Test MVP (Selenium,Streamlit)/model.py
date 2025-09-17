@@ -9,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 
+
 #This is a special function called the constructor.
 # It automatically runs once when you first create a robot from the blueprint.
 # Its job is to do all the initial setup.
@@ -59,6 +60,33 @@ class OracleAutomator:
         except Exception as e:
             print(f"Model: Error during navigation to course creation: {e}")
             return False
+
+    def create_course(self,course_details):
+        #main method that creates the course
+        try:
+            course_name = course_details['title']
+            print(f'Model: Starting course creation for "{course_name}"')
+
+            #1.search for the course
+            search_box = self.wait.until(EC.presence_of_element_located(
+                (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
+            search_box.clear()
+            search_box.send_keys(course_name)
+
+            date_input = self.wait.until(EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
+            date_input.clear()
+            date_input.send_keys("01/01/2000")
+
+            cerca_button = self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]')))
+            cerca_button.click()
+            print("Model: Searched for existing course.")
+
+        except Exception as e:
+            print(f"Model: An error occurred during course creation: {e}")
+            return f"Error: An error occurred during automation. Check the console for details."
+
 
 
     def close_driver(self):

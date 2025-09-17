@@ -27,8 +27,8 @@ class CoursePresenter:
                         self.view.display_message('Login Successful')
                         nav_success = self.model.navigate_to_course_creation()
                         if nav_success:
-                            #result_message = self.model.create_course(course_details)
-                            self.view.display_message('Navigation to course page went successfully')
+                            result_message = self.model.create_course(course_details)
+                            self.view.display_message(result_message)
                         else:
                             st.view.display_message('Failed to navigate to the course page')
                     else:
