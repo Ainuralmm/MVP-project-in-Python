@@ -40,7 +40,7 @@ class CourseView:
         #if the button has not been pressed,return None
         return None
 
-    def display_form(self,message):
+    def display_message(self,message):
         #this method show a message to the user-->Presenter call this method to provide feedback
         if 'Success' in message:
             st.success(message)
