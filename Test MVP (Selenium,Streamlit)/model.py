@@ -41,6 +41,26 @@ class OracleAutomator:
             print(f"Model: Error during login: {e}")
             return False
 
+    def navigate_to_course_creation(self):
+        #navigation and search part
+        try:
+            miogruppodilavoro = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="groupNode_workforce_management"]')))
+            miogruppodilavoro.click()
+            print("Model: Clicked 'Mio gruppo di lavoro'")
+
+            apprendimento = self.wait.until(EC.presence_of_element_located((By.ID, 'WLF_FUSE_LEARN_ADMIN')))
+            apprendimento.click()
+            print("Model: Clicked 'Apprendimento'")
+
+            corsi = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//a[@title="Corsi" and text()="Corsi"]')))
+            corsi.click()
+            print("Model: Clicked 'Corsi'")
+            return True
+        except Exception as e:
+            print(f"Model: Error during navigation to course creation: {e}")
+            return False
+
+
     def close_driver(self):
         print("Model: Closing driver.")
         self.driver.quit()

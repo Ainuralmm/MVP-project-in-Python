@@ -19,12 +19,18 @@ class CoursePresenter:
             oracle_pass=st.secrets['ORACLE_PASS']
 
             #3.A spinner to show the user that process is proceeding
-            with st.spinner('Authorizing...'):
+            with st.spinner('Automation in progress...Please wait'):
                 try:
                     #telling the model to perform the authorising process
                     login_success = self.model.login(oracle_url,oracle_user,oracle_pass)
                     if login_success:
                         self.view.display_message('Login Successful')
+                        nav_success = self.model.navigate_to_course_creation()
+                        if nav_success:
+                            result_message = self.model.create_course(course_details)
+                            self.view.display_message(result_message)
+                        else:
+                            st.view.display_message('Failed to navigate to the course page')
                     else:
                         self.view.display_message('Login Failed')
                 except Exception as e:

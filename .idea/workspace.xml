@@ -4,13 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="1) Added code to model.py&#10;2) Added code to view.py&#10;3) Added code to presenter.py&#10;4) Added new directory where will be saved login info">
-      <change afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/.streamlit/secrets.toml" afterDir="false" />
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/.streamlit/secrets.toml.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -134,7 +130,23 @@
       <option name="project" value="LOCAL" />
       <updated>1758104705461</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Found some typo errors , which were corrected">
+      <option name="closed" value="true" />
+      <created>1758106163160</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1758106163160</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Found the typo error , which was corrected">
+      <option name="closed" value="true" />
+      <created>1758106444703</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1758106444703</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -154,6 +166,8 @@
     <MESSAGE value="1.Renamed folder and created a new folder where i will test MVP with Selenium. &#10;2. In new folder, created new file model.py" />
     <MESSAGE value="1) Created new files.&#10;2) Started work on View.py file to visualise UI using Streamlit.&#10;3) Added logo of company in UI" />
     <MESSAGE value="1) Added code to model.py&#10;2) Added code to view.py&#10;3) Added code to presenter.py&#10;4) Added new directory where will be saved login info" />
-    <option name="LAST_COMMIT_MESSAGE" value="1) Added code to model.py&#10;2) Added code to view.py&#10;3) Added code to presenter.py&#10;4) Added new directory where will be saved login info" />
+    <MESSAGE value="Found some typo errors , which were corrected" />
+    <MESSAGE value="Found the typo error , which was corrected" />
+    <option name="LAST_COMMIT_MESSAGE" value="Found the typo error , which was corrected" />
   </component>
 </project>
