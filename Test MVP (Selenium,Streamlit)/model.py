@@ -2,6 +2,8 @@
 
 # --- IMPORTS ---
 import time
+
+from altair.utils.schemapi import debug_mode
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.common.by import By
@@ -21,7 +23,19 @@ class OracleAutomator:
         service = Service(executable_path=driver_path)
         self.driver = webdriver.Edge(service=service)
         self.wait = WebDriverWait(self.driver, 40)
+
+        #debug settings
+        self.debug_mode = debug_mode()
+        self.debug_pause_duration = debug_pause
+
         print("Model: WebDriver initialized.")
+
+    # a new private helper method for pausing
+    # The underscore '_' at the beginning is a Python convention for internal/helper methods
+    def _pause_for_visual_check(self):
+        # This method will only pause if debug_mode is set to True
+        if self.debug_mode:
+            time.sleep(self.debug_pause_duration)
 
     def login(self, url, username, password):
         # This method handles the login process.
@@ -56,6 +70,8 @@ class OracleAutomator:
             corsi = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//a[@title="Corsi" and text()="Corsi"]')))
             corsi.click()
             print("Model: Clicked 'Corsi'")
+            self._pause_for_visual_check()  # <-- PAUSE HERE
+
             return True
         except Exception as e:
             print(f"Model: Error during navigation to course creation: {e}")
@@ -66,6 +82,7 @@ class OracleAutomator:
         try:
             course_name = course_details['title']
             print(f'Model: Starting course creation for "{course_name}"')
+            self._pause_for_visual_check()  # <-- PAUSE HERE
 
             #1.search for the course
             search_box = self.wait.until(EC.presence_of_element_located(
@@ -82,6 +99,7 @@ class OracleAutomator:
                 (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]')))
             cerca_button.click()
             print("Model: Searched for existing course.")
+            self._pause_for_visual_check()  # <-- PAUSE HERE
 
         except Exception as e:
             print(f"Model: An error occurred during course creation: {e}")

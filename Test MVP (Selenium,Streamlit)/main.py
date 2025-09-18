@@ -6,7 +6,9 @@ if __name__ == "__main__":
     #path of to Edge Webdriver
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
 
-    model = OracleAutomator(driver_path=DRIVER_PATH)
+    model = OracleAutomator(driver_path=DRIVER_PATH,
+                            debug_mode=True,
+                            debug_pause=2)
     view = CourseView()
     presenter = CoursePresenter(model,view)
 
