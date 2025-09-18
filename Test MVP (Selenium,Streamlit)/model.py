@@ -1,5 +1,4 @@
 # model.py
-
 # --- IMPORTS ---
 import time
 
@@ -17,7 +16,7 @@ from selenium.webdriver.common.keys import Keys
 # Its job is to do all the initial setup.
 class OracleAutomator:
     # This class encapsulates all the browser automation steps.
-    def __init__(self, driver_path):
+    def __init__(self, driver_path,debug_mode=False,debug_pause=1):
         # The constructor initializes the web driver.
         # It's called once when we create an instance of this class.
         service = Service(executable_path=driver_path)
@@ -25,7 +24,7 @@ class OracleAutomator:
         self.wait = WebDriverWait(self.driver, 40)
 
         #debug settings
-        self.debug_mode = debug_mode()
+        self.debug_mode = debug_mode
         self.debug_pause_duration = debug_pause
 
         print("Model: WebDriver initialized.")
