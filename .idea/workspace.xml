@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="1. Forgot to write variables in function-fixed">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Streamlit re-runs the script every time the user interacts. To avoid accidentally inserting into Oracle multiple times, st.session_state to store the fact that submission already happened">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
@@ -186,7 +186,15 @@
       <option name="project" value="LOCAL" />
       <updated>1758191840478</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="Streamlit re-runs the script every time the user interacts. To avoid accidentally inserting into Oracle multiple times, st.session_state to store the fact that submission already happened">
+      <option name="closed" value="true" />
+      <created>1758193095753</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1758193095753</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -213,6 +221,7 @@
     <MESSAGE value="Added script to search a course" />
     <MESSAGE value="Added script for a new private helper method for pausing" />
     <MESSAGE value="1. Forgot to write variables in function-fixed" />
-    <option name="LAST_COMMIT_MESSAGE" value="1. Forgot to write variables in function-fixed" />
+    <MESSAGE value="Streamlit re-runs the script every time the user interacts. To avoid accidentally inserting into Oracle multiple times, st.session_state to store the fact that submission already happened" />
+    <option name="LAST_COMMIT_MESSAGE" value="Streamlit re-runs the script every time the user interacts. To avoid accidentally inserting into Oracle multiple times, st.session_state to store the fact that submission already happened" />
   </component>
 </project>

@@ -42,6 +42,9 @@ class CourseView:
 
     def display_message(self,message):
         #this method show a message to the user-->Presenter call this method to provide feedback
+        if not message:
+            return
+
         if 'Success' in message:
             st.success(message)
         elif 'Error' in message:
