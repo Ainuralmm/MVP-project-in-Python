@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Added script to search a course">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="1. Forgot to write variables in function-fixed">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -171,7 +170,23 @@
       <option name="project" value="LOCAL" />
       <updated>1758116470039</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="Added script for a new private helper method for pausing">
+      <option name="closed" value="true" />
+      <created>1758185890075</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1758185890075</updated>
+    </task>
+    <task id="LOCAL-00013" summary="1. Forgot to write variables in function-fixed">
+      <option name="closed" value="true" />
+      <created>1758191840478</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1758191840478</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -196,6 +211,8 @@
     <MESSAGE value="Added 'navigate to course creation' script" />
     <MESSAGE value="Added script to print if the navigation was successfully" />
     <MESSAGE value="Added script to search a course" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added script to search a course" />
+    <MESSAGE value="Added script for a new private helper method for pausing" />
+    <MESSAGE value="1. Forgot to write variables in function-fixed" />
+    <option name="LAST_COMMIT_MESSAGE" value="1. Forgot to write variables in function-fixed" />
   </component>
 </project>
