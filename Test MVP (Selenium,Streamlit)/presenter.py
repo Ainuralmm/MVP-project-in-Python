@@ -31,7 +31,7 @@ class CoursePresenter:
                     #telling the model to perform the authorising process
                     login_success = self.model.login(oracle_url,oracle_user,oracle_pass)
                     if login_success:
-                        self.view.display_message('Logged in Successfully')
+                        #self.view.display_message('Logged in Successfully')
                         status.success('✅🤩Logged in Successfully')
                     else:
                         self.view.display_message('Login Failed. Please check your credentials.')
@@ -59,7 +59,7 @@ class CoursePresenter:
                     if result_message and "Error" in result_message:
                         status.error(f'❌😭{result_message}')
                     else:
-                        status.success(f"✅🤩{result_message or 'Course created successfully!'}")
+                        status.success(f"{result_message or 'Course created successfully!'}")
 
                     progress.progress(100)
 
