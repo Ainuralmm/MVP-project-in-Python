@@ -31,26 +31,39 @@ class CoursePresenter:
                     #telling the model to perform the authorising process
                     login_success = self.model.login(oracle_url,oracle_user,oracle_pass)
                     if login_success:
-                        #self.view.display_message('Logged in Successfully')
-                        status.success('✅Logged in Successfully')
+                        self.view.display_message('Logged in Successfully')
+                        status.success('✅🤩Logged in Successfully')
                     else:
-                        #self.view.display_message('Login Failed. Please check your credentials.')
+                        self.view.display_message('Login Failed. Please check your credentials.')
                         status.error('❌😭Login Failed. Please check your credentials.')
                         return
                     #---Step2:Navigate to course creation ---
-                    status.info('🧭Navigating to Course Creation Page...')
+                    status.info('🧭🚶Navigating to Course Creation Page...')
                     progress.progress(30)
                     nav_success = self.model.navigate_to_course_creation()
                     if nav_success:
-                        result_message = self.model.create_course(course_details)
-                        self.view.display_message(result_message)
-                        status.success('👣Reached Course Creation Page')
+                        #self.view.display_message(result_message)
+                        status.success('👣💃🕺Reached Course Creation Page')
                     else:
                         st.view.display_message('Failed to navigate to the course page')
                         status.error('❌😭Failed to navigate to the course page')
                         return
                     progress.progress(50)
                     #---Step3: Create the course---
+                    course_name=course_details['title']
+                    status.name(f"📝 Creating the course: **{course_name}** ...")
+                    progress.progress(70)
+                    result_message = self.model.create_course(course_details)
+
+                    #handle model message
+                    if result_message and "Error" in result_message:
+                        status.error(f'❌😭{result_message}')
+                    else:
+                        status.success(f"✅🤩{result_message or 'Course created successfully!'}")
+
+                    progress.progress(100)
+
+
 
                 except Exception as e:
                     self.view.display_message(f"⚠️👩🏻‍✈️An unexpected error occurred: {e}")
