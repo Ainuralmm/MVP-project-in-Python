@@ -100,9 +100,58 @@ class OracleAutomator:
             print("Model: Searched for existing course.")
             self._pause_for_visual_check()  # <-- PAUSE HERE
 
+            #---Check if the course exists ot create new one ---
+            try:
+                #if it founds 'no data' message,it means Selenium will start to create a new course
+                self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"Nessun dato da visualizzare.")]')))
+                print("Model:No course found. Proceeding to create new course.")
+
+                crea_button = self.wait.until(EC.element_to_be_clickable(
+                    (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srAtbl:_ATp:crtBtn"]/a/span')))
+                crea_button.click()
+                print("Model: Clicked 'Crea' button.")
+                self._pause_for_visual_check()  #<-- PAUSE HERE
+
+                # --- Fill the new course form using data from course_details ---
+                title_field = self.wait.until(EC.presence_of_element_located(
+                    (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:ttlInp::content"]')))
+                title_field.send_keys(course_details['title'])
+                title_field.send_keys(Keys.TAB)
+
+                programma_field = self.wait.until(EC.presence_of_element_located(
+                    (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:slbsRte::_cic"]/div[1]/div[2]/div')))
+                programma_field.send_keys(course_details['programme'])
+                programma_field.send_keys(Keys.TAB)
+
+                desc_breve = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, '//input[contains(@id, ":MAnt2:2:lsVwCrs:shdsInp::content")]')))
+                desc_breve.send_keys(course_details['short_description'])
+                desc_breve.send_keys(Keys.TAB)
+
+                data_inizio_pubblic = self.wait.until(EC.visibility_of_element_located(
+                    (By.XPATH, '//input[contains(@id, ":MAnt2:2:lsVwCrs:sdDt::content")]')))
+                data_inizio_pubblic.clear()
+
+                # The date is formatted to the required DD/MM/YYYY format.
+                publication_date_str = course_details['start_date'].strftime("%d/%m/%Y")
+                data_inizio_pubblic.send_keys(publication_date_str)
+                data_inizio_pubblic.send_keys(Keys.TAB)
+
+                salve_chiude = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:svcBtn"]')))
+                salve_chiude.click()
+                print(f"Model: New course '{course_details['title']}' created successfully.")
+                return f"Success! The course '{course_details['title']}' has been created."
+
+            except Exception:
+            # If the "no data" message is NOT found, we assume the course already exists.
+                print(f"Model: Course '{course_name}' already exists.")
+                return f"Info: The course '{course_name}' already exists and was not created again."
+
         except Exception as e:
             print(f"Model: An error occurred during course creation: {e}")
             return f"Error: An error occurred during automation. Check the console for details."
+
 
 
 
