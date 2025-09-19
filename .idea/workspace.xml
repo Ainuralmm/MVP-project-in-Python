@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Streamlit re-runs the script every time the user interacts. To avoid accidentally inserting into Oracle multiple times, st.session_state to store the fact that submission already happened">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="The issue with error in Streamlit Ui was solved. The problem was that **`result` is `None` (for example, if Selenium hasn’t returned anything yet).**&#10;&#10;- **Without the guard, `if 'Success' in None:` crashes with that error.**&#10;- **With the guard, if `message` is `None` → it just does nothing (safe).**">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -194,7 +194,15 @@
       <option name="project" value="LOCAL" />
       <updated>1758193095753</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="The issue with error in Streamlit Ui was solved. The problem was that **`result` is `None` (for example, if Selenium hasn’t returned anything yet).**&#10;&#10;- **Without the guard, `if 'Success' in None:` crashes with that error.**&#10;- **With the guard, if `message` is `None` → it just does nothing (safe).**">
+      <option name="closed" value="true" />
+      <created>1758216786618</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1758216786618</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -222,6 +230,7 @@
     <MESSAGE value="Added script for a new private helper method for pausing" />
     <MESSAGE value="1. Forgot to write variables in function-fixed" />
     <MESSAGE value="Streamlit re-runs the script every time the user interacts. To avoid accidentally inserting into Oracle multiple times, st.session_state to store the fact that submission already happened" />
-    <option name="LAST_COMMIT_MESSAGE" value="Streamlit re-runs the script every time the user interacts. To avoid accidentally inserting into Oracle multiple times, st.session_state to store the fact that submission already happened" />
+    <MESSAGE value="The issue with error in Streamlit Ui was solved. The problem was that **`result` is `None` (for example, if Selenium hasn’t returned anything yet).**&#10;&#10;- **Without the guard, `if 'Success' in None:` crashes with that error.**&#10;- **With the guard, if `message` is `None` → it just does nothing (safe).**" />
+    <option name="LAST_COMMIT_MESSAGE" value="The issue with error in Streamlit Ui was solved. The problem was that **`result` is `None` (for example, if Selenium hasn’t returned anything yet).**&#10;&#10;- **Without the guard, `if 'Success' in None:` crashes with that error.**&#10;- **With the guard, if `message` is `None` → it just does nothing (safe).**" />
   </component>
 </project>
