@@ -51,7 +51,7 @@ class CoursePresenter:
                     progress.progress(50)
                     #---Step3: Create the course---
                     course_name=course_details['title']
-                    status.name(f"📝 Creating the course: **{course_name}** ...")
+                    status.info(f"📝 Creating the course: **{course_name}** ...")
                     progress.progress(70)
                     result_message = self.model.create_course(course_details)
 

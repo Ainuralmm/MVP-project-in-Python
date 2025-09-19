@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Added script to fill the new course form using data from course_details">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated script for function create_course in UI (progress bar + step messages.)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -218,7 +217,15 @@
       <option name="project" value="LOCAL" />
       <updated>1758278259116</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="Updated script for function create_course in UI (progress bar + step messages.)">
+      <option name="closed" value="true" />
+      <created>1758279703623</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1758279703623</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -249,6 +256,7 @@
     <MESSAGE value="The issue with error in Streamlit Ui was solved. The problem was that **`result` is `None` (for example, if Selenium hasn’t returned anything yet).**&#10;&#10;- **Without the guard, `if 'Success' in None:` crashes with that error.**&#10;- **With the guard, if `message` is `None` → it just does nothing (safe).**" />
     <MESSAGE value="Added script for  Streamlit UI with a progress bar + step messages (clear, user-friendly feedback)." />
     <MESSAGE value="Added script to fill the new course form using data from course_details" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added script to fill the new course form using data from course_details" />
+    <MESSAGE value="Updated script for function create_course in UI (progress bar + step messages.)" />
+    <option name="LAST_COMMIT_MESSAGE" value="Updated script for function create_course in UI (progress bar + step messages.)" />
   </component>
 </project>
