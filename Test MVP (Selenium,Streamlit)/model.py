@@ -9,16 +9,26 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
-
+from selenium.webdriver.edge.options import Options
 
 #This is a special function called the constructor.
 # It automatically runs once when you first create a robot from the blueprint.
 # Its job is to do all the initial setup.
 class OracleAutomator:
     # This class encapsulates all the browser automation steps.
-    def __init__(self, driver_path,debug_mode=False,debug_pause=1):
-        # The constructor initializes the web driver.
-        # It's called once when we create an instance of this class.
+    def __init__(self, driver_path,debug_mode = False,debug_pause=1, headless=True):
+        options = Options()
+        # Allow switching between headless and visible mode
+        if headless:
+            # Required flags for Edge headless mode
+            options.add_argument("--headless=chrome")  # modern flag
+            options.add_argument("--disable-gpu")
+            options.add_argument("--window-size=1920,1080")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--no-sandbox")
+
+        #selenium driver configuration
         service = Service(executable_path=driver_path)
         self.driver = webdriver.Edge(service=service)
         self.wait = WebDriverWait(self.driver, 40)
@@ -27,7 +37,9 @@ class OracleAutomator:
         self.debug_mode = debug_mode
         self.debug_pause_duration = debug_pause
 
-        print("Model: WebDriver initialized.")
+        mode = "Headless" if headless else "Visible"
+        print(f"Model: WebDriver initialized in {mode} mode.")
+
 
     # a new private helper method for pausing
     # The underscore '_' at the beginning is a Python convention for internal/helper methods

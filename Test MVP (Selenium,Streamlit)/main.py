@@ -7,8 +7,9 @@ if __name__ == "__main__":
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
 
     model = OracleAutomator(driver_path=DRIVER_PATH,
-                            debug_mode=True,
-                            debug_pause=2)
+                            debug_mode=True,# pause for visual checks
+                            debug_pause=2, # how long to pause in seconds
+                            headless=True)# set to True → browser hidden, False → browser visible
     view = CourseView()
     presenter = CoursePresenter(model,view)
 
