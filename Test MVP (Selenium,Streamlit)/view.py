@@ -1,12 +1,10 @@
 import streamlit as st
 from datetime import date
 
-# Page setup (run once, at the start)
-st.set_page_config(layout='centered')
-st.image("logo-agsm.jpg", width=200)
-
 class CourseView:
     def __init__(self):
+        st.set_page_config(layout='centered')
+        st.image("logo-agsm.jpg", width=200)  # Always at the top
         st.title("Oracle Course Management Automator")
 
     def render_form(self):
