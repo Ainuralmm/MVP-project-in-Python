@@ -35,7 +35,7 @@ class CoursePresenter:
                         status.success('✅🤩Logged in Successfully')
                     else:
                         self.view.display_message('Login Failed. Please check your credentials.')
-                        status.error('❌😭Login Failed. Please check your credentials.')
+                        status.error('❌😭 Login Failed. Please check your credentials.')
                         return
                     #---Step2:Navigate to course creation ---
                     status.info('🧭🚶Navigating to Course Creation Page...')

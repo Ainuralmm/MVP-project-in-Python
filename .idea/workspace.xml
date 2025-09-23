@@ -4,10 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="MoveD the logo rendering into  CourseView so that it is always drawn every time Streamlit reruns.">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment=" added script to force a visible browser with defined size">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -251,7 +252,31 @@
       <option name="project" value="LOCAL" />
       <updated>1758539113355</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="Added script for headless mode M.Edge">
+      <option name="closed" value="true" />
+      <created>1758542668643</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1758542668643</updated>
+    </task>
+    <task id="LOCAL-00023" summary="Updated the driver location path">
+      <option name="closed" value="true" />
+      <created>1758614676214</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1758614676214</updated>
+    </task>
+    <task id="LOCAL-00024" summary=" added script to force a visible browser with defined size">
+      <option name="closed" value="true" />
+      <created>1758616245798</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1758616245798</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -286,6 +311,9 @@
     <MESSAGE value="Fixed typo error" />
     <MESSAGE value="Changed script info messages" />
     <MESSAGE value="MoveD the logo rendering into  CourseView so that it is always drawn every time Streamlit reruns." />
-    <option name="LAST_COMMIT_MESSAGE" value="MoveD the logo rendering into  CourseView so that it is always drawn every time Streamlit reruns." />
+    <MESSAGE value="Added script for headless mode M.Edge" />
+    <MESSAGE value="Updated the driver location path" />
+    <MESSAGE value=" added script to force a visible browser with defined size" />
+    <option name="LAST_COMMIT_MESSAGE" value=" added script to force a visible browser with defined size" />
   </component>
 </project>
