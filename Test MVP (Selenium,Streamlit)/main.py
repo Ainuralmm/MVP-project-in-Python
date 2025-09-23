@@ -7,8 +7,10 @@ if __name__ == "__main__":
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
 
     model = OracleAutomator(driver_path = DRIVER_PATH,
-                            debug_mode = True,# pause for visual checks
-                            debug_pause = 2, # how long to pause in seconds
+                            debug_mode = True, # pause for visual checks;  debug_mode=False -> all the pauses will be disabled instantly
+                            # ->BUT the WEB does not have enough time to load as fast doing selenium , i have to solve it
+
+                            debug_pause = 1, # how long to pause in seconds
                             headless = False)# set to True → browser hidden, False → browser visible
     view = CourseView()
     presenter = CoursePresenter(model,view)
