@@ -162,12 +162,12 @@ class OracleAutomator:
                 salve_chiude.click()
                 self._pause_for_visual_check()
                 print(f"Model: New course '{course_details['title']}' created successfully.")
-                return f"✅🤩Success! The course '{course_details['title']}' has been created."
+                return f"✅🤩 Success! The course '{course_details['title']}' has been created."
 
             except Exception:
             # If the "no data" message is NOT found, we assume the course already exists.
                 print(f"Model: Course '{course_name}' already exists.")
-                return f"‼️Info: The course '{course_name}' already exists and was not created again."
+                return f"‼️🕵🏻 ️Attention: The course '{course_name}' already exists and was not created again."
 
         except Exception as e:
             print(f"Model: An error occurred during course creation: {e}")
