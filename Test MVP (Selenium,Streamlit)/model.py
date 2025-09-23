@@ -16,21 +16,24 @@ from selenium.webdriver.edge.options import Options
 # Its job is to do all the initial setup.
 class OracleAutomator:
     # This class encapsulates all the browser automation steps.
-    def __init__(self, driver_path,debug_mode = False,debug_pause=1, headless=True):
+    def __init__(self, driver_path,debug_mode = False,debug_pause=1,headless=False):
         options = Options()
         # Allow switching between headless and visible mode
         if headless:
-            # Required flags for Edge headless mode
-            options.add_argument("--headless=chrome")  # modern flag
+            #Required flags for Edge headless mode
+            options.add_argument("--headless=new")  # modern flag
             options.add_argument("--disable-gpu")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-extensions")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--no-sandbox")
+        else:
+            # force a visible browser with defined size
+            options.add_argument("--window-size=1920,1080")
 
         #selenium driver configuration
         service = Service(executable_path=driver_path)
-        self.driver = webdriver.Edge(service=service)
+        self.driver = webdriver.Edge(service=service, options=options)
         self.wait = WebDriverWait(self.driver, 40)
 
         #debug settings
