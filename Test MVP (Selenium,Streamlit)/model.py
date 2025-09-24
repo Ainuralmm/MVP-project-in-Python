@@ -161,6 +161,11 @@ class OracleAutomator:
                     EC.element_to_be_clickable((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:svcBtn"]')))
                 salve_chiude.click()
                 self._pause_for_visual_check()
+
+                # Now wait until the edizioni tab appears (this confirms save & navigation are done)
+                edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
+                edizioni_tab = self.wait.until(EC.presence_of_element_located((By.XPATH, edizioni_tab_xpath)))
+
                 print(f"Model: New course '{course_details['title']}' created successfully.")
                 return f"✅🤩 Success! The course '{course_details['title']}' has been created."
 
