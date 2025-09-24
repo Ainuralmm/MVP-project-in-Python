@@ -167,16 +167,16 @@ class OracleAutomator:
                 edizioni_tab = self.wait.until(EC.presence_of_element_located((By.XPATH, edizioni_tab_xpath)))
 
                 print(f"Model: New course '{course_details['title']}' created successfully.")
-                return f"✅🤩 Success! The course '{course_details['title']}' has been created."
+                return f"✅🤩 Successo! Il corso '{course_details['title']}' è stato creato."
 
             except Exception:
             # If the "no data" message is NOT found, we assume the course already exists.
                 print(f"Model: Course '{course_name}' already exists.")
-                return f"‼️🕵🏻 ️Attention: The course '{course_name}' already exists and was not created again."
+                return f"‼️🕵🏻 ️Attenzione: Il corso '{course_name}' esiste già e non è stato creato di nuovo."
 
         except Exception as e:
             print(f"Model: An error occurred during course creation: {e}")
-            return f"Error: An error occurred during automation. Check the console for details."
+            return f"‼️👩🏻‍✈️ Errore: Si è verificato un errore durante l'automazione. Controlla la console per i dettagli."
 
 
 
