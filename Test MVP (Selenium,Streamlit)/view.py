@@ -7,6 +7,20 @@ class CourseView:
         st.image("logo-agsm.jpg", width=200)  # Always at the top
         st.title("Automatore per la Gestione dei Corsi Oracle")
 
+    def get_user_options(self):
+        #toggle for headless mode
+        headless = st.toggle ("Eseguire in modalità headless (nessuna finestra del browser)", value = False)
+
+        #toggle for debug mode
+        debug_mode = st.toggle("Abilitare la modalità debug (rallenta l'automazione)", value = False)
+
+        #slider for pause time *if debug mode is on
+        debug_pause=st.slider("Durata della pausa di debug (secondi)",1,3,5)
+
+        return headless, debug_mode, debug_pause
+
+
+
     def render_form(self):
         # This method displays the input form and returns the collected data.
         st.header("Inserisci Dettagli del Corso")

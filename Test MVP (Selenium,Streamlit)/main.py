@@ -6,12 +6,17 @@ if __name__ == "__main__":
     #path of to Edge Webdriver
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
 
-    model = OracleAutomator(driver_path = DRIVER_PATH,
-                            debug_mode = False, # pause for visual checks;  debug_mode=False -> all the pauses will be disabled instantly
-                            debug_pause = 1, # how long to pause in seconds
-                            headless = False)# set to True → browser hidden, False → browser visible
     view = CourseView()
-    presenter = CoursePresenter(model,view)
+    headless, debug_mode, debug_pause = view.get_user_options()
 
-    #start the application
-    presenter.run()
+    if view.render_form():
+
+        model = OracleAutomator(driver_path = DRIVER_PATH,
+                            debug_mode = debug_mode, # pause for visual checks;  debug_mode=False -> all the pauses will be disabled instantly
+                            debug_pause = debug_pause, # how long to pause in seconds
+                            headless = headless)# set to True → browser hidden, False → browser visible
+
+        presenter = CoursePresenter(model,view)
+
+        #start the application
+        presenter.run()
