@@ -16,7 +16,7 @@ class CourseView:
         with st.form(key='course_creation_form'):
             # These are the input fields for the user.
             course_title = st.text_input("Titolo del Corso", "Esempio: Analisi dei Dati")
-            programme = st.text_area("Dettagli del Programma", "CAMPO OPZIONALE: SE NECESSARIO, INSERIRE INFORMAZIONI IMPORTANTI sul corso")
+            programme = st.text_area("Dettagli del Programma", "Campo opzionale: se necessario, inserire informazioni importanti sul corso")
             short_desc = st.text_input("Breve Descrizione", "Esempio: Analisi dei Dati Informatica")
             start_date = st.date_input("Data di Pubblicazione", date(2023, 1, 1))
 
