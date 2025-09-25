@@ -9,7 +9,9 @@ if __name__ == "__main__":
     view = CourseView()
     headless, debug_mode, debug_pause = view.get_user_options()
 
-    if view.render_form():
+    course_details = view.render_form()
+
+    if course_details:
 
         model = OracleAutomator(driver_path = DRIVER_PATH,
                             debug_mode = debug_mode, # pause for visual checks;  debug_mode=False -> all the pauses will be disabled instantly
@@ -19,4 +21,4 @@ if __name__ == "__main__":
         presenter = CoursePresenter(model,view)
 
         #start the application
-        presenter.run()
+        presenter.run(course_details)
