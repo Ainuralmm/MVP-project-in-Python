@@ -27,7 +27,6 @@ class CourseView:
         return headless, debug_mode, debug_pause
 
 
-
     def render_form(self):
         # This method displays the input form and returns the collected data.
         st.header("Inserisci Dettagli del Corso")
@@ -62,12 +61,11 @@ class CourseView:
                 "Crea Corso in Oracle", disabled=st.session_state["automation_running"])
 
 
-
         #when the button is pressed,'submitted' becomes True
-        if submitted:
+        if submitted and start_date:
         # Mark automation as running
             st.session_state["automation_running"] = True
-            #package the ollected data into a dict
+            #package the collected data into a dict
             course_details = {
                 "title": course_title,
                 "programme": programme,

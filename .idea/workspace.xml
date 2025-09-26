@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="since your &quot;debug mode&quot; isn’t really for all steps but only for when Selenium inserts values into input fields the label was renamed">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Disable the &quot;Crea Corso in Oracle&quot; button once the automation starts">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
@@ -386,7 +386,15 @@
       <option name="project" value="LOCAL" />
       <updated>1758876480521</updated>
     </task>
-    <option name="localTasksCounter" value="39" />
+    <task id="LOCAL-00039" summary="Disable the &quot;Crea Corso in Oracle&quot; button once the automation starts">
+      <option name="closed" value="true" />
+      <created>1758885283275</created>
+      <option name="number" value="00039" />
+      <option name="presentableId" value="LOCAL-00039" />
+      <option name="project" value="LOCAL" />
+      <updated>1758885283275</updated>
+    </task>
+    <option name="localTasksCounter" value="40" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -401,7 +409,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added script for a new private helper method for pausing" />
     <MESSAGE value="1. Forgot to write variables in function-fixed" />
     <MESSAGE value="Streamlit re-runs the script every time the user interacts. To avoid accidentally inserting into Oracle multiple times, st.session_state to store the fact that submission already happened" />
     <MESSAGE value="The issue with error in Streamlit Ui was solved. The problem was that **`result` is `None` (for example, if Selenium hasn’t returned anything yet).**&#10;&#10;- **Without the guard, `if 'Success' in None:` crashes with that error.**&#10;- **With the guard, if `message` is `None` → it just does nothing (safe).**" />
@@ -426,6 +433,7 @@
     <MESSAGE value="Changed the date input field which shows italian format DD/MM/YYYY" />
     <MESSAGE value="Added script if:&#10;1. User chooses `headless` (on/off).&#10;2. If `headless == False`, then show debug mode toggle.&#10;3. If `debug_mode == True`, then show pause time slider." />
     <MESSAGE value="since your &quot;debug mode&quot; isn’t really for all steps but only for when Selenium inserts values into input fields the label was renamed" />
-    <option name="LAST_COMMIT_MESSAGE" value="since your &quot;debug mode&quot; isn’t really for all steps but only for when Selenium inserts values into input fields the label was renamed" />
+    <MESSAGE value="Disable the &quot;Crea Corso in Oracle&quot; button once the automation starts" />
+    <option name="LAST_COMMIT_MESSAGE" value="Disable the &quot;Crea Corso in Oracle&quot; button once the automation starts" />
   </component>
 </project>
