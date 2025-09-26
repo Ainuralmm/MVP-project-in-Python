@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Changed the date input field which shows italian format DD/MM/YYYY">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
@@ -362,7 +362,15 @@
       <option name="project" value="LOCAL" />
       <updated>1758796778648</updated>
     </task>
-    <option name="localTasksCounter" value="36" />
+    <task id="LOCAL-00036" summary="Changed the date input field which shows italian format DD/MM/YYYY">
+      <option name="closed" value="true" />
+      <created>1758874876656</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1758874876656</updated>
+    </task>
+    <option name="localTasksCounter" value="37" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -377,7 +385,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added 'navigate to course creation' script" />
     <MESSAGE value="Added script to print if the navigation was successfully" />
     <MESSAGE value="Added script to search a course" />
     <MESSAGE value="Added script for a new private helper method for pausing" />
@@ -402,6 +409,7 @@
     <MESSAGE value="Capitalized words were changed to lowercase" />
     <MESSAGE value="A script was added to allow users to control headless, debug_mode, and debug_pause settings from Streamlit." />
     <MESSAGE value="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed" />
-    <option name="LAST_COMMIT_MESSAGE" value="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed" />
+    <MESSAGE value="Changed the date input field which shows italian format DD/MM/YYYY" />
+    <option name="LAST_COMMIT_MESSAGE" value="Changed the date input field which shows italian format DD/MM/YYYY" />
   </component>
 </project>

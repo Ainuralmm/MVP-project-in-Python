@@ -1,6 +1,9 @@
 import streamlit as st
 from datetime import datetime
 
+from altair.utils.schemapi import debug_mode
+
+
 class CourseView:
     def __init__(self):
         st.set_page_config(layout='centered')
@@ -9,13 +12,17 @@ class CourseView:
 
     def get_user_options(self):
         #toggle for headless mode
-        headless = st.toggle ("Eseguire in modalità headless (nessuna finestra del browser)", value = False)
+        headless = st.toggle (" Headless (browser automatare nascosto)", value = True)
 
-        #toggle for debug mode
-        debug_mode = st.toggle("Abilitare la modalità debug (rallenta l'automazione)", value = False)
+        debug_mode = False
+        debug_pause = 0
 
-        #slider for pause time *if debug mode is on
-        debug_pause=st.slider("Durata della pausa di debug (secondi)",1,3,5)
+        #only show debug if headless is OFF
+        if not headless:
+            debug_mode = st.toggle("🐞Modalità Debug (vedi ogni passo)", value = False)
+            #only show pause slider if debug_mode is ON
+            if debug_mode:
+                debug_pause = st.slider("Tempo di pausa (secondi)", min_value = 1, max_value = 3, value = 0,step = 1)
 
         return headless, debug_mode, debug_pause
 
