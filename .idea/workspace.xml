@@ -4,8 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Now, with these scripts in model.py and main.py the 'headless=False → browser visible' is working">
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" afterDir="false" />
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -281,7 +282,87 @@
       <option name="project" value="LOCAL" />
       <updated>1758621947366</updated>
     </task>
-    <option name="localTasksCounter" value="26" />
+    <task id="LOCAL-00026" summary="Updated display messages for user">
+      <option name="closed" value="true" />
+      <created>1758624462676</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1758624462676</updated>
+    </task>
+    <task id="LOCAL-00027" summary="debug_mode=False -&gt; all the pauses can be disabled instantly&#10;-&gt;BUT the WEB does not have enough time to load as fast doing selenium , i have to solve it---&gt; However, that’s normal in web automation. Here’s why:&#10;&#10;1) When you turn off debug mode, the browser runs at full speed, and Selenium immediately tries to continue to the next step.&#10;&#10;2) But the web application (like Oracle or other internal tools) might need extra time to process actions (e.g., saving a course, loading a new screen).&#10;&#10;3) If Selenium doesn’t wait long enough, it moves on too early → causing missed saves or errors.">
+      <option name="closed" value="true" />
+      <created>1758632988396</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1758632988396</updated>
+    </task>
+    <task id="LOCAL-00028" summary="Translated display messages to italian">
+      <option name="closed" value="true" />
+      <created>1758704456552</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1758704456552</updated>
+    </task>
+    <task id="LOCAL-00029" summary="Added  new script which shows when another new window  open after saving a course. Like this we are sure that course was created.">
+      <option name="closed" value="true" />
+      <created>1758704541076</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1758704541076</updated>
+    </task>
+    <task id="LOCAL-00030" summary="As I solved issue with debug=false-&gt;i removed not necessary hashtags">
+      <option name="closed" value="true" />
+      <created>1758704588071</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1758704588071</updated>
+    </task>
+    <task id="LOCAL-00031" summary="Translated display messages to italian">
+      <option name="closed" value="true" />
+      <created>1758707261865</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1758707261865</updated>
+    </task>
+    <task id="LOCAL-00032" summary="Translated display messages to italian">
+      <option name="closed" value="true" />
+      <created>1758707682983</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1758707682983</updated>
+    </task>
+    <task id="LOCAL-00033" summary="Capitalized words were changed to lowercase">
+      <option name="closed" value="true" />
+      <created>1758786820021</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1758786820021</updated>
+    </task>
+    <task id="LOCAL-00034" summary="A script was added to allow users to control headless, debug_mode, and debug_pause settings from Streamlit.">
+      <option name="closed" value="true" />
+      <created>1758789065323</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1758789065323</updated>
+    </task>
+    <task id="LOCAL-00035" summary="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed">
+      <option name="closed" value="true" />
+      <created>1758796778648</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1758796778648</updated>
+    </task>
+    <option name="localTasksCounter" value="36" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -296,13 +377,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Created a new Project" />
-    <MESSAGE value="Moved to new folder" />
-    <MESSAGE value="1.Renamed folder and created a new folder where i will test MVP with Selenium. &#10;2. In new folder, created new file model.py" />
-    <MESSAGE value="1) Created new files.&#10;2) Started work on View.py file to visualise UI using Streamlit.&#10;3) Added logo of company in UI" />
-    <MESSAGE value="1) Added code to model.py&#10;2) Added code to view.py&#10;3) Added code to presenter.py&#10;4) Added new directory where will be saved login info" />
-    <MESSAGE value="Found some typo errors , which were corrected" />
-    <MESSAGE value="Found the typo error , which was corrected" />
     <MESSAGE value="Added 'navigate to course creation' script" />
     <MESSAGE value="Added script to print if the navigation was successfully" />
     <MESSAGE value="Added script to search a course" />
@@ -320,6 +394,14 @@
     <MESSAGE value="Updated the driver location path" />
     <MESSAGE value=" added script to force a visible browser with defined size" />
     <MESSAGE value="Now, with these scripts in model.py and main.py the 'headless=False → browser visible' is working" />
-    <option name="LAST_COMMIT_MESSAGE" value="Now, with these scripts in model.py and main.py the 'headless=False → browser visible' is working" />
+    <MESSAGE value="Updated display messages for user" />
+    <MESSAGE value="debug_mode=False -&gt; all the pauses can be disabled instantly&#10;-&gt;BUT the WEB does not have enough time to load as fast doing selenium , i have to solve it---&gt; However, that’s normal in web automation. Here’s why:&#10;&#10;1) When you turn off debug mode, the browser runs at full speed, and Selenium immediately tries to continue to the next step.&#10;&#10;2) But the web application (like Oracle or other internal tools) might need extra time to process actions (e.g., saving a course, loading a new screen).&#10;&#10;3) If Selenium doesn’t wait long enough, it moves on too early → causing missed saves or errors." />
+    <MESSAGE value="Added  new script which shows when another new window  open after saving a course. Like this we are sure that course was created." />
+    <MESSAGE value="As I solved issue with debug=false-&gt;i removed not necessary hashtags" />
+    <MESSAGE value="Translated display messages to italian" />
+    <MESSAGE value="Capitalized words were changed to lowercase" />
+    <MESSAGE value="A script was added to allow users to control headless, debug_mode, and debug_pause settings from Streamlit." />
+    <MESSAGE value="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed" />
+    <option name="LAST_COMMIT_MESSAGE" value="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed" />
   </component>
 </project>
