@@ -12,17 +12,17 @@ class CourseView:
 
     def get_user_options(self):
         #toggle for headless mode
-        headless = st.toggle (" Headless (browser automatare nascosto)", value = True)
+        headless = st.toggle ("😎 Headless (browser automatare nascosto)", value = True)
 
         debug_mode = False
         debug_pause = 0
 
         #only show debug if headless is OFF
         if not headless:
-            debug_mode = st.toggle("🐞Modalità Debug (vedi ogni passo)", value = False)
+            debug_mode = st.toggle("⏸️ Modalità lenta (pausa durante la compilazione dei campi)", value = False)
             #only show pause slider if debug_mode is ON
             if debug_mode:
-                debug_pause = st.slider("Tempo di pausa (secondi)", min_value = 1, max_value = 3, value = 0,step = 1)
+                debug_pause = st.slider("⏱️Tempo di pausa (secondi)", min_value = 1, max_value = 3, value = 1,step = 1)
 
         return headless, debug_mode, debug_pause
 
