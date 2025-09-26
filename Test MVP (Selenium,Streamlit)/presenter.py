@@ -70,3 +70,4 @@ class CoursePresenter:
 
             finally:
                 self.model.close_driver()
+                st.session_state.automation_running = False

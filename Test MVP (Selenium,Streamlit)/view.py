@@ -51,10 +51,22 @@ class CourseView:
                 st.error("Formato non valido. Usa GG/MM/AAAA.")
 
             # This is the button that will trigger the automation.
-            submitted = st.form_submit_button("Crea Corso in Oracle")
+            #submitted = st.form_submit_button("Crea Corso in Oracle")
+
+            #--Init session_state if not set--
+            if "automation_running" not in st.session_state:
+                st.session_state["automation_running"] = False
+
+            # Button becomes disabled while automation is running
+            submitted = st.form_submit_button(
+                "Crea Corso in Oracle", disabled=st.session_state["automation_running"])
+
+
 
         #when the button is pressed,'submitted' becomes True
         if submitted:
+        # Mark automation as running
+            st.session_state["automation_running"] = True
             #package the ollected data into a dict
             course_details = {
                 "title": course_title,
