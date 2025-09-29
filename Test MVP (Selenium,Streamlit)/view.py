@@ -83,10 +83,14 @@ class CourseView:
             }
             st.session_state["start_automation"] = True
             st.session_state["needs_rerun"] = True
-        # At the end of render_form()
+        # Handle rerun request
         if st.session_state.get("needs_rerun"):
             st.session_state["needs_rerun"] = False
             st.rerun()
+
+        # Show last message if exists
+        if st.session_state.get("last_message"):
+            self.display_message(st.session_state["last_message"])
 
         #if the button has not been pressed,return None
         return None

@@ -69,6 +69,7 @@ class CoursePresenter:
                 self.view.display_message(f"⚠️👩🏻‍✈️An unexpected error occurred: {e}")
 
 
+
             finally:
 
                 try:
@@ -79,12 +80,16 @@ class CoursePresenter:
 
                     pass
 
+                # Reset flags
+
                 st.session_state["automation_running"] = False
 
                 st.session_state["start_automation"] = False
 
-                st.session_state["course_details"] = None
+                # ⬇️ Save last result message so it stays after rerun
 
-                # Instead of rerun here:
+                st.session_state["last_message"] = result_message if 'result_message' in locals() else None
+
+                # Trigger rerun so button updates
 
                 st.session_state["needs_rerun"] = True

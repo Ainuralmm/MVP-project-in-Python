@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is working. The flow was updated. And now everything is working perfectly.">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -411,7 +410,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759137323570</updated>
     </task>
-    <option name="localTasksCounter" value="42" />
+    <task id="LOCAL-00042" summary="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed.">
+      <option name="closed" value="true" />
+      <created>1759139166576</created>
+      <option name="number" value="00042" />
+      <option name="presentableId" value="LOCAL-00042" />
+      <option name="project" value="LOCAL" />
+      <updated>1759139166576</updated>
+    </task>
+    <option name="localTasksCounter" value="43" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -426,7 +433,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="The issue with error in Streamlit Ui was solved. The problem was that **`result` is `None` (for example, if Selenium hasn’t returned anything yet).**&#10;&#10;- **Without the guard, `if 'Success' in None:` crashes with that error.**&#10;- **With the guard, if `message` is `None` → it just does nothing (safe).**" />
     <MESSAGE value="Added script for  Streamlit UI with a progress bar + step messages (clear, user-friendly feedback)." />
     <MESSAGE value="Added script to fill the new course form using data from course_details" />
     <MESSAGE value="Updated script for function create_course in UI (progress bar + step messages.)" />
@@ -451,6 +457,7 @@
     <MESSAGE value="Disable the &quot;Crea Corso in Oracle&quot; button once the automation starts" />
     <MESSAGE value="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is not working well.The button is still active during automation process." />
     <MESSAGE value="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is working. The flow was updated. And now everything is working perfectly." />
-    <option name="LAST_COMMIT_MESSAGE" value="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is working. The flow was updated. And now everything is working perfectly." />
+    <MESSAGE value="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed." />
   </component>
 </project>
