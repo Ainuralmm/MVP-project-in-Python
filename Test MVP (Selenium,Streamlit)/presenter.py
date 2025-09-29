@@ -69,5 +69,16 @@ class CoursePresenter:
                 self.view.display_message(f"⚠️👩🏻‍✈️An unexpected error occurred: {e}")
 
             finally:
-                self.model.close_driver()
-                st.session_state.automation_running = False
+                try:
+                    self.model.close_driver()
+                except Exception:
+                    pass
+
+                    # Reset session flags so the UI becomes interactive again
+                st.session_state["automation_running"] = False
+                st.session_state["start_automation"] = False
+                # optionally keep course_details or remove it:
+                # st.session_state["course_details"] = None
+
+                # Force a rerun so the button re-enables and the UI refreshes
+                st.rerun()

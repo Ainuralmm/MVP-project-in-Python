@@ -31,6 +31,14 @@ class CourseView:
         # This method displays the input form and returns the collected data.
         st.header("Inserisci Dettagli del Corso")
 
+        # --Init session_state if not set--
+        if "automation_running" not in st.session_state:
+            st.session_state["automation_running"] = False
+        if "start_automation" not in st.session_state:
+            st.session_state["start_automation"] = False
+        if "course_details" not in st.session_state:
+            st.session_state["course_details"] = None
+
         # We use a Streamlit form to group the inputs.
         # The code inside 'with form:' will only run when the submit button is pressed.
         with st.form(key='course_creation_form'):
@@ -45,16 +53,15 @@ class CourseView:
 
             try:
                 start_date = datetime.strptime(date_str, "%d/%m/%Y").date()
+                date_valid = True
                 #st.success(f"📅 Data selezionata: {start_date.strftime('%d/%m/%Y')}")
             except ValueError:
-                st.error("Formato non valido. Usa GG/MM/AAAA.")
+                start_date = None
+                date_valid = False
+
 
             # This is the button that will trigger the automation.
             #submitted = st.form_submit_button("Crea Corso in Oracle")
-
-            #--Init session_state if not set--
-            if "automation_running" not in st.session_state:
-                st.session_state["automation_running"] = False
 
             # Button becomes disabled while automation is running
             submitted = st.form_submit_button(
@@ -62,18 +69,24 @@ class CourseView:
 
 
         #when the button is pressed,'submitted' becomes True
-        if submitted and start_date:
-        # Mark automation as running
+        if submitted:
+            if not date_valid:
+                st.error("Formato non valido. Usa GG/MM/AAAA.")
+                return None
+
+            #set flags and save course details in session_state
             st.session_state["automation_running"] = True
             #package the collected data into a dict
-            course_details = {
+            st.session_state['course_details'] = {
                 "title": course_title,
                 "programme": programme,
                 "short_description": short_desc,
                 "start_date": start_date
             }
-            st.session_state["course_details"] = course_details
-            return course_details
+            st.session_state["start_automation"] = True
+            # Force Streamlit to rerun now — on the next run the button will render disabled
+            st.rerun()
+
 
         #if the button has not been pressed,return None
         return None

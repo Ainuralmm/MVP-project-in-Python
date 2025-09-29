@@ -1,3 +1,4 @@
+import streamlit as st
 from model import OracleAutomator
 from view import CourseView
 from presenter import CoursePresenter
@@ -9,11 +10,15 @@ if __name__ == "__main__":
     view = CourseView()
     headless, debug_mode, debug_pause = view.get_user_options()
 
-    course_details = view.render_form()
+    # Render the form (this will return None normally; submission triggers a rerun)
+    _ = view.render_form()
 
-    if course_details:
+    # Start automation only when the user submitted and the form set this flag
+    if st.session_state.get("start_automation"):
 
-        model = OracleAutomator(driver_path = DRIVER_PATH,
+        course_details = st.session_state.get("course_details")
+        if  course_details:
+            model = OracleAutomator(driver_path = DRIVER_PATH,
                             debug_mode = debug_mode, # pause for visual checks;  debug_mode=False -> all the pauses will be disabled instantly
                             debug_pause = debug_pause, # how long to pause in seconds
                             headless = headless)# set to True → browser hidden, False → browser visible
@@ -22,3 +27,7 @@ if __name__ == "__main__":
 
         #start the application
         presenter.run(course_details)
+    else:
+        # safety: clear flag to avoid loop if something missing
+        st.session_state["start_automation"] = False
+
