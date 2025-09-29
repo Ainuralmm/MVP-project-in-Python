@@ -74,19 +74,19 @@ class CourseView:
                 st.error("Formato non valido. Usa GG/MM/AAAA.")
                 return None
 
-            #set flags and save course details in session_state
             st.session_state["automation_running"] = True
-            #package the collected data into a dict
-            st.session_state['course_details'] = {
+            st.session_state["course_details"] = {
                 "title": course_title,
                 "programme": programme,
                 "short_description": short_desc,
                 "start_date": start_date
             }
             st.session_state["start_automation"] = True
-            # Force Streamlit to rerun now — on the next run the button will render disabled
+            st.session_state["needs_rerun"] = True
+        # At the end of render_form()
+        if st.session_state.get("needs_rerun"):
+            st.session_state["needs_rerun"] = False
             st.rerun()
-
 
         #if the button has not been pressed,return None
         return None
