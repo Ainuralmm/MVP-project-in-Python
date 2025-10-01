@@ -1,9 +1,6 @@
 import streamlit as st
 from datetime import datetime
 
-from altair.utils.schemapi import debug_mode
-
-
 class CourseView:
     def __init__(self):
         st.set_page_config(layout='centered')
@@ -38,6 +35,10 @@ class CourseView:
             st.session_state["start_automation"] = False
         if "course_details" not in st.session_state:
             st.session_state["course_details"] = None
+        if "last_progress" not in st.session_state:
+            st.session_state["last_progress"] = None
+        if "last_status" not in st.session_state:
+            st.session_state["last_status"] = None
 
         # We use a Streamlit form to group the inputs.
         # The code inside 'with form:' will only run when the submit button is pressed.
@@ -83,14 +84,24 @@ class CourseView:
             }
             st.session_state["start_automation"] = True
             st.session_state["needs_rerun"] = True
-        # Handle rerun request
-        if st.session_state.get("needs_rerun"):
-            st.session_state["needs_rerun"] = False
-            st.rerun()
 
-        # Show last message if exists
-        if st.session_state.get("last_message"):
-            self.display_message(st.session_state["last_message"])
+            # IMPORTANT: force an immediate rerun so the UI re-renders with button disabled
+            st.rerun()
+        #-------------
+        # Handle rerun request (This reruns to start the automation process)
+        # if st.session_state.get("needs_rerun"):
+        #     st.session_state["needs_rerun"] = False
+        #     st.rerun()
+        #____________
+
+        # After handling rerun logic, render persistent progress/status if present
+        if st.session_state.get("last_progress") is not None:
+            # show a progress bar at the saved value
+            st.progress(st.session_state["last_progress"])
+
+        # show last status message (friendly)
+        if st.session_state.get("last_status"):
+            st.markdown(st.session_state["last_status"])
 
         #if the button has not been pressed,return None
         return None

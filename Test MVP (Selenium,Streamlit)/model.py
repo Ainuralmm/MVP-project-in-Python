@@ -2,7 +2,7 @@
 # --- IMPORTS ---
 import time
 
-from altair.utils.schemapi import debug_mode
+
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.common.by import By

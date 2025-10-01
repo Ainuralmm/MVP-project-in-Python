@@ -27,6 +27,9 @@ class CoursePresenter:
         #3.A spinner to show the user that process is proceeding
         with st.spinner('Automazione in corso... Attendere prego'):
             try:
+                # BEFORE starting steps - initialize
+                st.session_state["last_progress"] = 0
+                st.session_state["last_status"] = "Ready to start..."
                 #---Step1: Login ---
                 status.info("🔑Accesso a Oracle in corso...")
                 progress.progress(10)
@@ -60,13 +63,26 @@ class CoursePresenter:
                 #handle model message
                 if result_message and "Error" in result_message:
                     status.error(f'❌😭{result_message}')
-                else:
-                    status.success(f"{result_message or 'Corso creato con successo!'}")
+                # else:
+                #     status.success(f"{result_message or 'Corso creato con successo!'}")
 
+                # in finally, set final state (example)
                 progress.progress(100)
+                st.session_state["last_progress"] = 100
+                st.session_state["last_status"] = result_message or "Corso creato con successo!"
+
+                # reset running flags etc.
+                st.session_state["automation_running"] = False
+                st.session_state["start_automation"] = False
+                st.session_state["course_details"] = None
+
+                # then rerun:
+                st.rerun()
+
 
             except Exception as e:
-                self.view.display_message(f"⚠️👩🏻‍✈️An unexpected error occurred: {e}")
+                self.view.display_message(f"⚠️👩🏻‍✈️Errore inatteso:: {e}")
+                status.error (result_message)
 
 
 
@@ -76,13 +92,14 @@ class CoursePresenter:
                 except Exception:
                     pass
                 # Reset flags
-                st.session_state["automation_running"] = False
-                st.session_state["start_automation"] = False
-                #  Save last result message so it stays after rerun
-                #st.session_state["last_message"] = result_message if 'result_message' in locals() else None
-
-                # Clear course_details to avoid re-trigger
-                st.session_state["course_details"] = None
+                # st.session_state["automation_running"] = False
+                # st.session_state["start_automation"] = False
+                # #  Save last result message so it stays after rerun
+                # #st.session_state["last_message"] = result_message if 'result_message' in locals() else None
+                #
+                # # Clear course_details to avoid re-trigger
+                # st.session_state["course_details"] = None
+                # st.rerun
 
                 # Trigger rerun so button updates
                 #st.session_state["needs_rerun"] = True
