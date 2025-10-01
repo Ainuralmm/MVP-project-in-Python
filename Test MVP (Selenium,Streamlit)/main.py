@@ -23,10 +23,16 @@ if __name__ == "__main__":
                             debug_pause = debug_pause, # how long to pause in seconds
                             headless = headless)# set to True → browser hidden, False → browser visible
 
-        presenter = CoursePresenter(model,view)
+            presenter = CoursePresenter(model,view)
 
-        #start the application
-        presenter.run(course_details)
+            #start the application
+            presenter.run(course_details)
+
+        # The presenter finished, which set automation_running = False and
+        # needs_rerun = True. We now trigger the final rerun immediately.
+        if st.session_state.get("needs_rerun"):
+            st.session_state["needs_rerun"] = False
+            st.rerun()  # <--- THIS IS THE FINAL RERUN THAT REDRAWS THE BUTTON
     else:
         # safety: clear flag to avoid loop if something missing
         st.session_state["start_automation"] = False

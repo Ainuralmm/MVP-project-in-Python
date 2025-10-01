@@ -4,9 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed.">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Added  script to make active button after finishing course creation">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -418,7 +420,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759139166576</updated>
     </task>
-    <option name="localTasksCounter" value="43" />
+    <task id="LOCAL-00043" summary="Added  script to make active button after finishing course creation">
+      <option name="closed" value="true" />
+      <created>1759141479830</created>
+      <option name="number" value="00043" />
+      <option name="presentableId" value="LOCAL-00043" />
+      <option name="project" value="LOCAL" />
+      <updated>1759141479830</updated>
+    </task>
+    <option name="localTasksCounter" value="44" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -433,7 +443,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added script for  Streamlit UI with a progress bar + step messages (clear, user-friendly feedback)." />
     <MESSAGE value="Added script to fill the new course form using data from course_details" />
     <MESSAGE value="Updated script for function create_course in UI (progress bar + step messages.)" />
     <MESSAGE value="Fixed typo error" />
@@ -458,6 +467,7 @@
     <MESSAGE value="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is not working well.The button is still active during automation process." />
     <MESSAGE value="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is working. The flow was updated. And now everything is working perfectly." />
     <MESSAGE value="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed." />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed." />
+    <MESSAGE value="Added  script to make active button after finishing course creation" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added  script to make active button after finishing course creation" />
   </component>
 </project>

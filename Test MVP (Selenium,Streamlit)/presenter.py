@@ -71,25 +71,19 @@ class CoursePresenter:
 
 
             finally:
-
                 try:
-
                     self.model.close_driver()
-
                 except Exception:
-
                     pass
-
                 # Reset flags
-
                 st.session_state["automation_running"] = False
-
                 st.session_state["start_automation"] = False
+                #  Save last result message so it stays after rerun
+                #st.session_state["last_message"] = result_message if 'result_message' in locals() else None
 
-                # ⬇️ Save last result message so it stays after rerun
-
-                st.session_state["last_message"] = result_message if 'result_message' in locals() else None
+                # Clear course_details to avoid re-trigger
+                st.session_state["course_details"] = None
 
                 # Trigger rerun so button updates
+                #st.session_state["needs_rerun"] = True
 
-                st.session_state["needs_rerun"] = True
