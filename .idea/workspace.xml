@@ -4,13 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="The issue with the submit button remaining disabled after the course creation is complete:&#10;1)Removed the Rerun Trigger from &#10;2) Implement the Final Rerun in main.py">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
-    </list>
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Removed all unnecessary hashtags" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -437,7 +431,23 @@
       <option name="project" value="LOCAL" />
       <updated>1759315009753</updated>
     </task>
-    <option name="localTasksCounter" value="45" />
+    <task id="LOCAL-00045" summary="Trying to solve issue with disabled button and progress status message of process">
+      <option name="closed" value="true" />
+      <created>1759335529257</created>
+      <option name="number" value="00045" />
+      <option name="presentableId" value="LOCAL-00045" />
+      <option name="project" value="LOCAL" />
+      <updated>1759335529257</updated>
+    </task>
+    <task id="LOCAL-00046" summary="Removed all unnecessary hashtags">
+      <option name="closed" value="true" />
+      <created>1759336050974</created>
+      <option name="number" value="00046" />
+      <option name="presentableId" value="LOCAL-00046" />
+      <option name="project" value="LOCAL" />
+      <updated>1759336050974</updated>
+    </task>
+    <option name="localTasksCounter" value="47" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -452,8 +462,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Updated script for function create_course in UI (progress bar + step messages.)" />
-    <MESSAGE value="Fixed typo error" />
     <MESSAGE value="Changed script info messages" />
     <MESSAGE value="MoveD the logo rendering into  CourseView so that it is always drawn every time Streamlit reruns." />
     <MESSAGE value="Added script for headless mode M.Edge" />
@@ -477,6 +485,8 @@
     <MESSAGE value="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed." />
     <MESSAGE value="Added  script to make active button after finishing course creation" />
     <MESSAGE value="The issue with the submit button remaining disabled after the course creation is complete:&#10;1)Removed the Rerun Trigger from &#10;2) Implement the Final Rerun in main.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="The issue with the submit button remaining disabled after the course creation is complete:&#10;1)Removed the Rerun Trigger from &#10;2) Implement the Final Rerun in main.py" />
+    <MESSAGE value="Trying to solve issue with disabled button and progress status message of process" />
+    <MESSAGE value="Removed all unnecessary hashtags" />
+    <option name="LAST_COMMIT_MESSAGE" value="Removed all unnecessary hashtags" />
   </component>
 </project>
