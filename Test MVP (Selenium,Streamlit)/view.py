@@ -60,10 +60,6 @@ class CourseView:
                 start_date = None
                 date_valid = False
 
-
-            # This is the button that will trigger the automation.
-            #submitted = st.form_submit_button("Crea Corso in Oracle")
-
             # Button becomes disabled while automation is running
             submitted = st.form_submit_button(
                 "Crea Corso in Oracle", disabled=st.session_state["automation_running"])
@@ -87,12 +83,6 @@ class CourseView:
 
             # IMPORTANT: force an immediate rerun so the UI re-renders with button disabled
             st.rerun()
-        #-------------
-        # Handle rerun request (This reruns to start the automation process)
-        # if st.session_state.get("needs_rerun"):
-        #     st.session_state["needs_rerun"] = False
-        #     st.rerun()
-        #____________
 
         # After handling rerun logic, render persistent progress/status if present
         if st.session_state.get("last_progress") is not None:
@@ -117,6 +107,3 @@ class CourseView:
             st.error(message)
         else:
             st.info(message)
-
-#view=CourseView()
-#view.render_form()#call the method that renders the form

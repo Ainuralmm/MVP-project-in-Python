@@ -12,10 +12,8 @@ class CoursePresenter:
         #1.render the form and wait for user input after clicking submit
         if not course_details:
             return
-        #course_details = self.view.render_form()
-        #2.if the form was submitted
-        #if course_details:
-            #get the credentials securely from Streamlit's secrets management
+
+        #get the credentials securely from Streamlit's secrets management
         oracle_url=st.secrets['ORACLE_URL']
         oracle_user=st.secrets['ORACLE_USER']
         oracle_pass=st.secrets['ORACLE_PASS']
@@ -91,16 +89,3 @@ class CoursePresenter:
                     self.model.close_driver()
                 except Exception:
                     pass
-                # Reset flags
-                # st.session_state["automation_running"] = False
-                # st.session_state["start_automation"] = False
-                # #  Save last result message so it stays after rerun
-                # #st.session_state["last_message"] = result_message if 'result_message' in locals() else None
-                #
-                # # Clear course_details to avoid re-trigger
-                # st.session_state["course_details"] = None
-                # st.rerun
-
-                # Trigger rerun so button updates
-                #st.session_state["needs_rerun"] = True
-
