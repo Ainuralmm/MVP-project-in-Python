@@ -1,6 +1,12 @@
 import streamlit as st
 from datetime import datetime
 
+#to clean previous screen messages
+def clear_lat_message():
+    """Clear store persistent UI feedback (progress/message).)"""
+    st.session_state['last_message'] = None
+    st.session_state['last_progress'] = None
+
 class CourseView:
     def __init__(self):
         st.set_page_config(layout='centered')
