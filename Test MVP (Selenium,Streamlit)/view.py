@@ -71,13 +71,7 @@ class CourseView:
             #start_date = st.date_input("Data di Pubblicazione", date(2023, 1, 1))
 
             # Custom date input in Italian format
-            date_str = st.text_input(
-                "Data di Pubblicazione (GG/MM/AAAA)",
-                value="",
-                placeholder="01/01/2023",
-                key="input_date",
-
-            )
+            date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", "01/01/2023")
 
             try:
                 start_date = datetime.strptime(date_str, "%d/%m/%Y").date()
@@ -97,6 +91,16 @@ class CourseView:
             if not date_valid:
                 st.error("Formato non valido. Usa GG/MM/AAAA.")
                 return None
+
+            if st.form_submit_button("Crea Corso in Oracle"):
+                if not course_title.strip() or not short_desc.strip():
+                    st.error("⚠️ Per favore compila almeno il titolo del Corso.")
+                else:
+                    #only runs if both required fields are filled
+                    st.success("✅ Tutti i campi richiesti compilati.Avvio automazione...")
+                    st.session_state["automation_running"] = True
+
+
 
             st.session_state["automation_running"] = True
             st.session_state["course_details"] = {

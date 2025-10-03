@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Added script of function to clean previous screen messages">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Added script to make the example text in the input box to disappear only when the user clicks inside to type">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
@@ -81,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00001" summary="Created a new Project">
-      <option name="closed" value="true" />
-      <created>1757411097736</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1757411097736</updated>
     </task>
     <task id="LOCAL-00002" summary="Moved to new folder">
       <option name="closed" value="true" />
@@ -474,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759406447482</updated>
     </task>
-    <option name="localTasksCounter" value="50" />
+    <task id="LOCAL-00050" summary="Added script to make the example text in the input box to disappear only when the user clicks inside to type">
+      <option name="closed" value="true" />
+      <created>1759480850724</created>
+      <option name="number" value="00050" />
+      <option name="presentableId" value="LOCAL-00050" />
+      <option name="project" value="LOCAL" />
+      <updated>1759480850729</updated>
+    </task>
+    <option name="localTasksCounter" value="51" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -489,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added script for headless mode M.Edge" />
     <MESSAGE value="Updated the driver location path" />
     <MESSAGE value=" added script to force a visible browser with defined size" />
     <MESSAGE value="Now, with these scripts in model.py and main.py the 'headless=False → browser visible' is working" />
@@ -514,6 +513,7 @@
     <MESSAGE value="Removed all unnecessary hashtags" />
     <MESSAGE value="Fortunately, the logic what I wanted is working: button disabled during the aut.process, and active after the process completed also show last message." />
     <MESSAGE value="Added script of function to clean previous screen messages" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added script of function to clean previous screen messages" />
+    <MESSAGE value="Added script to make the example text in the input box to disappear only when the user clicks inside to type" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added script to make the example text in the input box to disappear only when the user clicks inside to type" />
   </component>
 </project>
