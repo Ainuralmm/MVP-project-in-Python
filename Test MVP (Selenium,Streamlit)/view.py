@@ -92,13 +92,13 @@ class CourseView:
                 st.error("Formato non valido. Usa GG/MM/AAAA.")
                 return None
 
-            if st.form_submit_button("Crea Corso in Oracle"):
-                if not course_title.strip() or not short_desc.strip():
-                    st.error("⚠️ Per favore compila almeno il titolo del Corso.")
-                else:
+            if not course_title.strip() or not short_desc.strip():
+                st.error("⚠️ Per favore compila almeno il titolo del Corso.")
+                return None
+
                     #only runs if both required fields are filled
-                    st.success("✅ Tutti i campi richiesti compilati.Avvio automazione...")
-                    st.session_state["automation_running"] = True
+                st.success("✅ Tutti i campi richiesti compilati.Avvio automazione...")
+                st.session_state["automation_running"] = True
 
 
 
