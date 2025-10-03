@@ -4,8 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Fortunately, the logic what I wanted is working: button disabled during the aut.process, and active after the process completed also show last message.">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Added script of function to clean previous screen messages">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -465,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759337138241</updated>
     </task>
-    <option name="localTasksCounter" value="49" />
+    <task id="LOCAL-00049" summary="Added script of function to clean previous screen messages">
+      <option name="closed" value="true" />
+      <created>1759406447481</created>
+      <option name="number" value="00049" />
+      <option name="presentableId" value="LOCAL-00049" />
+      <option name="project" value="LOCAL" />
+      <updated>1759406447482</updated>
+    </task>
+    <option name="localTasksCounter" value="50" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -480,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="MoveD the logo rendering into  CourseView so that it is always drawn every time Streamlit reruns." />
     <MESSAGE value="Added script for headless mode M.Edge" />
     <MESSAGE value="Updated the driver location path" />
     <MESSAGE value=" added script to force a visible browser with defined size" />
@@ -505,6 +513,7 @@
     <MESSAGE value="Trying to solve issue with disabled button and progress status message of process" />
     <MESSAGE value="Removed all unnecessary hashtags" />
     <MESSAGE value="Fortunately, the logic what I wanted is working: button disabled during the aut.process, and active after the process completed also show last message." />
-    <option name="LAST_COMMIT_MESSAGE" value="Fortunately, the logic what I wanted is working: button disabled during the aut.process, and active after the process completed also show last message." />
+    <MESSAGE value="Added script of function to clean previous screen messages" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added script of function to clean previous screen messages" />
   </component>
 </project>

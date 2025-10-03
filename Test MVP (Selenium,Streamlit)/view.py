@@ -2,10 +2,10 @@ import streamlit as st
 from datetime import datetime
 
 #to clean previous screen messages
-def clear_lat_message():
-    """Clear store persistent UI feedback (progress/message).)"""
-    st.session_state['last_message'] = None
-    st.session_state['last_progress'] = None
+# def clear_last_message():
+#     """Clear store persistent UI feedback (progress/message).)"""
+#     st.session_state['last_message'] = None
+#     st.session_state['last_progress'] = None
 
 class CourseView:
     def __init__(self):
@@ -50,13 +50,34 @@ class CourseView:
         # The code inside 'with form:' will only run when the submit button is pressed.
         with st.form(key='course_creation_form'):
             # These are the input fields for the user.
-            course_title = st.text_input("Titolo del Corso", "Esempio: Analisi dei Dati")
-            programme = st.text_area("Dettagli del Programma", "Campo opzionale: se necessario, inserire informazioni importanti sul corso")
-            short_desc = st.text_input("Breve Descrizione", "Esempio: Analisi dei Dati Informatica")
+            course_title = st.text_input("Titolo del Corso",
+                                         value="",
+                                         placeholder="Esempio: Analisi dei Dati",
+                                         key="input_title",
+                                         )
+            programme = st.text_area(
+                "Dettagli del Programma",
+                value="",
+                placeholder="Campo opzionale: informazioni importanti sul corso",
+                key="input_programme",
+                )
+            short_desc = st.text_input(
+                "Breve Descrizione",
+                value="",
+                placeholder="Esempio: Analisi dei Dati Informatica",
+                key="input_short_desc",
+
+            )
             #start_date = st.date_input("Data di Pubblicazione", date(2023, 1, 1))
 
             # Custom date input in Italian format
-            date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", "01/01/2023")
+            date_str = st.text_input(
+                "Data di Pubblicazione (GG/MM/AAAA)",
+                value="",
+                placeholder="01/01/2023",
+                key="input_date",
+
+            )
 
             try:
                 start_date = datetime.strptime(date_str, "%d/%m/%Y").date()
@@ -85,7 +106,7 @@ class CourseView:
                 "start_date": start_date
             }
             st.session_state["start_automation"] = True
-            st.session_state["needs_rerun"] = True
+            #st.session_state["needs_rerun"] = True
 
             # IMPORTANT: force an immediate rerun so the UI re-renders with button disabled
             st.rerun()
