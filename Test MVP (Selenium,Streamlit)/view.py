@@ -88,17 +88,36 @@ class CourseView:
 
         #when the button is pressed,'submitted' becomes True
         if submitted:
+
             if not date_valid:
                 st.error("Formato non valido. Usa GG/MM/AAAA.")
                 return None
 
-            if not course_title.strip() or not short_desc.strip():
-                st.error("⚠️ Per favore compila almeno il titolo del Corso.")
-                return None
+            # to show a red warning directly under the field that is missing.
+            missing = False
 
-                    #only runs if both required fields are filled
-                st.success("✅ Tutti i campi richiesti compilati.Avvio automazione...")
-                st.session_state["automation_running"] = True
+            if not course_title.strip():
+                st.markdown("<span style ='color:red'> "
+                            "⚠️ Il campo 'Titolo corso' è obbligatorio. Si prega di compilarlo </span>",
+                            unsafe_allow_html=True)
+                missing = True
+            if not short_desc.strip():
+                st.markdown("<span style ='color:red'> "
+                            "⚠️ Il campo 'Breve Descrizione' è obbligatorio. Si prega di compilarlo",
+                            unsafe_allow_html=True)
+                missing = True
+            if not date_str.strip():
+                st.markdown("<span style ='color:red'> "
+                            "⚠️ Il campo 'Data di Pubblicazione' è obbligatorio. Si prega di compilarlo </span>",
+                            unsafe_allow_html=True)
+                missing = True
+            if missing:
+                st.stop() # stops here, doesn’t launch automation
+
+            #only runs if all required fields are filled
+            st.success("✅ Tutti i campi richiesti compilati.Avvio automazione...")
+            st.session_state["automation_running"] = True
+            #return None
 
 
 

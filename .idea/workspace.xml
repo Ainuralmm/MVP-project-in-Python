@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment=" Updated condition to check the required fields before running  logic">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="It showed an error in Streamlit UI, because of double button, i just removed it and script worked">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
@@ -81,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00003" summary="Moved to new folder">
-      <option name="closed" value="true" />
-      <created>1758021333993</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1758021333996</updated>
     </task>
     <task id="LOCAL-00004" summary="1.Renamed folder and created a new folder where i will test MVP with Selenium. &#10;2. In new folder, created new file model.py">
       <option name="closed" value="true" />
@@ -474,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759483854641</updated>
     </task>
-    <option name="localTasksCounter" value="52" />
+    <task id="LOCAL-00052" summary="It showed an error in Streamlit UI, because of double button, i just removed it and script worked">
+      <option name="closed" value="true" />
+      <created>1759485242446</created>
+      <option name="number" value="00052" />
+      <option name="presentableId" value="LOCAL-00052" />
+      <option name="project" value="LOCAL" />
+      <updated>1759485242446</updated>
+    </task>
+    <option name="localTasksCounter" value="53" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -489,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value=" added script to force a visible browser with defined size" />
     <MESSAGE value="Now, with these scripts in model.py and main.py the 'headless=False → browser visible' is working" />
     <MESSAGE value="Updated display messages for user" />
     <MESSAGE value="debug_mode=False -&gt; all the pauses can be disabled instantly&#10;-&gt;BUT the WEB does not have enough time to load as fast doing selenium , i have to solve it---&gt; However, that’s normal in web automation. Here’s why:&#10;&#10;1) When you turn off debug mode, the browser runs at full speed, and Selenium immediately tries to continue to the next step.&#10;&#10;2) But the web application (like Oracle or other internal tools) might need extra time to process actions (e.g., saving a course, loading a new screen).&#10;&#10;3) If Selenium doesn’t wait long enough, it moves on too early → causing missed saves or errors." />
@@ -514,6 +513,7 @@
     <MESSAGE value="Added script of function to clean previous screen messages" />
     <MESSAGE value="Added script to make the example text in the input box to disappear only when the user clicks inside to type" />
     <MESSAGE value=" Updated condition to check the required fields before running  logic" />
-    <option name="LAST_COMMIT_MESSAGE" value=" Updated condition to check the required fields before running  logic" />
+    <MESSAGE value="It showed an error in Streamlit UI, because of double button, i just removed it and script worked" />
+    <option name="LAST_COMMIT_MESSAGE" value="It showed an error in Streamlit UI, because of double button, i just removed it and script worked" />
   </component>
 </project>
