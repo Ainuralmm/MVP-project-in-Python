@@ -148,7 +148,7 @@ class CourseView:
         if st.session_state.get("last_progress") is not None or st.session_state.get("last_status"):
             st.divider()
             #st.markdown("### 🧹 Gestione Messaggi")
-            if st.button("Cancella Cronologia Messaggi", type="secondary", use_container_width=True):
+            if st.button("🧹 Cancella Cronologia Messaggi", type="secondary", use_container_width=True):
                 for key in ["last_progress", "last_status", "course_details"]:
                     if key in st.session_state:
                         st.session_state[key] = None
