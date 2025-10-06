@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="When Streamlit first starts (no history yet), the button should not be visible to keep the interface clean--&gt; the script was done">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Added icon in button">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
@@ -81,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00008" summary="Found the typo error , which was corrected">
-      <option name="closed" value="true" />
-      <created>1758106444703</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1758106444703</updated>
     </task>
     <task id="LOCAL-00009" summary="Added 'navigate to course creation' script">
       <option name="closed" value="true" />
@@ -474,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759772459948</updated>
     </task>
-    <option name="localTasksCounter" value="57" />
+    <task id="LOCAL-00057" summary="Added icon in button">
+      <option name="closed" value="true" />
+      <created>1759773282315</created>
+      <option name="number" value="00057" />
+      <option name="presentableId" value="LOCAL-00057" />
+      <option name="project" value="LOCAL" />
+      <updated>1759773282315</updated>
+    </task>
+    <option name="localTasksCounter" value="58" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -489,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="As I solved issue with debug=false-&gt;i removed not necessary hashtags" />
     <MESSAGE value="Translated display messages to italian" />
     <MESSAGE value="Capitalized words were changed to lowercase" />
     <MESSAGE value="A script was added to allow users to control headless, debug_mode, and debug_pause settings from Streamlit." />
@@ -514,6 +513,7 @@
     <MESSAGE value="adding clear messgaes button" />
     <MESSAGE value="Added “ Clear History” button without touching automation or logic flow" />
     <MESSAGE value="When Streamlit first starts (no history yet), the button should not be visible to keep the interface clean--&gt; the script was done" />
-    <option name="LAST_COMMIT_MESSAGE" value="When Streamlit first starts (no history yet), the button should not be visible to keep the interface clean--&gt; the script was done" />
+    <MESSAGE value="Added icon in button" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added icon in button" />
   </component>
 </project>
