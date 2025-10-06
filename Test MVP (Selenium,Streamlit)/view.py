@@ -135,26 +135,25 @@ class CourseView:
             # IMPORTANT: force an immediate rerun so the UI re-renders with button disabled
             st.rerun()
 
+        # ---STATUS DISPLAY---
         # After handling rerun logic, render persistent progress/status if present
         if st.session_state.get("last_progress") is not None:
             # show a progress bar at the saved value
             st.progress(st.session_state["last_progress"])
-
-        # ---Status display---show last status message
+        # Show last status message
         if st.session_state.get("last_status"):
             st.markdown(st.session_state["last_status"])
 
-        #if the button has not been pressed,return None
-        #return None
-        # --- CLEAR HISTORY BUTTON AT BOTTOM ---
-        st.divider()
-        #st.markdown("### 🧹 Gestione Messaggi")
-        if st.button(" 🧹Cancella Cronologia Messaggi", type="secondary", use_container_width=True):
-            for key in ["last_progress", "last_status", "course_details"]:
-                if key in st.session_state:
+        # --- SHOW CLEAR HISTORY BUTTON ONLY IF THERE'S HISTORY ---
+        if st.session_state.get("last_progress") is not None or st.session_state.get("last_status"):
+            st.divider()
+            #st.markdown("### 🧹 Gestione Messaggi")
+            if st.button("Cancella Cronologia Messaggi", type="secondary", use_container_width=True):
+                for key in ["last_progress", "last_status", "course_details"]:
+                    if key in st.session_state:
                         st.session_state[key] = None
-            st.success("✅ Tutti i messaggi precedenti sono stati cancellati.")
-            st.rerun()
+                st.success("✅ Tutti i messaggi precedenti sono stati cancellati.")
+                st.rerun()
 
         return None
 
