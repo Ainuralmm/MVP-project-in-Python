@@ -84,7 +84,7 @@ class CourseView:
 
             # Button becomes disabled while automation is running
             submitted = st.form_submit_button(
-                "Crea Corso in Oracle", disabled=st.session_state["automation_running"])
+                "Crea Corso in Oracle",type="primary", disabled=st.session_state["automation_running"])
 
 
         #when the button is pressed,'submitted' becomes True
@@ -140,23 +140,23 @@ class CourseView:
             # show a progress bar at the saved value
             st.progress(st.session_state["last_progress"])
 
-        # show last status message (friendly)
+        # ---Status display---show last status message
         if st.session_state.get("last_status"):
             st.markdown(st.session_state["last_status"])
 
         #if the button has not been pressed,return None
-        return None
-
-    # --- 🧹 CLEAR HISTORY BUTTON ---
-    st.markdown(" 🧹 Gestione Messaggi")
-    if st.button("Cancella Cronologia Messaggi"):
-        for key in ["last_progress", "last_status", "course_details"]:
-            if key in st.session_state:
-                st.session_state[key] = None
+        #return None
+        # --- CLEAR HISTORY BUTTON AT BOTTOM ---
+        st.divider()
+        #st.markdown("### 🧹 Gestione Messaggi")
+        if st.button(" 🧹Cancella Cronologia Messaggi", type="secondary", use_container_width=True):
+            for key in ["last_progress", "last_status", "course_details"]:
+                if key in st.session_state:
+                        st.session_state[key] = None
             st.success("✅ Tutti i messaggi precedenti sono stati cancellati.")
             st.rerun()
 
-    st.divider()
+        return None
 
     def display_message(self,message):
         #this method show a message to the user-->Presenter call this method to provide feedback

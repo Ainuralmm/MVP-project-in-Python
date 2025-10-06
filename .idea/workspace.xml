@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="added a native &quot;required&quot; field validation like in HTML">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="adding clear messgaes button">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
@@ -81,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00005" summary="1) Created new files.&#10;2) Started work on View.py file to visualise UI using Streamlit.&#10;3) Added logo of company in UI">
-      <option name="closed" value="true" />
-      <created>1758099252293</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1758099252293</updated>
     </task>
     <task id="LOCAL-00006" summary="1) Added code to model.py&#10;2) Added code to view.py&#10;3) Added code to presenter.py&#10;4) Added new directory where will be saved login info">
       <option name="closed" value="true" />
@@ -474,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759507507556</updated>
     </task>
-    <option name="localTasksCounter" value="54" />
+    <task id="LOCAL-00054" summary="adding clear messgaes button">
+      <option name="closed" value="true" />
+      <created>1759770821596</created>
+      <option name="number" value="00054" />
+      <option name="presentableId" value="LOCAL-00054" />
+      <option name="project" value="LOCAL" />
+      <updated>1759770821596</updated>
+    </task>
+    <option name="localTasksCounter" value="55" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -489,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Updated display messages for user" />
     <MESSAGE value="debug_mode=False -&gt; all the pauses can be disabled instantly&#10;-&gt;BUT the WEB does not have enough time to load as fast doing selenium , i have to solve it---&gt; However, that’s normal in web automation. Here’s why:&#10;&#10;1) When you turn off debug mode, the browser runs at full speed, and Selenium immediately tries to continue to the next step.&#10;&#10;2) But the web application (like Oracle or other internal tools) might need extra time to process actions (e.g., saving a course, loading a new screen).&#10;&#10;3) If Selenium doesn’t wait long enough, it moves on too early → causing missed saves or errors." />
     <MESSAGE value="Added  new script which shows when another new window  open after saving a course. Like this we are sure that course was created." />
     <MESSAGE value="As I solved issue with debug=false-&gt;i removed not necessary hashtags" />
@@ -514,6 +513,7 @@
     <MESSAGE value=" Updated condition to check the required fields before running  logic" />
     <MESSAGE value="It showed an error in Streamlit UI, because of double button, i just removed it and script worked" />
     <MESSAGE value="added a native &quot;required&quot; field validation like in HTML" />
-    <option name="LAST_COMMIT_MESSAGE" value="added a native &quot;required&quot; field validation like in HTML" />
+    <MESSAGE value="adding clear messgaes button" />
+    <option name="LAST_COMMIT_MESSAGE" value="adding clear messgaes button" />
   </component>
 </project>
