@@ -46,6 +46,8 @@ class CourseView:
         if "last_status" not in st.session_state:
             st.session_state["last_status"] = None
 
+
+
         # We use a Streamlit form to group the inputs.
         # The code inside 'with form:' will only run when the submit button is pressed.
         with st.form(key='course_creation_form'):
@@ -68,7 +70,6 @@ class CourseView:
                 key="input_short_desc",
 
             )
-            #start_date = st.date_input("Data di Pubblicazione", date(2023, 1, 1))
 
             # Custom date input in Italian format
             date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", "01/01/2023")
@@ -145,6 +146,17 @@ class CourseView:
 
         #if the button has not been pressed,return None
         return None
+
+    # --- 🧹 CLEAR HISTORY BUTTON ---
+    st.markdown(" 🧹 Gestione Messaggi")
+    if st.button("Cancella Cronologia Messaggi"):
+        for key in ["last_progress", "last_status", "course_details"]:
+            if key in st.session_state:
+                st.session_state[key] = None
+            st.success("✅ Tutti i messaggi precedenti sono stati cancellati.")
+            st.rerun()
+
+    st.divider()
 
     def display_message(self,message):
         #this method show a message to the user-->Presenter call this method to provide feedback
