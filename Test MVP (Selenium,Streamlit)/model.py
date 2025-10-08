@@ -1,8 +1,8 @@
 # model.py
 # --- IMPORTS ---
 import time
-
-
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.common.by import By
@@ -10,6 +10,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.options import Options
+from selenium.common.exceptions import TimeoutException
+
 
 #This is a special function called the constructor.
 # It automatically runs once when you first create a robot from the blueprint.
@@ -71,7 +73,11 @@ class OracleAutomator:
             return False
 
     def navigate_to_course_creation(self):
-        #navigation and search part
+        """
+               Navigate from homepage to the 'Corsi' list page.
+               Used by both course creation and edition flows.
+               """
+
         try:
             miogruppodilavoro = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="groupNode_workforce_management"]')))
             miogruppodilavoro.click()
@@ -84,9 +90,42 @@ class OracleAutomator:
             corsi = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//a[@title="Corsi" and text()="Corsi"]')))
             corsi.click()
             print("Model: Clicked 'Corsi'")
+            #self._pause_for_visual_check()  # <-- PAUSE HERE
+            course_name = course_details['title']
+            print(f'Model: Starting course creation for "{course_name}"')
             self._pause_for_visual_check()  # <-- PAUSE HERE
 
+            # 1.search for the course
+            search_box = self.wait.until(EC.presence_of_element_located(
+                (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
+            search_box.clear()
+            search_box.send_keys(course_name)
+
+            date_input = self.wait.until(EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
+            date_input.clear()
+            date_input.send_keys("01/01/2000")
+
+            cerca_button = self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]')))
+            cerca_button.click()
+            print("Model: Searched for existing course.")
+            self._pause_for_visual_check()  # <-- PAUSE HERE
+
+            # ---Check if the course exists ot create new one ---
+            try:
+                # if it founds 'no data' message,it means Selenium will start to create a new course
+                self.print("Existing course found. Skipping course creation and proceeding to create edition.")
+
+            # click on the course name
+                existed_course_name = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, f'//table[@summary="Corsi"]//a[contains(text(), "{course_name}")]')))
+                existed_course_name.click()
+                print(f"Clicked on the existing course name: {course_name}")
+
+
             return True
+
         except Exception as e:
             print(f"Model: Error during navigation to course creation: {e}")
             return False
@@ -169,7 +208,7 @@ class OracleAutomator:
                 print(f"Model: New course '{course_details['title']}' created successfully.")
                 return f"✅🤩 Successo! Il corso '{course_details['title']}' è stato creato."
 
-            except Exception:
+            except TimeoutException:
             # If the "no data" message is NOT found, we assume the course already exists.
                 print(f"Model: Course '{course_name}' already exists.")
                 return f"‼️🕵🏻 ️Attenzione: Il corso '{course_name}' esiste già e non è stato creato di nuovo."
