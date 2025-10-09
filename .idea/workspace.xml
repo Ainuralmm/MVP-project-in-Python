@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Adding script of navigation to create edition of existed course">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
-    </list>
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Added function for creation edition" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -81,22 +78,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00011" summary="Added script to search a course">
-      <option name="closed" value="true" />
-      <created>1758116470039</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1758116470039</updated>
-    </task>
-    <task id="LOCAL-00012" summary="Added script for a new private helper method for pausing">
-      <option name="closed" value="true" />
-      <created>1758185890075</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1758185890075</updated>
     </task>
     <task id="LOCAL-00013" summary="1. Forgot to write variables in function-fixed">
       <option name="closed" value="true" />
@@ -474,7 +455,23 @@
       <option name="project" value="LOCAL" />
       <updated>1759917310845</updated>
     </task>
-    <option name="localTasksCounter" value="60" />
+    <task id="LOCAL-00060" summary="Added function for creation edition">
+      <option name="closed" value="true" />
+      <created>1759953285734</created>
+      <option name="number" value="00060" />
+      <option name="presentableId" value="LOCAL-00060" />
+      <option name="project" value="LOCAL" />
+      <updated>1759953285741</updated>
+    </task>
+    <task id="LOCAL-00061" summary="Added function for creation edition">
+      <option name="closed" value="true" />
+      <created>1759954060559</created>
+      <option name="number" value="00061" />
+      <option name="presentableId" value="LOCAL-00061" />
+      <option name="project" value="LOCAL" />
+      <updated>1759954060559</updated>
+    </task>
+    <option name="localTasksCounter" value="62" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -489,7 +486,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="A script was added to allow users to control headless, debug_mode, and debug_pause settings from Streamlit." />
     <MESSAGE value="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed" />
     <MESSAGE value="Changed the date input field which shows italian format DD/MM/YYYY" />
     <MESSAGE value="Added script if:&#10;1. User chooses `headless` (on/off).&#10;2. If `headless == False`, then show debug mode toggle.&#10;3. If `debug_mode == True`, then show pause time slider." />
@@ -514,6 +510,7 @@
     <MESSAGE value="Added icon in button" />
     <MESSAGE value="Added color of the text  in button" />
     <MESSAGE value="Adding script of navigation to create edition of existed course" />
-    <option name="LAST_COMMIT_MESSAGE" value="Adding script of navigation to create edition of existed course" />
+    <MESSAGE value="Added function for creation edition" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added function for creation edition" />
   </component>
 </project>
