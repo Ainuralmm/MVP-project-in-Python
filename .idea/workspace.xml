@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Added function for creation edition" />
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Removed edition creation script">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -78,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00013" summary="1. Forgot to write variables in function-fixed">
-      <option name="closed" value="true" />
-      <created>1758191840478</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
-      <option name="project" value="LOCAL" />
-      <updated>1758191840478</updated>
     </task>
     <task id="LOCAL-00014" summary="Streamlit re-runs the script every time the user interacts. To avoid accidentally inserting into Oracle multiple times, st.session_state to store the fact that submission already happened">
       <option name="closed" value="true" />
@@ -471,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759954060559</updated>
     </task>
-    <option name="localTasksCounter" value="62" />
+    <task id="LOCAL-00062" summary="Removed edition creation script">
+      <option name="closed" value="true" />
+      <created>1759954542203</created>
+      <option name="number" value="00062" />
+      <option name="presentableId" value="LOCAL-00062" />
+      <option name="project" value="LOCAL" />
+      <updated>1759954542203</updated>
+    </task>
+    <option name="localTasksCounter" value="63" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -486,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed" />
     <MESSAGE value="Changed the date input field which shows italian format DD/MM/YYYY" />
     <MESSAGE value="Added script if:&#10;1. User chooses `headless` (on/off).&#10;2. If `headless == False`, then show debug mode toggle.&#10;3. If `debug_mode == True`, then show pause time slider." />
     <MESSAGE value="since your &quot;debug mode&quot; isn’t really for all steps but only for when Selenium inserts values into input fields the label was renamed" />
@@ -511,6 +513,7 @@
     <MESSAGE value="Added color of the text  in button" />
     <MESSAGE value="Adding script of navigation to create edition of existed course" />
     <MESSAGE value="Added function for creation edition" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added function for creation edition" />
+    <MESSAGE value="Removed edition creation script" />
+    <option name="LAST_COMMIT_MESSAGE" value="Removed edition creation script" />
   </component>
 </project>
