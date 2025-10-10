@@ -1,158 +1,120 @@
-# presenter connects the View and the Model
-import streamlit as st
-
 
 class CoursePresenter:
     def __init__(self, model, view):
         # the presenter holds references to the model and the view
         self.model = model
-        self.view = view
+        #self.view = view
+
+        # HELPER: update progress via callback
+    def _safe_call(self, cb, *args, **kwargs):
+        try:
+            if cb:
+                cb(*args, **kwargs)
+        except Exception as e:
+            print("Presenter: callback error:", e)
 
     # =============================
     #  COURSE CREATION
     # =============================
-    def run_create_course(self, course_details):
-        # main method that runs the application
-        # 1.render the form and wait for user input after clicking submit
-        if not course_details:
-            return
+    def run_create_course(self, course_details, secrets, progress_cb, status_cb, done_cb):
+        # SECRETS is a dict with ORACLE_URL, ORACLE_USER, ORACLE_PASS
+        try:
+            self._safe_call(status_cb, "🔑 Accesso a Oracle in corso...", "course")
+            self._safe_call(progress_cb, 10, "course")
 
-        # get the credentials securely from Streamlit's secrets management
-        oracle_url = st.secrets['ORACLE_URL']
-        oracle_user = st.secrets['ORACLE_USER']
-        oracle_pass = st.secrets['ORACLE_PASS']
+            login_res = self.model.login(secrets["ORACLE_URL"], secrets["ORACLE_USER"], secrets["ORACLE_PASS"])
+            if not login_res.get("ok"):
+                self._safe_call(status_cb, f"❌ Login failed: {login_res.get('error')}", "course")
+                return done_cb(login_res, "course")
 
-        # UI elements for progress and status updates
-        progress = st.progress(0)
-        status = st.empty()
+            self._safe_call(status_cb, "🧭 Navigazione verso la pagina Corsi...", "course")
+            self._safe_call(progress_cb, 30, "course")
+            nav = self.model.navigate_to_courses_page()
+            if not nav.get("ok"):
+                self._safe_call(status_cb, f"❌ Navigation failed: {nav.get('error')}", "course")
+                return done_cb(nav, "course")
 
-        # 3.A spinner to show the user that process is proceeding
-        with st.spinner('Automazione in corso... Attendere prego'):
+            self._safe_call(status_cb, f"🔍 Ricerca corso '{course_details['title']}'...", "course")
+            self._safe_call(progress_cb, 60, "course")
+            search = self.model.search_course(course_details['title'])
+            if not search.get("ok"):
+                self._safe_call(status_cb, f"❌ Search failed: {search.get('error')}", "course")
+                return done_cb(search, "course")
+            if search.get("found"):
+                msg = {"ok": True, "created": False, "message": f"‼️ Il corso '{course_details['title']}' esiste già."}
+                self._safe_call(status_cb, msg["message"], "course")
+                return done_cb(msg, "course")
+
+            self._safe_call(status_cb, "📝 Creazione nuovo corso...", "course")
+            self._safe_call(progress_cb, 75, "course")
+            create_res = self.model.create_course(course_details)
+            self._safe_call(progress_cb, 95, "course")
+            self._safe_call(status_cb, create_res.get("message", "Done"), "course")
+            return done_cb(create_res, "course")
+        except Exception as e:
+            err = {"ok": False, "error": "presenter_exception", "message": str(e)}
+            self._safe_call(status_cb, f"⚠️ Errore inatteso: {e}", "course")
+            return done_cb(err, "course")
+        finally:
             try:
-                # BEFORE starting steps - initialize
-                st.session_state["last_progress"] = 0
-                st.session_state["last_status"] = "Ready to start..."
-                # ---Step1: Login ---
-                status.info("🔑Accesso a Oracle in corso...")
-                progress.progress(10)
-                # telling the model to perform the authorising process
-                login_success = self.model.login(oracle_url, oracle_user, oracle_pass)
-                if login_success:
-                    # self.view.display_message('Logged in Successfully')
-                    status.success('✅🤩Accesso effettuato con successo')
-                else:
-                    self.view.display_message('Login Failed. Please check your credentials.')
-                    status.error('❌😭 Accesso fallito. Si prega di controllare le credenziali.')
-                    return
-                # ---Step2:Navigate to course creation ---
-                status.info('🧭🚶Navigazione verso la pagina di creazione del corso in corso...')
-                progress.progress(30)
-                nav_success = self.model.navigate_to_course_creation()
-                if nav_success:
-                    # self.view.display_message(result_message)
-                    status.success('👣💃🕺Pagina di creazione del corso raggiunta')
-                else:
-                    st.view.display_message('Failed to navigate to the course page')
-                    status.error('❌😭Impossibile navigare verso la pagina del corso')
-                    return
-                progress.progress(50)
-                # ---Step3: Create the course---
-                course_name = course_details['title']
-                status.info(f"🔍 Ricerca del corso:: '**{course_name}**'in corso. 👌🏻😎Altrimenti il corso verrà creato")
-                progress.progress(70)
-                result_message = self.model.create_course(course_details)
-
-                # handle model message
-                if result_message and "Error" in result_message:
-                    status.error(f'❌😭{result_message}')
-                # else:
-                #     status.success(f"{result_message or 'Corso creato con successo!'}")
-
-                # in finally, set final state (example)
-                progress.progress(100)
-                st.session_state["last_progress"] = 100
-                st.session_state["last_status"] = result_message or "Corso creato con successo!"
-
-                # reset running flags etc.
-                st.session_state["automation_running"] = False
-                st.session_state["start_automation"] = False
-                st.session_state["course_details"] = None
-
-                # then rerun:
-                st.rerun()
-
-
-            except Exception as e:
-                self.view.display_message(f"⚠️👩🏻‍✈️Errore inatteso:: {e}")
-                status.error(result_message)
-
-
-
-            finally:
-                try:
-                    self.model.close_driver()
-                except Exception:
-                    pass
-
-    # =============================
-    #  EDITION CREATION
-    # =============================
-    def run_create_edition(self, edition_details):
-        if not edition_details:
-            return
-
-        oracle_url = st.secrets['ORACLE_URL']
-        oracle_user = st.secrets['ORACLE_USER']
-        oracle_pass = st.secrets['ORACLE_PASS']
-
-        progress = st.progress(0)
-        status = st.empty()
-
-        with st.spinner("Automazione in corso... Attendere prego"):
-            try:
-                st.session_state["last_progress"] = 0
-                st.session_state["last_status"] = "Starting edition creation..."
-                status.info("🔑 Accesso a Oracle in corso...")
-                progress.progress(10)
-                if not self.model.login(oracle_url, oracle_user, oracle_pass):
-                    status.error("❌ Accesso fallito.")
-                    st.session_state["last_status"] = "Accesso fallito"
-                    return
-
-                progress.progress(25)
-                status.info("🧭 Navigazione verso la pagina dei corsi...")
-                nav_ok = self.model.navigate_to_course_creation({'title': edition_details['course_name']})
-                if not nav_ok:
-                    status.error("❌ Impossibile raggiungere la pagina corsi.")
-                    st.session_state["last_status"] = "Impossibile raggiungere la pagina corsi"
-                    return
-
-                course_name = edition_details['course_name']
-                status.info(f"🔍 Ricerca del corso '{course_name}'...")
-                progress.progress(40)
-
-                found = self.model.search_course(course_name)
-                if found is None:
-                    status.error("⚠️ Errore nella ricerca del corso.")
-                    return
-                if not found:
-                    status.warning(f"❌ Il corso '{course_name}' non esiste. Crealo prima di procedere.")
-                    return
-
-                progress.progress(55)
-                status.info(f"📂 Apertura del corso '{course_name}'...")
-                if not self.model.open_course_from_list(course_name):
-                    status.error("❌ Impossibile aprire la pagina del corso.")
-                    return
-
-                progress.progress(70)
-                status.info("🧾 Creazione della nuova edizione...")
-                res = self.model.create_edition(edition_details)
-
-                progress.progress(100)
-                status.success(res or "✅ Edizione creata con successo!")
-
-            except Exception as e:
-                status.error(f"⚠️ Errore inatteso: {e}")
-            finally:
                 self.model.close_driver()
+            except:
+                pass
+
+    # RUN CREATE EDITION
+    def run_create_edition(self, edition_details, secrets, progress_cb, status_cb, done_cb):
+        try:
+            self._safe_call(status_cb, "🔑 Accesso a Oracle in corso...", "edition")
+            self._safe_call(progress_cb, 10, "edition")
+            login_res = self.model.login(secrets["ORACLE_URL"], secrets["ORACLE_USER"], secrets["ORACLE_PASS"])
+            if not login_res.get("ok"):
+                self._safe_call(status_cb, f"❌ Login failed: {login_res.get('error')}", "edition")
+                return done_cb(login_res, "edition")
+
+            self._safe_call(status_cb, "🧭 Navigazione verso la pagina Corsi...", "edition")
+            self._safe_call(progress_cb, 25, "edition")
+            nav = self.model.navigate_to_courses_page()
+            if not nav.get("ok"):
+                self._safe_call(status_cb, f"❌ Navigation failed: {nav.get('error')}", "edition")
+                return done_cb(nav, "edition")
+
+            course_name = edition_details["course_name"]
+            self._safe_call(status_cb, f"🔍 Ricerca corso '{course_name}'...", "edition")
+            self._safe_call(progress_cb, 40, "edition")
+            search = self.model.search_course(course_name)
+            if not search.get("ok"):
+                self._safe_call(status_cb, f"❌ Search failed: {search.get('error')}", "edition")
+                return done_cb(search, "edition")
+            if not search.get("found"):
+                msg = {"ok": True, "found": False, "message": f"❌ Il corso '{course_name}' non esiste. Crealo prima."}
+                self._safe_call(status_cb, msg["message"], "edition")
+                return done_cb(msg, "edition")
+
+            # open course in list
+            self._safe_call(status_cb, f"📂 Apertura corso '{course_name}'...", "edition")
+            self._safe_call(progress_cb, 55, "edition")
+            open_res = self.model.open_course_from_list(course_name)
+            if not open_res.get("ok"):
+                self._safe_call(status_cb, "❌ Impossibile aprire il corso", "edition")
+                return done_cb(open_res, "edition")
+
+            # create edition
+            self._safe_call(status_cb, "🧾 Creazione edizione...", "edition")
+            self._safe_call(progress_cb, 70, "edition")
+            create_res = self.model.create_edition(edition_details)
+            if not create_res.get("ok"):
+                self._safe_call(status_cb, f"❌ {create_res.get('message')}", "edition")
+                return done_cb(create_res, "edition")
+
+            self._safe_call(progress_cb, 100, "edition")
+            self._safe_call(status_cb, create_res.get("message", "Edizione creata"), "edition")
+            return done_cb(create_res, "edition")
+        except Exception as e:
+            err = {"ok": False, "error": "presenter_exception", "message": str(e)}
+            self._safe_call(status_cb, f"⚠️ Errore inatteso: {e}", "edition")
+            return done_cb(err, "edition")
+        finally:
+            try:
+                self.model.close_driver()
+            except:
+                pass
