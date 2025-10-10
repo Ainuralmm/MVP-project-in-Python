@@ -4,184 +4,131 @@ from datetime import datetime
 class CourseView:
     def __init__(self):
         st.set_page_config(layout='centered')
-        st.image("logo-agsm.jpg", width=200)  # Always at the top
+        ### HASHTAG: CENTRALIZED STATE INITIALIZATION
+        # All state variables are now initialized cleanly in one place using isolated keys.
+        if "app_state" not in st.session_state:
+            st.session_state.app_state = "IDLE"  # Can be: IDLE, RUNNING_COURSE, RUNNING_EDITION
+        if "course_message" not in st.session_state:
+            st.session_state.course_message = ""
+        if "edition_message" not in st.session_state:
+            st.session_state.edition_message = ""
+
+        st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
 
-        # INITIALIZE NEEDED KEYS
-        if "automation_running_course" not in st.session_state:
-            st.session_state["automation_running_course"] = False
-        if "automation_running_edition" not in st.session_state:
-            st.session_state["automation_running_edition"] = False
-        if "course_last_progress" not in st.session_state:
-            st.session_state["course_last_progress"] = None
-        if "course_last_status" not in st.session_state:
-            st.session_state["course_last_status"] = None
-        if "edition_last_progress" not in st.session_state:
-            st.session_state["edition_last_progress"] = None
-        if "edition_last_status" not in st.session_state:
-            st.session_state["edition_last_status"] = None
+    def get_user_options(self):
+        st.sidebar.header("Impostazioni")
+        headless = st.sidebar.toggle("Esegui in background", value=True)
+        debug_mode = False
+        debug_pause = 1
+        if not headless:
+            debug_mode = st.sidebar.toggle("Modalità lenta con pause", value=False)
+            if debug_mode:
+                debug_pause = st.sidebar.slider("Durata pausa (secondi)", 1, 5, 2)
+        return headless, debug_mode, debug_pause
 
+        ### HASHTAG: NEW UNIFIED RENDER METHOD
+        # This single method controls the entire UI. It decides whether to show a form
+        # or a progress bar based on the central `app_state`.
 
-def get_user_options(self):
-    headless = st.toggle("Headless (browser automatare nascosto)", value=True)
-    debug_mode = False
-    debug_pause = 0
-    if not headless:
-        debug_mode = st.toggle("⏸️ Modalità lenta (pausa durante la compilazione dei campi)", value=False)
-        if debug_mode:
-            debug_pause = st.slider("⏱️Tempo di pausa (secondi)", min_value=1, max_value=3, value=1, step=1)
-    return headless, debug_mode, debug_pause
+    def render_ui(self):
+        is_running = st.session_state.app_state != "IDLE"
 
-    # --- COURSE FORM ---
+        # --- Course Form Container ---
+        with st.container(border=True):
+            st.header("1. Creazione Nuovo Corso")
+            if st.session_state.app_state == "RUNNING_COURSE":
+                # If this process is running, show its progress bar here
+                self.course_output_placeholder = st.empty()
+            else:
+                # Otherwise, show the form and its persistent message
+                self._render_course_form(is_disabled=is_running)
+                self.course_output_placeholder = st.empty()
+                if st.session_state.course_message:
+                    self.show_message("course", st.session_state.course_message, show_clear_button=True)
 
+        # --- Edition Form Container ---
+        with st.container(border=True):
+            st.header("2. Creazione Nuova Edizione")
+            if st.session_state.app_state == "RUNNING_EDITION":
+                self.edition_output_placeholder = st.empty()
+            else:
+                self._render_edition_form(is_disabled=is_running)
+                self.edition_output_placeholder = st.empty()
+                if st.session_state.edition_message:
+                    self.show_message("edition", st.session_state.edition_message, show_clear_button=True)
 
-def render_course_form(self):
-    st.header("Inserisci Dettagli del Corso")
-    with st.form(key="course_creation_form"):
-        course_title = st.text_input("Titolo del Corso", value="", placeholder="Esempio: Analisi dei Dati",
-                                     key="cf_title")
-        programme = st.text_area("Dettagli del Programma", value="", placeholder="Opzionale", key="cf_programme")
-        short_desc = st.text_input("Breve Descrizione", value="", placeholder="Esempio", key="cf_short_desc")
-        date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", value="01/01/2023", key="cf_date")
-        submit_course = st.form_submit_button("Crea Corso in Oracle",
-                                              disabled=st.session_state["automation_running_course"])
+    def _render_course_form(self, is_disabled):
+        with st.form(key='course_form'):
+            course_title = st.text_input("Titolo del Corso", "TEST AUTOMAZIONE")
+            short_desc = st.text_input("Breve Descrizione", "Descrizione Test")
+            date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", "01/01/2023")
+            submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled)
 
-    # Validation on submit
-    if submit_course:
-        # simple validation
-        try:
-            start_date = datetime.strptime(st.session_state["cf_date"], "%d/%m/%Y").date()
-            date_valid = True
-        except Exception:
-            date_valid = False
-        missing = False
-        if not st.session_state["cf_title"].strip():
-            st.markdown("<span style='color:red'>⚠️ Titolo corso obbligatorio</span>", unsafe_allow_html=True)
-            missing = True
-        if not st.session_state["cf_short_desc"].strip():
-            st.markdown("<span style='color:red'>⚠️ Breve descrizione obbligatoria</span>", unsafe_allow_html=True)
-            missing = True
-        if not date_valid:
-            st.error("Formato data non valido. Usa GG/MM/AAAA.")
-            missing = True
-        if missing:
-            return None
-        # set state for main to pick up and run presenter
-        st.session_state["automation_running_course"] = True
-        st.session_state["course_details"] = {
-            "title": st.session_state["cf_title"],
-            "programme": st.session_state["cf_programme"],
-            "short_description": st.session_state["cf_short_desc"],
-            "start_date": start_date
-        }
-        st.session_state["start_automation_course"] = True
-        st.rerun()
+            if submitted:
+                if not course_title.strip() or not short_desc.strip():
+                    st.error("I campi 'Titolo' e 'Breve Descrizione' sono obbligatori.")
+                    return
+                try:
+                    start_date = datetime.strptime(date_str, "%d/%m/%Y").date()
+                    st.session_state.course_details = {
+                        "title": course_title, "short_description": short_desc,
+                        "start_date": start_date, "programme": "Test Programme"
+                    }
+                    st.session_state.app_state = "RUNNING_COURSE"
+                    st.session_state.course_message = ""  # Clear old message
+                    st.rerun()
+                except ValueError:
+                    st.error("Formato data non valido. Usa GG/MM/AAAA.")
 
-    # PROGRESS DISPLAY for course
-    if st.session_state.get("course_last_progress") is not None:
-        st.progress(st.session_state["course_last_progress"])
-    if st.session_state.get("course_last_status"):
-        st.markdown(st.session_state["course_last_status"])
+    def _render_edition_form(self, is_disabled):
+        with st.form(key='edition_form'):
+            course_name = st.text_input("Nome Corso Esistente", "TEST AUTOMAZIONE")
+            start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)", "10/10/2025")
+            duration_days = st.number_input("Durata (giorni)", min_value=1, value=1)
+            submitted = st.form_submit_button("Crea Edizione", type="primary", disabled=is_disabled)
 
-    # CLEAR button for course history (only visible after a run)
-    if st.session_state.get("course_last_status") or st.session_state.get("course_last_progress") is not None:
-        if st.button("🧹 Cancella cronologia corso", key="clear_course"):
-            st.session_state["course_last_progress"] = None
-            st.session_state["course_last_status"] = None
-            st.rerun()
+            if submitted:
+                if not course_name.strip():
+                    st.error("Il campo 'Nome Corso Esistente' è obbligatorio.")
+                    return
+                try:
+                    edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
+                    st.session_state.edition_details = {
+                        "course_name": course_name, "edition_start_date": edition_start,
+                        "duration_days": int(duration_days), "location": "SEDE01",
+                        "supplier": "FORNITORE01", "price": "100"
+                    }
+                    st.session_state.app_state = "RUNNING_EDITION"
+                    st.session_state.edition_message = ""  # Clear old message
+                    st.rerun()
+                except ValueError:
+                    st.error("Formato data non valido. Usa GG/MM/AAAA.")
 
-    # --- EDITION FORM ---
+        ### HASHTAG: DECOUPLED METHODS FOR PRESENTER
+        # The presenter will call these methods to update the UI without
+        # needing to know about st.progress or st.success.
 
+    def update_progress(self, form_type, message, percentage):
+        placeholder = self.course_output_placeholder if form_type == "course" else self.edition_output_placeholder
+        with placeholder.container():
+            st.info(f"⏳ {message}")
+            st.progress(percentage)
 
-def render_edition_form(self):
-    st.divider()
-    st.header("📘 Creazione Edizione (corso esistente)")
-    with st.form(key="edition_creation_form"):
-        course_name = st.text_input("Nome del Corso Esistente", value="", key="ef_course_name")
-        location = st.text_input("Sede (Location)", value="", key="ef_location")
-        supplier = st.text_input("Fornitore (opzionale)", value="", key="ef_supplier")
-        price = st.text_input("Prezzo (€) (opzionale)", value="", key="ef_price")
-        start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)", value="15/10/2025", key="ef_start")
-        duration_days = st.number_input("Durata edizione (giorni)", min_value=1, max_value=365, value=3,
-                                        key="ef_duration")
-        submit_ed = st.form_submit_button("Crea Edizione in Oracle",
-                                          disabled=st.session_state["automation_running_edition"])
+    def show_message(self, form_type, message, show_clear_button=False):
+        # Determine which placeholder and session_state key to use
+        placeholder = self.course_output_placeholder if form_type == "course" else self.edition_output_placeholder
+        message_key = "course_message" if form_type == "course" else "edition_message"
 
-    if submit_ed:
-        try:
-            edition_start = datetime.strptime(st.session_state["ef_start"], "%d/%m/%Y").date()
-            edition_valid = True
-        except Exception:
-            edition_valid = False
+        st.session_state[message_key] = message
 
-        missing = False
-        if not st.session_state["ef_course_name"].strip():
-            st.markdown("<span style='color:red'>⚠️ Nome del corso obbligatorio</span>", unsafe_allow_html=True)
-            missing = True
-        if not edition_valid:
-            st.error("Formato data non valido. Usa GG/MM/AAAA.")
-            missing = True
-        if missing:
-            return None
+        with placeholder.container():
+            if "✅" in message:
+                st.success(message)
+            else:
+                st.error(message)
 
-        st.session_state["automation_running_edition"] = True
-        st.session_state["edition_details"] = {
-            "course_name": st.session_state["ef_course_name"],
-            "edition_start_date": edition_start,
-            "duration_days": int(st.session_state["ef_duration"]),
-            "location": st.session_state["ef_location"],
-            "supplier": st.session_state["ef_supplier"],
-            "price": st.session_state["ef_price"]
-        }
-        st.session_state["start_automation_edition"] = True
-        st.rerun()
-
-    # PROGRESS DISPLAY for edition
-    if st.session_state.get("edition_last_progress") is not None:
-        st.progress(st.session_state["edition_last_progress"])
-    if st.session_state.get("edition_last_status"):
-        st.markdown(st.session_state["edition_last_status"])
-
-    # CLEAR button for edition history
-    if st.session_state.get("edition_last_status") or st.session_state.get("edition_last_progress") is not None:
-        if st.button("🧹 Cancella cronologia edizione", key="clear_edition"):
-            st.session_state["edition_last_progress"] = None
-            st.session_state["edition_last_status"] = None
-            st.rerun()
-
-    # --- CALLBACKS USED BY PRESENTER VIA MAIN ---
-    # PROGRESS: value is 0..100, which is "course" or "edition"
-
-
-def progress_callback(self, value, which):
-    key = "course_last_progress" if which == "course" else "edition_last_progress"
-    st.session_state[key] = int(value)
-
-
-def status_callback(self, text, which):
-    key = "course_last_status" if which == "course" else "edition_last_status"
-    st.session_state[key] = text
-
-    # DONE callback: presenter calls when finished (success or failure)
-
-
-def done_callback(self, result_dict, which):
-    # Ensure buttons get re-enabled and final messages are stored
-    if which == "course":
-        st.session_state["automation_running_course"] = False
-        st.session_state["start_automation_course"] = False
-        st.session_state["course_last_status"] = result_dict.get("message", str(result_dict))
-        st.session_state["course_last_progress"] = 100 if result_dict.get("ok") else 0
-    else:
-        st.session_state["automation_running_edition"] = False
-        st.session_state["start_automation_edition"] = False
-        st.session_state["edition_last_status"] = result_dict.get("message", str(result_dict))
-        st.session_state["edition_last_progress"] = 100 if result_dict.get("ok") else 0
-    # trigger UI refresh
-    st.rerun()
-
-    # small helper for view-only display message use by presenter if needed
-
-
-def display_message(self, msg):
-    st.info(msg)
+            if show_clear_button:
+                if st.button(f"🧹 Cancella Messaggio", key=f"clear_{form_type}"):
+                    st.session_state[message_key] = ""
+                    st.rerun()

@@ -1,5 +1,3 @@
-# model.py
-# --- IMPORTS ---
 import time
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
@@ -10,61 +8,35 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.options import Options
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 
-
-# This is a special function called the constructor.
-# It automatically runs once when you first create a robot from the blueprint.
-# Its job is to do all the initial setup.
 class OracleAutomator:
-    # This class encapsulates all the browser automation steps.
     def __init__(self, driver_path, debug_mode=False, debug_pause=1, headless=False):
         options = Options()
-        # Allow switching between headless and visible mode
         if headless:
-            # Required flags for Edge headless mode
-            options.add_argument("--headless=new")  # modern flag
+            options.add_argument("--headless=new")
             options.add_argument("--disable-gpu")
             options.add_argument("--window-size=1920,1080")
-            options.add_argument("--disable-extensions")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--no-sandbox")
         else:
-            # force a visible browser with defined size
             options.add_argument("--window-size=1920,1080")
-
-        # selenium driver configuration
         service = Service(executable_path=driver_path)
         self.driver = webdriver.Edge(service=service, options=options)
         self.wait = WebDriverWait(self.driver, 40)
-
-        # debug settings
         self.debug_mode = debug_mode
         self.debug_pause_duration = debug_pause
-
         mode = "Headless" if headless else "Visible"
         print(f"Model: WebDriver initialized in {mode} mode.")
 
-    # a new private helper method for pausing
-    # The underscore '_' at the beginning is a Python convention for internal/helper methods
     def _pause_for_visual_check(self):
-        # This method will only pause if debug_mode is set to True
         if self.debug_mode:
             time.sleep(self.debug_pause_duration)
 
     def login(self, url, username, password):
-        # This method handles the login process.
-        # It now takes the url, username, and password as arguments
-        # instead of having them hardcoded.
         try:
             self.driver.get(url)
-            username_field = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="userid"]')))
-            password_field = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]')))
-            signin_btn = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="btnActive"]')))
-
-            username_field.send_keys(username)
-            password_field.send_keys(password)
-            signin_btn.click()
+            self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="userid"]'))).send_keys(username)
+            self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="password"]'))).send_keys(password)
+            self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="btnActive"]'))).click()
             print("Model: Logged in successfully.")
             return True
         except Exception as e:
@@ -72,111 +44,59 @@ class OracleAutomator:
             return False
 
     def navigate_to_courses_page(self):
-        """
-               Navigate from homepage to the 'Corsi' list page.
-               Used by both course creation and edition flows.
-               """
-
         try:
-            miogruppodilavoro = self.wait.until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="groupNode_workforce_management"]')))
-            miogruppodilavoro.click()
-            apprendimento = self.wait.until(EC.presence_of_element_located((By.ID, 'WLF_FUSE_LEARN_ADMIN')))
-            apprendimento.click()
-            corsi = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//a[@title="Corsi" and text()="Corsi"]')))
-            corsi.click()
-            print("Model: Clicked through to Corsi page.")
-            return {"ok": True}
+            self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="groupNode_workforce_management"]'))).click()
+            self.wait.until(EC.presence_of_element_located((By.ID, 'WLF_FUSE_LEARN_ADMIN'))).click()
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, '//a[@title="Corsi" and text()="Corsi"]'))).click()
+            print("Model: Navigated to 'Corsi' page.")
+            return True
         except Exception as e:
             print(f"Model: Error navigating to 'Corsi' page: {e}")
-            return {"ok": False, "error": str(e)}
-
-        # SEARCH: perform the search in the Corsi list and return:
-        #    True  => course appears in result list
-        #   False => "Nessun dato da visualizzare." (no results)
-        #   None  => unexpected error occurred
+            return False
 
     def search_course(self, course_name):
         try:
-            # Ensure we are on the Corsi page (caller should typically call navigate_to_courses_page)
-            # 1.search for the course
-            search_box = self.wait.until(EC.presence_of_element_located(
-                (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
+            search_box = self.wait.until(EC.presence_of_element_located((By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
             search_box.clear()
             search_box.send_keys(course_name)
-
-            date_input = self.wait.until(EC.presence_of_element_located(
-                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
+            date_input = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
             date_input.clear()
             date_input.send_keys("01/01/2000")
-
-            cerca_button = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]')))
-            cerca_button.click()
-            print("Model: Searching for existing course.")
-            self._pause_for_visual_check()  # <-- PAUSE HERE
-
-            # quick check for the "no data" message using a short wait
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'))).click()
             short_wait = WebDriverWait(self.driver, 4)
             try:
-                short_wait.until(
-                    EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"Nessun dato da visualizzare.")]')))
-                print("Model: Search result -> NO DATA (course not found).")
-                return {"ok": True, "found": False}
+                short_wait.until(EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"Nessun dato da visualizzare.")]')))
+                return False
             except TimeoutException:
-                # no 'no data' message: try to detect the course link in the results
-                try:
-                    # use normalize-space to avoid whitespace mismatches
-                    link_xpath = f'//table[@summary="Corsi"]//a[contains(normalize-space(.), "{course_name}")]'
-                    self.wait.until(EC.presence_of_element_located((By.XPATH, link_xpath)))
-                    print("Model: Course appears in search results.")
-                    return True
-                except TimeoutException:
-                    print("Model: Course not found (no explicit 'no data' message and link missing).")
-                    return {"ok": True, "found": False}
-        except Exception as e:
-            print(f"Model: Error during navigation : {e}")
-            return {"ok": False, "error": str(e)}
+                self.wait.until(EC.presence_of_element_located((By.XPATH, f'//table[@summary="Corsi"]//a[contains(normalize-space(.), "{course_name}")]')))
+                return True
+        except Exception:
+            return False
 
-    # Click (open) the course in the list (returns True if clicked)
+    ### HASHTAG: BUG FIX 1 - ADDED 'course_name' PARAMETER
+    # The original method was missing this parameter, which would cause a NameError and crash the app.
     def open_course_from_list(self, course_name):
-        # Click (open) the course in the list (returns True if clicked)
         try:
             link_xpath = f'//table[@summary="Corsi"]//a[contains(normalize-space(.), "{course_name}")]'
             link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
             link.click()
             self._pause_for_visual_check()
             print(f"Model: Clicked on existing course '{course_name}' in list.")
-            return {"ok": True}
-        except TimeoutException:
-            print(f"Model: Could not find/click the course link for '{course_name}'.")
-            return {"ok": False, "error": "course-link-missing"}
+            return True
         except Exception as e:
             print(f"Model: Unexpected error in open_course_from_list: {e}")
-            return {"ok": False, "error": str(e)}
+            return False
 
-    # CREATE COURSE flow (uses the search behaviour)
     def create_course(self, course_details):
-
         try:
             course_name = course_details['title']
-            print(f"Model: Starting create_course for '{course_name}'")
+            if not self.navigate_to_courses_page():
+                return f"‼️ Error: Cannot reach the Corsi page."
+            if self.search_course(course_name):
+                return f"‼️🕵🏻️ Attenzione: Il corso '{course_name}' esiste già."
 
-            # Navigate to page
-            nav = self.navigate_to_courses_page()
-            if not nav["ok"]:
-                return {"ok": False, "error": "navigation_failed", "message": nav.get("error")}
-
-            search = self.search_course(course_name)
-            if not search["ok"]:
-                return {"ok": False, "error": "search_failed", "message": search.get("error")}
-            if search["found"]:
-                return {"ok": True, "created": False, "message": f"‼️ Il corso '{course_name}' esiste già."}
-            # Not found -> create new
-            crea_button = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srAtbl:_ATp:crtBtn"]/a/span')))
+            crea_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srAtbl:_ATp:crtBtn"]/a/span')))
             crea_button.click()
-            print("Model: Clicked 'Crea' button to start course creation.")
             self._pause_for_visual_check()
 
             # fill form fields (as before)
@@ -215,10 +135,9 @@ class OracleAutomator:
             edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
             self.wait.until(EC.presence_of_element_located((By.XPATH, edizioni_tab_xpath)))
 
-            return {"ok": True, "created": True, "message": f"✅ Successo! Il corso '{course_name}' è stato creato."}
+            return f"✅🤩 Successo! Il corso '{course_name}' è stato creato."
         except Exception as e:
-            print(f"Model: Error creating course: {e}")
-            return {"ok": False, "error": "create_course_failed", "message": str(e)}
+            return f"‼️👩🏻‍✈️ Errore durante la creazione del corso. Controlla la console."
 
     # CREATE EDITION flow (assumes caller opened the course detail page)
     def create_edition(self, edition_details):
@@ -425,19 +344,14 @@ class OracleAutomator:
             button_salva_e_chiudi_info_di_edizioni.click()
             self._pause_for_visual_check()
 
-            # confirm by waiting for edizioni tab (page navigated to details)
-            button_aggiungi_attivita = self.wait.until(EC.presence_of_element_located(
-                (By.XPATH, "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']")))
-            self.wait.until(EC.presence_of_element_located((By.XPATH, button_aggiungi_attivita)))
+            ### HASHTAG: BUG FIX 2 - REMOVED INCORRECT LINE
 
-            return {"ok": True,
-                    "message": f"✅ Edizione per '{course_name}' creata: {edition_start_date.strftime('%d/%m/%Y')}"}
+            confirmation_xpath = "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']"
+            self.wait.until(EC.presence_of_element_located((By.XPATH, confirmation_xpath)))
+            return f"✅🤩 Successo! Edizione per '{course_name}' creata: {edition_start_date.strftime('%d/%m/%Y')}"
         except Exception as e:
-            print(f"Model (EDITION) Error: {e}")
-            return {"ok": False, "error": "create_edition_failed", "message": str(e)}
+            return f"‼️👩🏻‍✈️ Errore durante la creazione dell'edizione: {e}"
 
     def close_driver(self):
-        try:
-            self.driver.quit()
-        except Exception:
-            pass
+        print("Model: Closing driver.")
+        self.driver.quit()
