@@ -71,31 +71,25 @@ class OracleAutomator:
             print(f"Model: Error during login: {e}")
             return False
 
-    def navigate_to_courses_page(self, course_details):
+    def navigate_to_courses_page(self):
         """
                Navigate from homepage to the 'Corsi' list page.
                Used by both course creation and edition flows.
                """
 
         try:
-            course_name = course_details['title']
             miogruppodilavoro = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, '//*[@id="groupNode_workforce_management"]')))
             miogruppodilavoro.click()
-            print("Model: Clicked 'Mio gruppo di lavoro'")
-
             apprendimento = self.wait.until(EC.presence_of_element_located((By.ID, 'WLF_FUSE_LEARN_ADMIN')))
             apprendimento.click()
-            print("Model: Clicked 'Apprendimento'")
-
             corsi = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//a[@title="Corsi" and text()="Corsi"]')))
             corsi.click()
-            print("Model: Clicked 'Corsi'")
-            # self._pause_for_visual_check()  # <-- PAUSE HERE
-            return True
+            print("Model: Clicked through to Corsi page.")
+            return {"ok": True}
         except Exception as e:
             print(f"Model: Error navigating to 'Corsi' page: {e}")
-            return False
+            return {"ok": False, "error": str(e)}
 
         # SEARCH: perform the search in the Corsi list and return:
         #    True  => course appears in result list
@@ -128,7 +122,7 @@ class OracleAutomator:
                 short_wait.until(
                     EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"Nessun dato da visualizzare.")]')))
                 print("Model: Search result -> NO DATA (course not found).")
-                return False
+                return {"ok": True, "found": False}
             except TimeoutException:
                 # no 'no data' message: try to detect the course link in the results
                 try:
@@ -139,13 +133,13 @@ class OracleAutomator:
                     return True
                 except TimeoutException:
                     print("Model: Course not found (no explicit 'no data' message and link missing).")
-                    return False
+                    return {"ok": True, "found": False}
         except Exception as e:
             print(f"Model: Error during navigation : {e}")
-            return None
+            return {"ok": False, "error": str(e)}
 
     # Click (open) the course in the list (returns True if clicked)
-    def open_course_from_list(self, course_details):
+    def open_course_from_list(self, course_name):
         # Click (open) the course in the list (returns True if clicked)
         try:
             link_xpath = f'//table[@summary="Corsi"]//a[contains(normalize-space(.), "{course_name}")]'
@@ -153,13 +147,13 @@ class OracleAutomator:
             link.click()
             self._pause_for_visual_check()
             print(f"Model: Clicked on existing course '{course_name}' in list.")
-            return True
+            return {"ok": True}
         except TimeoutException:
             print(f"Model: Could not find/click the course link for '{course_name}'.")
-            return False
+            return {"ok": False, "error": "course-link-missing"}
         except Exception as e:
             print(f"Model: Unexpected error in open_course_from_list: {e}")
-            return False
+            return {"ok": False, "error": str(e)}
 
     # CREATE COURSE flow (uses the search behaviour)
     def create_course(self, course_details):
@@ -169,17 +163,15 @@ class OracleAutomator:
             print(f"Model: Starting create_course for '{course_name}'")
 
             # Navigate to page
-            if not self.navigate_to_courses_page():
-                return f"‼️ Error: Cannot reach the Corsi page."
+            nav = self.navigate_to_courses_page()
+            if not nav["ok"]:
+                return {"ok": False, "error": "navigation_failed", "message": nav.get("error")}
 
-            found = self.search_course(course_name)
-            if found is None:
-                return f"‼️ Error during search. See logs."
-            if found:
-                # course exists already
-                print(f"Model: Course '{course_name}' already exists.")
-                return f"‼️🕵🏻️ Attenzione: Il corso '{course_name}' esiste già e non è stato creato di nuovo."
-
+            search = self.search_course(course_name)
+            if not search["ok"]:
+                return {"ok": False, "error": "search_failed", "message": search.get("error")}
+            if search["found"]:
+                return {"ok": True, "created": False, "message": f"‼️ Il corso '{course_name}' esiste già."}
             # Not found -> create new
             crea_button = self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srAtbl:_ATp:crtBtn"]/a/span')))
@@ -223,12 +215,10 @@ class OracleAutomator:
             edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
             self.wait.until(EC.presence_of_element_located((By.XPATH, edizioni_tab_xpath)))
 
-            print(f"Model: New course '{course_name}' created successfully.")
-            return f"✅🤩 Successo! Il corso '{course_name}' è stato creato."
-
+            return {"ok": True, "created": True, "message": f"✅ Successo! Il corso '{course_name}' è stato creato."}
         except Exception as e:
-            print(f"Model: An error occurred during course creation: {e}")
-            return f"‼️👩🏻‍✈️ Errore: Si è verificato un errore durante l'automazione. Controlla la console per i dettagli."
+            print(f"Model: Error creating course: {e}")
+            return {"ok": False, "error": "create_course_failed", "message": str(e)}
 
     # CREATE EDITION flow (assumes caller opened the course detail page)
     def create_edition(self, edition_details):
@@ -440,12 +430,14 @@ class OracleAutomator:
                 (By.XPATH, "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']")))
             self.wait.until(EC.presence_of_element_located((By.XPATH, button_aggiungi_attivita)))
 
-            print(f"Model (EDITION): Saved edition for {course_name} - {edition_start_date.strftime('%d/%m/%Y')}")
-            return f"✅🤩 Successo! Edizione per '{course_name}' creata: {edition_start_date.strftime('%d/%m/%Y')}"
+            return {"ok": True,
+                    "message": f"✅ Edizione per '{course_name}' creata: {edition_start_date.strftime('%d/%m/%Y')}"}
         except Exception as e:
             print(f"Model (EDITION) Error: {e}")
-            return f"‼️👩🏻‍✈️ Errore durante creazione edizione: {e}"
+            return {"ok": False, "error": "create_edition_failed", "message": str(e)}
 
     def close_driver(self):
-        print("Model: Closing driver.")
-        self.driver.quit()
+        try:
+            self.driver.quit()
+        except Exception:
+            pass
