@@ -11,37 +11,49 @@ if __name__ == "__main__":
     headless, debug_mode, debug_pause = view.get_user_options()
 
     # Render the form (this will return None normally; submission triggers a rerun)
-    _ = view.render_form()
-
-    # START COURSE CREATION FLOW
-    if st.session_state.get("start_automation"):
-
-        course_details = st.session_state.get("course_details")
-        if course_details:
-            model = OracleAutomator(driver_path=DRIVER_PATH,
-                                    debug_mode=debug_mode,
-                                    # pause for visual checks;  debug_mode=False -> all the pauses will be disabled instantly
-                                    debug_pause=debug_pause,  # how long to pause in seconds
-                                    headless=headless)  # set to True → browser hidden, False → browser visible
-
-            presenter = CoursePresenter(model, view)
-
-            # start the application
-            presenter.run_create_course(course_details)
-
-    # START EDITION CREATION FLOW
-    if st.session_state.get("start_edition_automation"):
-        edition_details = st.session_state.get("edition_details")
-        if edition_details:
-            model = OracleAutomator(driver_path=DRIVER_PATH,
-                                    debug_mode=debug_mode,
-                                    debug_pause=debug_pause,
-                                    headless=headless)
-            presenter = CoursePresenter(model, view)
-            presenter.run_create_edition(edition_details)
+    view.render_course_form()
+    view.render_edition_form()
 
 
-    else:
-        # safety: clear flag to avoid loop if something missing
-        st.session_state["start_automation"] = False
+    # Instantiate presenter/model when an automation starts
+    def get_presenter_and_model():
+        model = OracleAutomator(driver_path=DRIVER_PATH, debug_mode=debug_mode, debug_pause=debug_pause,
+                                headless=headless)
+        presenter = CoursePresenter(model)
+        return presenter, model
+
+
+    # Prepare secrets for presenter (no Streamlit inside presenter)
+    secrets = {
+        "ORACLE_URL": st.secrets.get("ORACLE_URL"),
+        "ORACLE_USER": st.secrets.get("ORACLE_USER"),
+        "ORACLE_PASS": st.secrets.get("ORACLE_PASS"),
+    }
+
+    # START COURSE FLOW
+    if st.session_state.get("start_automation_course"):
+        details = st.session_state.get("course_details")
+        if details:
+            presenter, model = get_presenter_and_model()
+            # CALL PRESENTER with callbacks into view
+            presenter.run_create_course(
+                details,
+                secrets,
+                progress_cb=view.progress_callback,
+                status_cb=view.status_callback,
+                done_cb=view.done_callback
+            )
+
+    # START EDITION FLOW
+    if st.session_state.get("start_automation_edition"):
+        details = st.session_state.get("edition_details")
+        if details:
+            presenter, model = get_presenter_and_model()
+            presenter.run_create_edition(
+                details,
+                secrets,
+                progress_cb=view.progress_callback,
+                status_cb=view.status_callback,
+                done_cb=view.done_callback
+            )
 

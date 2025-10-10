@@ -4,8 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Addition of the edition duration days">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Another try --&gt; Updated logic according to addition of creation edition">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,21 +45,21 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.model.executor&quot;: &quot;Run&quot;,
-    &quot;Python.simple.executor&quot;: &quot;Run&quot;,
-    &quot;Python.view.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/ainuralmukambetova/PycharmProjects/DesignPattern/Test MVP (Selenium,Streamlit)&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.main.executor": "Run",
+    "Python.model.executor": "Run",
+    "Python.simple.executor": "Run",
+    "Python.view.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/ainuralmukambetova/PycharmProjects/DesignPattern/Test MVP (Selenium,Streamlit)",
+    "settings.editor.selected.configurable": "editor.preferences.tabs"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)" />
@@ -80,30 +82,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00017" summary="Added script to fill the new course form using data from course_details">
-      <option name="closed" value="true" />
-      <created>1758278259115</created>
-      <option name="number" value="00017" />
-      <option name="presentableId" value="LOCAL-00017" />
-      <option name="project" value="LOCAL" />
-      <updated>1758278259116</updated>
-    </task>
-    <task id="LOCAL-00018" summary="Updated script for function create_course in UI (progress bar + step messages.)">
-      <option name="closed" value="true" />
-      <created>1758279703623</created>
-      <option name="number" value="00018" />
-      <option name="presentableId" value="LOCAL-00018" />
-      <option name="project" value="LOCAL" />
-      <updated>1758279703623</updated>
-    </task>
-    <task id="LOCAL-00019" summary="Fixed typo error">
-      <option name="closed" value="true" />
-      <created>1758280742963</created>
-      <option name="number" value="00019" />
-      <option name="presentableId" value="LOCAL-00019" />
-      <option name="project" value="LOCAL" />
-      <updated>1758280742963</updated>
     </task>
     <task id="LOCAL-00020" summary="Changed script info messages">
       <option name="closed" value="true" />
@@ -473,7 +451,31 @@
       <option name="project" value="LOCAL" />
       <updated>1760089277039</updated>
     </task>
-    <option name="localTasksCounter" value="66" />
+    <task id="LOCAL-00066" summary="Updated logic according to addition of creation edition and Added of the edition duration days">
+      <option name="closed" value="true" />
+      <created>1760091332892</created>
+      <option name="number" value="00066" />
+      <option name="presentableId" value="LOCAL-00066" />
+      <option name="project" value="LOCAL" />
+      <updated>1760091332892</updated>
+    </task>
+    <task id="LOCAL-00067" summary="Updated logic according to addition of creation edition --&gt;another try">
+      <option name="closed" value="true" />
+      <created>1760111858397</created>
+      <option name="number" value="00067" />
+      <option name="presentableId" value="LOCAL-00067" />
+      <option name="project" value="LOCAL" />
+      <updated>1760111858398</updated>
+    </task>
+    <task id="LOCAL-00068" summary="Another try --&gt; Updated logic according to addition of creation edition">
+      <option name="closed" value="true" />
+      <created>1760112174829</created>
+      <option name="number" value="00068" />
+      <option name="presentableId" value="LOCAL-00068" />
+      <option name="project" value="LOCAL" />
+      <updated>1760112174829</updated>
+    </task>
+    <option name="localTasksCounter" value="69" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -488,9 +490,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="since your &quot;debug mode&quot; isn’t really for all steps but only for when Selenium inserts values into input fields the label was renamed" />
-    <MESSAGE value="Disable the &quot;Crea Corso in Oracle&quot; button once the automation starts" />
-    <MESSAGE value="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is not working well.The button is still active during automation process." />
     <MESSAGE value="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is working. The flow was updated. And now everything is working perfectly." />
     <MESSAGE value="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed." />
     <MESSAGE value="Added  script to make active button after finishing course creation" />
@@ -513,6 +512,9 @@
     <MESSAGE value="Removed edition creation script" />
     <MESSAGE value="Reorganised total logic due to the  addition of the edition creation part." />
     <MESSAGE value="Addition of the edition duration days" />
-    <option name="LAST_COMMIT_MESSAGE" value="Addition of the edition duration days" />
+    <MESSAGE value="Updated logic according to addition of creation edition and Added of the edition duration days" />
+    <MESSAGE value="Updated logic according to addition of creation edition --&gt;another try" />
+    <MESSAGE value="Another try --&gt; Updated logic according to addition of creation edition" />
+    <option name="LAST_COMMIT_MESSAGE" value="Another try --&gt; Updated logic according to addition of creation edition" />
   </component>
 </project>
