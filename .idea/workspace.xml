@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Reorganised total logic due to the  addition of the edition creation part.">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Addition of the edition duration days">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -80,14 +80,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00016" summary="Added script for  Streamlit UI with a progress bar + step messages (clear, user-friendly feedback).">
-      <option name="closed" value="true" />
-      <created>1758276593656</created>
-      <option name="number" value="00016" />
-      <option name="presentableId" value="LOCAL-00016" />
-      <option name="project" value="LOCAL" />
-      <updated>1758276593656</updated>
     </task>
     <task id="LOCAL-00017" summary="Added script to fill the new course form using data from course_details">
       <option name="closed" value="true" />
@@ -473,7 +465,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760082894478</updated>
     </task>
-    <option name="localTasksCounter" value="65" />
+    <task id="LOCAL-00065" summary="Addition of the edition duration days">
+      <option name="closed" value="true" />
+      <created>1760089277039</created>
+      <option name="number" value="00065" />
+      <option name="presentableId" value="LOCAL-00065" />
+      <option name="project" value="LOCAL" />
+      <updated>1760089277039</updated>
+    </task>
+    <option name="localTasksCounter" value="66" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -488,7 +488,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added script if:&#10;1. User chooses `headless` (on/off).&#10;2. If `headless == False`, then show debug mode toggle.&#10;3. If `debug_mode == True`, then show pause time slider." />
     <MESSAGE value="since your &quot;debug mode&quot; isn’t really for all steps but only for when Selenium inserts values into input fields the label was renamed" />
     <MESSAGE value="Disable the &quot;Crea Corso in Oracle&quot; button once the automation starts" />
     <MESSAGE value="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is not working well.The button is still active during automation process." />
@@ -513,6 +512,7 @@
     <MESSAGE value="Added function for creation edition" />
     <MESSAGE value="Removed edition creation script" />
     <MESSAGE value="Reorganised total logic due to the  addition of the edition creation part." />
-    <option name="LAST_COMMIT_MESSAGE" value="Reorganised total logic due to the  addition of the edition creation part." />
+    <MESSAGE value="Addition of the edition duration days" />
+    <option name="LAST_COMMIT_MESSAGE" value="Addition of the edition duration days" />
   </component>
 </project>

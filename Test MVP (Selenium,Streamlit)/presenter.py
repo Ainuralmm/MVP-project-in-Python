@@ -110,16 +110,21 @@ class CoursePresenter:
 
         with st.spinner("Automazione in corso... Attendere prego"):
             try:
+                st.session_state["last_progress"] = 0
+                st.session_state["last_status"] = "Starting edition creation..."
                 status.info("🔑 Accesso a Oracle in corso...")
                 progress.progress(10)
                 if not self.model.login(oracle_url, oracle_user, oracle_pass):
                     status.error("❌ Accesso fallito.")
+                    st.session_state["last_status"] = "Accesso fallito"
                     return
 
                 progress.progress(25)
                 status.info("🧭 Navigazione verso la pagina dei corsi...")
-                if not self.model.navigate_to_courses_page():
+                nav_ok = self.model.navigate_to_course_creation({'title': edition_details['course_name']})
+                if not nav_ok:
                     status.error("❌ Impossibile raggiungere la pagina corsi.")
+                    st.session_state["last_status"] = "Impossibile raggiungere la pagina corsi"
                     return
 
                 course_name = edition_details['course_name']
@@ -134,13 +139,13 @@ class CoursePresenter:
                     status.warning(f"❌ Il corso '{course_name}' non esiste. Crealo prima di procedere.")
                     return
 
-                progress.progress(60)
+                progress.progress(55)
                 status.info(f"📂 Apertura del corso '{course_name}'...")
                 if not self.model.open_course_from_list(course_name):
                     status.error("❌ Impossibile aprire la pagina del corso.")
                     return
 
-                progress.progress(80)
+                progress.progress(70)
                 status.info("🧾 Creazione della nuova edizione...")
                 res = self.model.create_edition(edition_details)
 

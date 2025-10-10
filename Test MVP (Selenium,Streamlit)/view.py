@@ -1,7 +1,8 @@
 import streamlit as st
 from datetime import datetime
 
-#to clean previous screen messages
+
+# to clean previous screen messages
 # def clear_last_message():
 #     """Clear store persistent UI feedback (progress/message).)"""
 #     st.session_state['last_message'] = None
@@ -14,23 +15,26 @@ class CourseView:
         st.title("Automatore per la Gestione dei Corsi Oracle")
 
     def get_user_options(self):
-        #toggle for headless mode
-        headless = st.toggle ("😎 Headless (browser automatare nascosto)", value = True)
+        # toggle for headless mode
+        headless = st.toggle("Headless (browser automatare nascosto)", value=True)
 
         debug_mode = False
         debug_pause = 0
 
-        #only show debug if headless is OFF
+        # only show debug if headless is OFF
         if not headless:
-            debug_mode = st.toggle("⏸️ Modalità lenta (pausa durante la compilazione dei campi)", value = False)
-            #only show pause slider if debug_mode is ON
+            debug_mode = st.toggle("⏸️ Modalità lenta (pausa durante la compilazione dei campi)", value=False)
+            # only show pause slider if debug_mode is ON
             if debug_mode:
-                debug_pause = st.slider("⏱️Tempo di pausa (secondi)", min_value = 1, max_value = 3, value = 1,step = 1)
+                debug_pause = st.slider("⏱️Tempo di pausa (secondi)", min_value=1, max_value=3, value=1, step=1)
 
         return headless, debug_mode, debug_pause
 
+    # ====================================================
+    #           FORM 1: COURSE CREATION
+    # ====================================================
 
-    def render_form(self):
+    def render_course_form(self):
         # This method displays the input form and returns the collected data.
         st.header("Inserisci Dettagli del Corso")
 
@@ -46,8 +50,6 @@ class CourseView:
         if "last_status" not in st.session_state:
             st.session_state["last_status"] = None
 
-
-
         # We use a Streamlit form to group the inputs.
         # The code inside 'with form:' will only run when the submit button is pressed.
         with st.form(key='course_creation_form'):
@@ -62,7 +64,7 @@ class CourseView:
                 value="",
                 placeholder="Campo opzionale: informazioni importanti sul corso",
                 key="input_programme",
-                )
+            )
             short_desc = st.text_input(
                 "Breve Descrizione",
                 value="",
@@ -77,17 +79,16 @@ class CourseView:
             try:
                 start_date = datetime.strptime(date_str, "%d/%m/%Y").date()
                 date_valid = True
-                #st.success(f"📅 Data selezionata: {start_date.strftime('%d/%m/%Y')}")
+                # st.success(f"📅 Data selezionata: {start_date.strftime('%d/%m/%Y')}")
             except ValueError:
                 start_date = None
                 date_valid = False
 
             # Button becomes disabled while automation is running
             submitted = st.form_submit_button(
-                "Crea Corso in Oracle",type="primary", disabled=st.session_state["automation_running"])
+                "Crea Corso in Oracle", type="primary", disabled=st.session_state["automation_running"])
 
-
-        #when the button is pressed,'submitted' becomes True
+        # when the button is pressed,'submitted' becomes True
         if submitted:
 
             if not date_valid:
@@ -113,14 +114,12 @@ class CourseView:
                             unsafe_allow_html=True)
                 missing = True
             if missing:
-                st.stop() # stops here, doesn’t launch automation
+                st.stop()  # stops here, doesn’t launch automation
 
-            #only runs if all required fields are filled
+            # only runs if all required fields are filled
             st.success("✅ Tutti i campi richiesti compilati.Avvio automazione...")
             st.session_state["automation_running"] = True
-            #return None
-
-
+            # return None
 
             st.session_state["automation_running"] = True
             st.session_state["course_details"] = {
@@ -130,7 +129,7 @@ class CourseView:
                 "start_date": start_date
             }
             st.session_state["start_automation"] = True
-            #st.session_state["needs_rerun"] = True
+            # st.session_state["needs_rerun"] = True
 
             # IMPORTANT: force an immediate rerun so the UI re-renders with button disabled
             st.rerun()
@@ -147,7 +146,7 @@ class CourseView:
         # --- SHOW CLEAR HISTORY BUTTON ONLY IF THERE'S HISTORY ---
         if st.session_state.get("last_progress") is not None or st.session_state.get("last_status"):
             st.divider()
-            #st.markdown("### 🧹 Gestione Messaggi")
+            # st.markdown("### 🧹 Gestione Messaggi")
             if st.button("🧹:grey[Cancella Cronologia Messaggi]", type="secondary", use_container_width=True):
                 for key in ["last_progress", "last_status", "course_details"]:
                     if key in st.session_state:
@@ -157,8 +156,75 @@ class CourseView:
 
         return None
 
-    def display_message(self,message):
-        #this method show a message to the user-->Presenter call this method to provide feedback
+    # ====================================================
+    #           FORM 2: EDITION CREATION
+    # ====================================================
+    def render_edition_form(self):
+        st.divider()
+        st.header("📘 Creazione Edizione (esistente corso")
+        st.text("Inserisci Dettagli dell’Edizione")
+
+        if "edition_details" not in st.session_state:
+            st.session_state["edition_details"] = None
+        if "start_edition_automation" not in st.session_state:
+            st.session_state["start_edition_automation"] = False
+
+        with st.form(key='edition_creation_form'):
+            course_name = st.text_input("Nome del Corso Esistente", placeholder="Nome corso esistente")
+            location = st.text_input("Sede (Location)", placeholder="Esempio: AULA DE CARLI")
+            supplier = st.text_input("Fornitore (opzionale)", placeholder="Esempio: ACCADEMIA EUROPE")
+            price = st.text_input("Prezzo (€) (opzionale)", placeholder="Esempio: 1000")
+            start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)", "15/10/2025")
+            duration_days = st.number_input("Durata edizione (giorni)", min_value=1, max_value=365, value=3, step=1)
+
+            try:
+                edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
+                edition_date_valid = True
+            except ValueError:
+                edition_start = None
+                edition_date_valid = False
+
+            submitted_ed = st.form_submit_button("Crea Edizione in Oracle", type="primary",
+                                                 disabled=st.session_state["automation_running"])
+
+        if submitted_ed:
+            if not edition_date_valid:
+                st.error("Formato data non valido. Usa GG/MM/AAAA.")
+                return None
+
+            missing_ed = False
+            if not course_name.strip():
+                st.markdown("<span style='color:red'>⚠️ Il campo 'Nome del corso' è obbligatorio.</span>",
+                            unsafe_allow_html=True)
+                missing_ed = True
+            if not start_date_str.strip():
+                st.markdown("<span style='color:red'>⚠️ Il campo 'Data Inizio Edizione'è obbligatorio.</span>",
+                            unsafe_allow_html=True)
+                missing_ed = True
+            if not duration_days.strip():
+                st.markdown("<span style='color:red'>⚠️ Il campo 'Durata edizione (giorni)'è obbligatorio.</span>",
+                            unsafe_allow_html=True)
+            if missing_ed:
+                st.stop()
+
+            st.success("✅ Campi validi. Avvio automazione creazione edizione...")
+            st.session_state["automation_running"] = True
+            st.session_state["edition_details"] = {
+                "course_name": course_name,
+                "edition_start_date": edition_start,
+                "duration_days": int(duration_days),
+                "location": location,
+                "supplier": supplier,
+                "price": price
+            }
+            st.session_state["start_edition_automation"] = True
+            # st.session_state["needs_rerun"] = True
+            st.rerun()
+
+        return None
+
+    def display_message(self, message):
+        # this method show a message to the user-->Presenter call this method to provide feedback
         if not message:
             return
 
