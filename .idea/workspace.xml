@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Reorganised total logic due to the  addition of the edition creation part.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,14 +80,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00015" summary="The issue with error in Streamlit Ui was solved. The problem was that **`result` is `None` (for example, if Selenium hasn’t returned anything yet).**&#10;&#10;- **Without the guard, `if 'Success' in None:` crashes with that error.**&#10;- **With the guard, if `message` is `None` → it just does nothing (safe).**">
-      <option name="closed" value="true" />
-      <created>1758216786618</created>
-      <option name="number" value="00015" />
-      <option name="presentableId" value="LOCAL-00015" />
-      <option name="project" value="LOCAL" />
-      <updated>1758216786618</updated>
     </task>
     <task id="LOCAL-00016" summary="Added script for  Streamlit UI with a progress bar + step messages (clear, user-friendly feedback).">
       <option name="closed" value="true" />
@@ -474,7 +465,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760041157931</updated>
     </task>
-    <option name="localTasksCounter" value="64" />
+    <task id="LOCAL-00064" summary="Reorganised total logic due to the  addition of the edition creation part.">
+      <option name="closed" value="true" />
+      <created>1760082894473</created>
+      <option name="number" value="00064" />
+      <option name="presentableId" value="LOCAL-00064" />
+      <option name="project" value="LOCAL" />
+      <updated>1760082894478</updated>
+    </task>
+    <option name="localTasksCounter" value="65" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

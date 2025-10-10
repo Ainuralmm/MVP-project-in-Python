@@ -163,6 +163,7 @@ class OracleAutomator:
 
     # CREATE COURSE flow (uses the search behaviour)
     def create_course(self, course_details):
+
         try:
             course_name = course_details['title']
             print(f"Model: Starting create_course for '{course_name}'")
@@ -232,29 +233,39 @@ class OracleAutomator:
     # CREATE EDITION flow (assumes caller opened the course detail page)
     def create_edition(self, edition_details):
         """
-        edition_details: dict:
-         - course_name, edition_start_date (str dd/mm/YYYY), duration_days, location, supplier, price, language, moderator_type
-        Assumes we are currently on the course detail page (edizioni tab reachable).
+        ADDED: CREATE EDITION METHOD
+        edition_details keys:
+          - course_name (str) : name of existing course
+          - edition_start_date (date or str %d/%m/%Y)
+          - duration_days (int)
+          - location (str)
+          - supplier (str)
+          - price (str)
+          - language (str)
+          - moderator_type (str)
         """
         try:
             course_name = edition_details['course_name']
-            # parse the edition_start_date
-            if isinstance(edition_details['edition_start_date'], str):
-                edition_start_date = datetime.strptime(edition_details['edition_start_date'], "%d/%m/%Y")
+            # parse start date
+            start = edition_details.get('edition_start_date')
+            if isinstance(start, str):
+                edition_start_date = datetime.strptime(start, "%d/%m/%Y")
             else:
-                edition_start_date = edition_details['edition_start_date']
+                edition_start_date = start
 
             duration_days = int(edition_details.get('duration_days', 1))
-            supplier = edition_details.get('supplier', "")
+
             location = edition_details.get('location', "")
+            supplier = edition_details.get('supplier', "")
             price = edition_details.get('price', "")
             language = edition_details.get('language', "")
             moderator_type = edition_details.get('moderator_type', "")
 
             print(
-                f"Model (EDITION): Creating edition for {course_name}, start {edition_start_date.strftime('%d/%m/%Y')}")
+                f"Model (EDITION): Creating edition for {course_name} start {edition_start_date.strftime('%d/%m/%Y')}")
             self._pause_for_visual_check()
 
+            # Assumes we are on course detail page; if not, try to click the course from list
             # Click 'Edizioni' tab
             edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
             edizioni_tab = self.wait.until(EC.presence_of_element_located((By.XPATH, edizioni_tab_xpath)))
@@ -271,32 +282,37 @@ class OracleAutomator:
             option_of_button_crea_edizioni.click()
             self._pause_for_visual_check()
 
+            # titolo edizione
             titolo_edizione = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, '//input[contains(@id, ":lsVwCls:ttlInp::content")]')))
             titolo_edizione.send_keys("-" + edition_start_date.strftime("%d/%m/%Y"))
             self._pause_for_visual_check()
 
+            # description
             descirione_edizione = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, '//div[contains(@aria-label, "main") and @role="textbox"]')))
             descirione_edizione.send_keys(f"{course_name}-{edition_start_date.strftime('%d/%m/%Y')}-details")
             self._pause_for_visual_check()
 
+            # publication start: 2 months before (by months, as requested)
             two_months_before = edition_start_date - relativedelta(months=2)
-            pubblicazione_edition_date_2month_before = two_months_before.strftime("%d/%m/%Y")
+            publication_start_str = two_months_before.strftime("%d/%m/%Y")
             edizione_data_inizio_pubblicazione = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, '//input[contains(@id, ":lsVwCls:sdDt::content")]')))
             edizione_data_inizio_pubblicazione.clear()
-            edizione_data_inizio_pubblicazione.send_keys(pubblicazione_edition_date_2month_before)
+            edizione_data_inizio_pubblicazione.send_keys(publication_start_str)
             self._pause_for_visual_check()
 
+            # publication end = edition_end + 1 day
             edition_end_date_obj = edition_start_date + timedelta(days=duration_days - 1)
-            pubblicazione_end_date_str = (edition_end_date_obj + timedelta(days=1)).strftime("%d/%m/%Y")
+            publication_end_str = (edition_end_date_obj + timedelta(days=1)).strftime("%d/%m/%Y")
             edizione_data_fine_pubblicazione = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, '//input[contains(@id,"lsVwCls:edDt::content")]')))
             edizione_data_fine_pubblicazione.clear()
-            edizione_data_fine_pubblicazione.send_keys(pubblicazione_end_date_str)
+            edizione_data_fine_pubblicazione.send_keys(publication_end_str)
             self._pause_for_visual_check()
 
+            # set edition start and end
             dettagli_ed_data_inizio_edizione = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, '//input[contains(@id, ":lsVwCls:liSdDt::content")]')))
             dettagli_ed_data_inizio_edizione.clear()
@@ -309,95 +325,103 @@ class OracleAutomator:
             dettagli_ed_data_fine_edizione.send_keys(edition_end_date_obj.strftime("%d/%m/%Y"))
             self._pause_for_visual_check()
 
-            # select aula principale
-            aula_prince_xpath = '//*[contains(@id, "primaryClassroomName1Id::lovIconId")]'
-            select_aula_principale = self.wait.until(EC.element_to_be_clickable((By.XPATH, aula_prince_xpath)))
-            select_aula_principale.click()
-            self._pause_for_visual_check()
-
-            # find location
+            # Aula principale lookup
             if location:
+                aula_prince_xpath = '//*[contains(@id, "primaryClassroomName1Id::lovIconId")]'
+                select_aula_principale = self.wait.until(EC.element_to_be_clickable((By.XPATH, aula_prince_xpath)))
+                select_aula_principale.click()
+                self._pause_for_visual_check()
+
                 cerca_aula_button = self.wait.until(
                     EC.visibility_of_element_located((By.XPATH, "//a[text()='Cerca...']")))
                 cerca_aula_button.click()
-                box_cerca_aula_parole_chiave = self.wait.until(EC.presence_of_element_located(
-                    (By.XPATH,
-                     '//input[contains(@id, "primaryClassroomName1Id::_afrLovInternalQueryId:value00::content")]')))
+                self._pause_for_visual_check()
+
+                box_cerca_aula_parole_chiave = self.wait.until(EC.presence_of_element_located((By.XPATH,
+                                                                                               '//input[contains(@id, "primaryClassroomName1Id::_afrLovInternalQueryId:value00::content")]')))
                 box_cerca_aula_parole_chiave.send_keys(location)
+                self._pause_for_visual_check()
+
                 button_parole_chiave_cerca = self.wait.until(EC.element_to_be_clickable(
                     (By.XPATH, "//button[text()='Cerca' and contains(@id, 'primaryClassroomName1Id')]")))
                 button_parole_chiave_cerca.click()
                 self._pause_for_visual_check()
+
                 try:
                     self.wait.until(EC.presence_of_element_located((By.XPATH,
                                                                     f'//div[contains(@id, "primaryClassroomName1Id_afrLovInternalTableId::db")]//tr[.//text()[contains(., "Nessuna riga da visualizzare")]]')))
                     print(f"⚠️ The location '{location}' was not found.")
                 except TimeoutException:
-                    list_aula_option_row = self.wait.until(EC.element_to_be_clickable((
-                        By.XPATH,
-                        f'//div[contains(@id, "primaryClassroomName1Id_afrLovInternalTableId::db")]//td[contains(@class, "xen") and .//span[text()="{location}"]]'
-                    )))
+                    list_aula_option_row = self.wait.until(EC.element_to_be_clickable((By.XPATH,
+                                                                                       f'//div[contains(@id, "primaryClassroomName1Id_afrLovInternalTableId::db")]//td[contains(@class, "xen") and .//span[text()="{location}"]]')))
                     list_aula_option_row.click()
                     self._pause_for_visual_check()
+
                 ok_button = self.wait.until(EC.element_to_be_clickable(
                     (By.XPATH, "//button[text()='OK' and contains(@id, 'primaryClassroomName1Id')]")))
                 ok_button.click()
                 self._pause_for_visual_check()
 
-            # choose language, moderator and supplier (if provided) ...
+            # language
             if language:
                 choose_lingua = self.wait.until(
                     EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:lngSel::drop')]")))
                 choose_lingua.click()
                 self._pause_for_visual_check()
                 find_lingua = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), "{language}")]')))
+                    EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), \"{language}\")]')))
                 find_lingua.click()
                 self._pause_for_visual_check()
 
+            # moderator type
             if moderator_type:
                 choose_tipo_moderatore = self.wait.until(
                     EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:socFaciType::drop')]")))
                 choose_tipo_moderatore.click()
                 self._pause_for_visual_check()
                 find_tipo_moderatore = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), "{moderator_type}")]')))
+                    EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), \"{moderator_type}\")]')))
                 find_tipo_moderatore.click()
                 self._pause_for_visual_check()
 
+            # supplier lookup & select
             if supplier:
                 choose_nome_fornitore_formazione = self.wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::lovIconId')]")))
                 choose_nome_fornitore_formazione.click()
                 self._pause_for_visual_check()
+
                 button_cerca_nome_fornitore_formazione = self.wait.until(EC.element_to_be_clickable(
                     (By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::dropdownPopup::popupsearch')]")))
                 button_cerca_nome_fornitore_formazione.click()
                 self._pause_for_visual_check()
+
                 box = self.wait.until(EC.presence_of_element_located((By.XPATH,
                                                                       "//input[contains(@id, ':lsVwCls:supplierNameId::_afrLovInternalQueryId:value00::content')]")))
                 box.send_keys(supplier)
                 self._pause_for_visual_check()
+
                 search_btn = self.wait.until(EC.element_to_be_clickable(
                     (By.XPATH, "//button[text()='Cerca' and contains(@id, 'supplierNameId')]")))
                 search_btn.click()
                 self._pause_for_visual_check()
+
                 try:
                     self.wait.until(EC.presence_of_element_located((By.XPATH,
                                                                     '//*[contains(@id, "lsVwCls:supplierNameId_afrLovInternalTableId::db")]//tr[.//text()[contains(., "Nessuna riga da visualizzare")]]')))
                     print(f"⚠️ The supplier '{supplier}' was not found.")
                 except TimeoutException:
-                    find_nome_fornitore_in_list = self.wait.until(EC.element_to_be_clickable((
-                        By.XPATH,
-                        f'//*[contains(@id, "lsVwCls:supplierNameId_afrLovInternalTableId::db")]//tr[.//text()[contains(., "{supplier}")]]'
-                    )))
+                    find_nome_fornitore_in_list = self.wait.until(EC.element_to_be_clickable((By.XPATH,
+                                                                                              f'//*[contains(@id, "lsVwCls:supplierNameId_afrLovInternalTableId::db")]//tr[.//text()[contains(., \"{supplier}\")]]')))
                     find_nome_fornitore_in_list.click()
                     self._pause_for_visual_check()
-                ok_button_nome_fornitore = self.wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[text()='OK' and contains(@id, 'supplierNameId')]")))
+
+                ok_button_nome_fornitore = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[text()='OK' and contains(@id, 'supplierNameId')]")))
                 ok_button_nome_fornitore.click()
                 self._pause_for_visual_check()
 
+            # add price
             if price:
                 add_costo_di_edizione = self.wait.until(EC.presence_of_element_located(
                     (By.XPATH, "//input[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:t1:0:it1::content')]")))
@@ -405,15 +429,19 @@ class OracleAutomator:
                 add_costo_di_edizione.send_keys(price)
                 self._pause_for_visual_check()
 
-            # save & close edition form
+            # save and close
             button_salva_e_chiudi_info_di_edizioni = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//button[text()='Salva e chiudi']")))
             button_salva_e_chiudi_info_di_edizioni.click()
             self._pause_for_visual_check()
 
+            # confirm by waiting for edizioni tab (page navigated to details)
+            button_aggiungi_attivita = self.wait.until(EC.presence_of_element_located(
+                (By.XPATH, "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']")))
+            self.wait.until(EC.presence_of_element_located((By.XPATH, button_aggiungi_attivita)))
+
             print(f"Model (EDITION): Saved edition for {course_name} - {edition_start_date.strftime('%d/%m/%Y')}")
             return f"✅🤩 Successo! Edizione per '{course_name}' creata: {edition_start_date.strftime('%d/%m/%Y')}"
-
         except Exception as e:
             print(f"Model (EDITION) Error: {e}")
             return f"‼️👩🏻‍✈️ Errore durante creazione edizione: {e}"
