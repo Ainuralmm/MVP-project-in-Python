@@ -60,9 +60,37 @@ class CourseView:
 
     def _render_course_form(self, is_disabled):
         with st.form(key='course_form'):
-            course_title = st.text_input("Titolo del Corso", "TEST AUTOMAZIONE")
-            short_desc = st.text_input("Breve Descrizione", "Descrizione Test")
+            # These are the input fields for the user.
+            course_title = st.text_input("Titolo del Corso",
+                                         value="",
+                                         placeholder="Esempio: Analisi dei Dati",
+                                         key="input_title",
+                                         )
+            programme = st.text_area(
+                "Dettagli del Programma",
+                value="",
+                placeholder="Campo opzionale: informazioni importanti sul corso",
+                key="input_programme",
+            )
+            short_desc = st.text_input(
+                "Breve Descrizione",
+                value="",
+                placeholder="Esempio: Analisi dei Dati Informatica",
+                key="input_short_desc",
+
+            )
+
+            # Custom date input in Italian format
             date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", "01/01/2023")
+
+            try:
+                start_date = datetime.strptime(date_str, "%d/%m/%Y").date()
+                date_valid = True
+                # st.success(f"📅 Data selezionata: {start_date.strftime('%d/%m/%Y')}")
+            except ValueError:
+                start_date = None
+                date_valid = False
+
             submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled)
 
             if submitted:

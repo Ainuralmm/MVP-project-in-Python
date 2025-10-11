@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Another try --&gt; Updated logic according to addition of creation edition">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Last Another try --&gt; updated logic according to addition of creation edition">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -82,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00021" summary="MoveD the logo rendering into  CourseView so that it is always drawn every time Streamlit reruns.">
-      <option name="closed" value="true" />
-      <created>1758539113354</created>
-      <option name="number" value="00021" />
-      <option name="presentableId" value="LOCAL-00021" />
-      <option name="project" value="LOCAL" />
-      <updated>1758539113355</updated>
     </task>
     <task id="LOCAL-00022" summary="Added script for headless mode M.Edge">
       <option name="closed" value="true" />
@@ -475,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760112489345</updated>
     </task>
-    <option name="localTasksCounter" value="70" />
+    <task id="LOCAL-00070" summary="Last Another try --&gt; updated logic according to addition of creation edition">
+      <option name="closed" value="true" />
+      <created>1760113766759</created>
+      <option name="number" value="00070" />
+      <option name="presentableId" value="LOCAL-00070" />
+      <option name="project" value="LOCAL" />
+      <updated>1760113766759</updated>
+    </task>
+    <option name="localTasksCounter" value="71" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -490,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is working. The flow was updated. And now everything is working perfectly." />
     <MESSAGE value="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed." />
     <MESSAGE value="Added  script to make active button after finishing course creation" />
     <MESSAGE value="The issue with the submit button remaining disabled after the course creation is complete:&#10;1)Removed the Rerun Trigger from &#10;2) Implement the Final Rerun in main.py" />
@@ -515,6 +513,7 @@
     <MESSAGE value="Updated logic according to addition of creation edition and Added of the edition duration days" />
     <MESSAGE value="Updated logic according to addition of creation edition --&gt;another try" />
     <MESSAGE value="Another try --&gt; Updated logic according to addition of creation edition" />
-    <option name="LAST_COMMIT_MESSAGE" value="Another try --&gt; Updated logic according to addition of creation edition" />
+    <MESSAGE value="Last Another try --&gt; updated logic according to addition of creation edition" />
+    <option name="LAST_COMMIT_MESSAGE" value="Last Another try --&gt; updated logic according to addition of creation edition" />
   </component>
 </project>
