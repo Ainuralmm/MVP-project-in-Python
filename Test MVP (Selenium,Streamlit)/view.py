@@ -1,10 +1,12 @@
+# view.py
 import streamlit as st
 from datetime import datetime
 
+
 class CourseView:
     def __init__(self):
+        self.course_output_placeholder = None
         st.set_page_config(layout='centered')
-        ### HASHTAG: CENTRALIZED STATE INITIALIZATION
         # All state variables are now initialized cleanly in one place using isolated keys.
         if "app_state" not in st.session_state:
             st.session_state.app_state = "IDLE"  # Can be: IDLE, RUNNING_COURSE, RUNNING_EDITION
@@ -27,10 +29,6 @@ class CourseView:
                 debug_pause = st.sidebar.slider("Durata pausa (secondi)", 1, 5, 2)
         return headless, debug_mode, debug_pause
 
-        ### HASHTAG: NEW UNIFIED RENDER METHOD
-        # This single method controls the entire UI. It decides whether to show a form
-        # or a progress bar based on the central `app_state`.
-
     def render_ui(self):
         is_running = st.session_state.app_state != "IDLE"
 
@@ -38,10 +36,8 @@ class CourseView:
         with st.container(border=True):
             st.header("1. Creazione Nuovo Corso")
             if st.session_state.app_state == "RUNNING_COURSE":
-                # If this process is running, show its progress bar here
                 self.course_output_placeholder = st.empty()
             else:
-                # Otherwise, show the form and its persistent message
                 self._render_course_form(is_disabled=is_running)
                 self.course_output_placeholder = st.empty()
                 if st.session_state.course_message:
@@ -60,60 +56,51 @@ class CourseView:
 
     def _render_course_form(self, is_disabled):
         with st.form(key='course_form'):
-            # These are the input fields for the user.
-            course_title = st.text_input("Titolo del Corso",
-                                         value="",
-                                         placeholder="Esempio: Analisi dei Dati",
-                                         key="input_title",
-                                         )
-            programme = st.text_area(
-                "Dettagli del Programma",
-                value="",
-                placeholder="Campo opzionale: informazioni importanti sul corso",
-                key="input_programme",
-            )
-            short_desc = st.text_input(
-                "Breve Descrizione",
-                value="",
-                placeholder="Esempio: Analisi dei Dati Informatica",
-                key="input_short_desc",
-
-            )
-
-            # Custom date input in Italian format
+            course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati")
+            programme = st.text_area("Dettagli del Programma", placeholder="Campo opzionale...")
+            short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati Informatica")
             date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", "01/01/2023")
-
-            try:
-                start_date = datetime.strptime(date_str, "%d/%m/%Y").date()
-                date_valid = True
-                # st.success(f"📅 Data selezionata: {start_date.strftime('%d/%m/%Y')}")
-            except ValueError:
-                start_date = None
-                date_valid = False
 
             submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled)
 
+            ### HASHTAG: CORRECTED INDENTATION AND LOGIC
+            # This entire 'if submitted' block has been moved inside the `_render_course_form`
+            # method and the `with st.form(...)` block, where it belongs.
+            # It now uses the correct `app_state` logic.
             if submitted:
+                # 1. Perform validation first
                 if not course_title.strip() or not short_desc.strip():
                     st.error("I campi 'Titolo' e 'Breve Descrizione' sono obbligatori.")
-                    return
+                    return  # Stop processing if validation fails
+
+                # 2. Validate the date
                 try:
                     start_date = datetime.strptime(date_str, "%d/%m/%Y").date()
-                    st.session_state.course_details = {
-                        "title": course_title, "short_description": short_desc,
-                        "start_date": start_date, "programme": "Test Programme"
-                    }
-                    st.session_state.app_state = "RUNNING_COURSE"
-                    st.session_state.course_message = ""  # Clear old message
-                    st.rerun()
                 except ValueError:
                     st.error("Formato data non valido. Usa GG/MM/AAAA.")
+                    return  # Stop processing if date is invalid
+
+                # 3. If all validation passes, set the state and rerun
+                st.session_state.course_details = {
+                    "title": course_title,
+                    "programme": programme,
+                    "short_description": short_desc,
+                    "start_date": start_date
+                }
+                st.session_state.app_state = "RUNNING_COURSE"
+                st.session_state.course_message = ""  # Clear any previous message
+                st.rerun()
 
     def _render_edition_form(self, is_disabled):
         with st.form(key='edition_form'):
-            course_name = st.text_input("Nome Corso Esistente", "TEST AUTOMAZIONE")
-            start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)", "10/10/2025")
-            duration_days = st.number_input("Durata (giorni)", min_value=1, value=1)
+            course_name = st.text_input("Nome del Corso Esistente", placeholder="Nome corso esistente")
+            start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)", "15/10/2025")
+            duration_days = st.number_input("Durata edizione (giorni)", min_value=1, value=3)
+            # Other optional fields
+            location = st.text_input("Sede (opzionale)", placeholder="Esempio: AULA DE CARLI")
+            supplier = st.text_input("Fornitore (opzionale)", placeholder="Esempio: ACCADEMIA EUROPE")
+            price = st.text_input("Prezzo (€) (opzionale)", placeholder="Esempio: 1000")
+
             submitted = st.form_submit_button("Crea Edizione", type="primary", disabled=is_disabled)
 
             if submitted:
@@ -124,18 +111,14 @@ class CourseView:
                     edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
                     st.session_state.edition_details = {
                         "course_name": course_name, "edition_start_date": edition_start,
-                        "duration_days": int(duration_days), "location": "SEDE01",
-                        "supplier": "FORNITORE01", "price": "100"
+                        "duration_days": int(duration_days), "location": location,
+                        "supplier": supplier, "price": price
                     }
                     st.session_state.app_state = "RUNNING_EDITION"
                     st.session_state.edition_message = ""  # Clear old message
                     st.rerun()
                 except ValueError:
                     st.error("Formato data non valido. Usa GG/MM/AAAA.")
-
-        ### HASHTAG: DECOUPLED METHODS FOR PRESENTER
-        # The presenter will call these methods to update the UI without
-        # needing to know about st.progress or st.success.
 
     def update_progress(self, form_type, message, percentage):
         placeholder = self.course_output_placeholder if form_type == "course" else self.edition_output_placeholder
@@ -144,7 +127,6 @@ class CourseView:
             st.progress(percentage)
 
     def show_message(self, form_type, message, show_clear_button=False):
-        # Determine which placeholder and session_state key to use
         placeholder = self.course_output_placeholder if form_type == "course" else self.edition_output_placeholder
         message_key = "course_message" if form_type == "course" else "edition_message"
 

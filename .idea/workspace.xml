@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Last Another try --&gt; updated logic according to addition of creation edition">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Changing the text function in course creation which will disappear as soon as User type">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
@@ -81,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00022" summary="Added script for headless mode M.Edge">
-      <option name="closed" value="true" />
-      <created>1758542668643</created>
-      <option name="number" value="00022" />
-      <option name="presentableId" value="LOCAL-00022" />
-      <option name="project" value="LOCAL" />
-      <updated>1758542668643</updated>
     </task>
     <task id="LOCAL-00023" summary="Updated the driver location path">
       <option name="closed" value="true" />
@@ -474,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760113766759</updated>
     </task>
-    <option name="localTasksCounter" value="71" />
+    <task id="LOCAL-00071" summary="Changing the text function in course creation which will disappear as soon as User type">
+      <option name="closed" value="true" />
+      <created>1760175518550</created>
+      <option name="number" value="00071" />
+      <option name="presentableId" value="LOCAL-00071" />
+      <option name="project" value="LOCAL" />
+      <updated>1760175518551</updated>
+    </task>
+    <option name="localTasksCounter" value="72" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -489,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed." />
     <MESSAGE value="Added  script to make active button after finishing course creation" />
     <MESSAGE value="The issue with the submit button remaining disabled after the course creation is complete:&#10;1)Removed the Rerun Trigger from &#10;2) Implement the Final Rerun in main.py" />
     <MESSAGE value="Trying to solve issue with disabled button and progress status message of process" />
@@ -514,6 +513,7 @@
     <MESSAGE value="Updated logic according to addition of creation edition --&gt;another try" />
     <MESSAGE value="Another try --&gt; Updated logic according to addition of creation edition" />
     <MESSAGE value="Last Another try --&gt; updated logic according to addition of creation edition" />
-    <option name="LAST_COMMIT_MESSAGE" value="Last Another try --&gt; updated logic according to addition of creation edition" />
+    <MESSAGE value="Changing the text function in course creation which will disappear as soon as User type" />
+    <option name="LAST_COMMIT_MESSAGE" value="Changing the text function in course creation which will disappear as soon as User type" />
   </component>
 </project>
