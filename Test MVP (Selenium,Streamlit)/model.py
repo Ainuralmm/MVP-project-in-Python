@@ -147,6 +147,7 @@ class OracleAutomator:
           - course_name (str) : name of existing course
           - edition_start_date (date or str %d/%m/%Y)
           - duration_days (int)
+          - description (str) : description of edition
           - location (str)
           - supplier (str)
           - price (str)
@@ -198,10 +199,18 @@ class OracleAutomator:
             self._pause_for_visual_check()
 
             # description
-            descirione_edizione = self.wait.until(
-                EC.presence_of_element_located((By.XPATH, '//div[contains(@aria-label, "main") and @role="textbox"]')))
-            descirione_edizione.send_keys(f"{course_name}-{edition_start_date.strftime('%d/%m/%Y')}-details")
-            self._pause_for_visual_check()
+            description = edition_details.get('description', "")
+            if description:
+                descirione_edizione = self.wait.until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, '//div[contains(@aria-label, "main") and @role="textbox"]')))
+
+                # Combine everything into a single f-string before sending
+                full_description_text = f"{course_name}-{edition_start_date.strftime('%d/%m/%Y')}-{description}"
+                descirione_edizione.send_keys(full_description_text)
+
+                # Removed the extra dot at the end of this line
+                self._pause_for_visual_check()
 
             # publication start: 2 months before (by months, as requested)
             two_months_before = edition_start_date - relativedelta(months=2)

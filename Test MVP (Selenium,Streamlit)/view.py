@@ -68,24 +68,32 @@ class CourseView:
             # method and the `with st.form(...)` block, where it belongs.
             # It now uses the correct `app_state` logic.
             if submitted:
-                # 1. Perform validation first
-                if not course_title.strip() or not short_desc.strip():
-                    st.error("I campi 'Titolo' e 'Breve Descrizione' sono obbligatori.")
-                    return  # Stop processing if validation fails
+                # to show a red warning directly under the field that is missing.
+                missing = False
 
-                # 2. Validate the date
-                try:
-                    start_date = datetime.strptime(date_str, "%d/%m/%Y").date()
-                except ValueError:
-                    st.error("Formato data non valido. Usa GG/MM/AAAA.")
-                    return  # Stop processing if date is invalid
-
+                if not course_title.strip():
+                    st.markdown("<span style ='color:red'> "
+                                "⚠️ Il campo 'Titolo corso' è obbligatorio. Si prega di compilarlo </span>",
+                                unsafe_allow_html=True)
+                    missing = True
+                if not short_desc.strip():
+                    st.markdown("<span style ='color:red'> "
+                                "⚠️ Il campo 'Breve Descrizione' è obbligatorio. Si prega di compilarlo",
+                                unsafe_allow_html=True)
+                    missing = True
+                if not date_str.strip():
+                    st.markdown("<span style ='color:red'> "
+                                "⚠️ Il campo 'Data di Pubblicazione' è obbligatorio. Si prega di compilarlo </span>",
+                                unsafe_allow_html=True)
+                    missing = True
+                if missing:
+                    st.stop()  # stops here, doesn’t launch automation
                 # 3. If all validation passes, set the state and rerun
                 st.session_state.course_details = {
                     "title": course_title,
                     "programme": programme,
                     "short_description": short_desc,
-                    "start_date": start_date
+                    "start_date": date_str
                 }
                 st.session_state.app_state = "RUNNING_COURSE"
                 st.session_state.course_message = ""  # Clear any previous message
@@ -97,22 +105,36 @@ class CourseView:
             start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)", "15/10/2025")
             duration_days = st.number_input("Durata edizione (giorni)", min_value=1, value=3)
             # Other optional fields
-            location = st.text_input("Sede (opzionale)", placeholder="Esempio: AULA DE CARLI")
-            supplier = st.text_input("Fornitore (opzionale)", placeholder="Esempio: ACCADEMIA EUROPE")
+            description = st.text_area("Descrizione", placeholder="Descrizione di Edizione")
+            location = st.text_input("Aula Principale (opzionale)", placeholder="Esempio: AULA DE CARLI")
+            supplier = st.text_input("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: ACCADEMIA EUROPE")
             price = st.text_input("Prezzo (€) (opzionale)", placeholder="Esempio: 1000")
 
             submitted = st.form_submit_button("Crea Edizione", type="primary", disabled=is_disabled)
 
             if submitted:
+                # to show a red warning directly under the field that is missing.
+                missing = False
+
                 if not course_name.strip():
-                    st.error("Il campo 'Nome Corso Esistente' è obbligatorio.")
-                    return
+                    st.markdown("<span style ='color:red'> "
+                                "⚠️ Il campo 'Nome corso esistente' è obbligatorio. Si prega di compilarlo </span>",
+                                unsafe_allow_html=True)
+                    missing = True
+
+                if not start_date_str.strip():
+                    st.markdown("<span style ='color:red'> "
+                                "⚠️ Il campo 'Data Inizio Edizione' è obbligatorio. Si prega di compilarlo </span>",
+                                unsafe_allow_html=True)
+                    missing = True
+                if missing:
+                    st.stop()
                 try:
                     edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
                     st.session_state.edition_details = {
                         "course_name": course_name, "edition_start_date": edition_start,
                         "duration_days": int(duration_days), "location": location,
-                        "supplier": supplier, "price": price
+                        "supplier": supplier, "price": price, "description": description
                     }
                     st.session_state.app_state = "RUNNING_EDITION"
                     st.session_state.edition_message = ""  # Clear old message
