@@ -168,8 +168,10 @@ class OracleAutomator:
             location = edition_details.get('location', "")
             supplier = edition_details.get('supplier', "")
             price = edition_details.get('price', "")
-            language = edition_details.get('language', "")
-            moderator_type = edition_details.get('moderator_type', "")
+            description = edition_details.get('description', "")
+            #language = edition_details.get('language', "")
+            #moderator_type = edition_details.get('moderator_type', "")
+
 
             print(
                 f"Model (EDITION): Creating edition for {course_name} start {edition_start_date.strftime('%d/%m/%Y')}")
@@ -199,7 +201,6 @@ class OracleAutomator:
             self._pause_for_visual_check()
 
             # description
-            description = edition_details.get('description', "")
             if description:
                 descirione_edizione = self.wait.until(
                     EC.presence_of_element_located(
@@ -294,20 +295,21 @@ class OracleAutomator:
             print("Confirmed the selected language:", language)
             self._pause_for_visual_check()
 
-            # moderator type
-            moderator_type = ('Fornitore formazione')
-            choose_tipo_moderatore = self.wait.until(
-                EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:socFaciType::drop')]")))
-            choose_tipo_moderatore.click()
-            self._pause_for_visual_check()
-            find_tipo_moderatore = self.wait.until(
-                EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), \"{moderator_type}\")]')))
-            find_tipo_moderatore.click()
-            print("Confirmed the selected moderatore type:", moderator_type)
-            self._pause_for_visual_check()
+
 
             # supplier lookup & select
             if supplier:
+                # moderator type
+                moderator_type = ('Fornitore formazione')
+                choose_tipo_moderatore = self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:socFaciType::drop')]")))
+                choose_tipo_moderatore.click()
+                self._pause_for_visual_check()
+                find_tipo_moderatore = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), \"{moderator_type}\")]')))
+                find_tipo_moderatore.click()
+                print("Confirmed the selected moderatore type:", moderator_type)
+                self._pause_for_visual_check()
                 choose_nome_fornitore_formazione = self.wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::lovIconId')]")))
                 choose_nome_fornitore_formazione.click()

@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated script choosing language, supplier, and price">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="1. Added mandatory input boxes during the filling the forms for edition and course.&#10;2. Added description box for edition">
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -82,14 +80,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00025" summary="Now, with these scripts in model.py and main.py the 'headless=False → browser visible' is working">
-      <option name="closed" value="true" />
-      <created>1758621947366</created>
-      <option name="number" value="00025" />
-      <option name="presentableId" value="LOCAL-00025" />
-      <option name="project" value="LOCAL" />
-      <updated>1758621947366</updated>
     </task>
     <task id="LOCAL-00026" summary="Updated display messages for user">
       <option name="closed" value="true" />
@@ -475,7 +465,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760267830367</updated>
     </task>
-    <option name="localTasksCounter" value="74" />
+    <task id="LOCAL-00074" summary="1. Added mandatory input boxes during the filling the forms for edition and course.&#10;2. Added description box for edition">
+      <option name="closed" value="true" />
+      <created>1760280870142</created>
+      <option name="number" value="00074" />
+      <option name="presentableId" value="LOCAL-00074" />
+      <option name="project" value="LOCAL" />
+      <updated>1760280870142</updated>
+    </task>
+    <option name="localTasksCounter" value="75" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -490,7 +488,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="The issue with the submit button remaining disabled after the course creation is complete:&#10;1)Removed the Rerun Trigger from &#10;2) Implement the Final Rerun in main.py" />
     <MESSAGE value="Trying to solve issue with disabled button and progress status message of process" />
     <MESSAGE value="Removed all unnecessary hashtags" />
     <MESSAGE value="Fortunately, the logic what I wanted is working: button disabled during the aut.process, and active after the process completed also show last message." />
@@ -515,6 +512,7 @@
     <MESSAGE value="Last Another try --&gt; updated logic according to addition of creation edition" />
     <MESSAGE value="Changing the text function in course creation which will disappear as soon as User type" />
     <MESSAGE value="Updated script choosing language, supplier, and price" />
-    <option name="LAST_COMMIT_MESSAGE" value="Updated script choosing language, supplier, and price" />
+    <MESSAGE value="1. Added mandatory input boxes during the filling the forms for edition and course.&#10;2. Added description box for edition" />
+    <option name="LAST_COMMIT_MESSAGE" value="1. Added mandatory input boxes during the filling the forms for edition and course.&#10;2. Added description box for edition" />
   </component>
 </project>
