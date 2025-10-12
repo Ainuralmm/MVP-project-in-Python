@@ -57,35 +57,52 @@ class OracleAutomator:
 
     def search_course(self, course_name):
         try:
-            search_box = self.wait.until(EC.presence_of_element_located((By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
+            search_box = self.wait.until(EC.presence_of_element_located(
+                (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
             search_box.clear()
             search_box.send_keys(course_name)
-            date_input = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
+            date_input = self.wait.until(EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
             date_input.clear()
             date_input.send_keys("01/01/2000")
-            self.wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'))).click()
+            self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'))).click()
+
             short_wait = WebDriverWait(self.driver, 4)
             try:
-                short_wait.until(EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"Nessun dato da visualizzare.")]')))
-                return False
+                # First, check for the "no data" message. If it appears, the course definitely doesn't exist.
+                short_wait.until(
+                    EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"Nessun dato da visualizzare.")]')))
+                return False  # Course does not exist
             except TimeoutException:
-                self.wait.until(EC.presence_of_element_located((By.XPATH, f'//table[@summary="Corsi"]//a[contains(normalize-space(.), "{course_name}")]')))
-                return True
+                # If there's no "no data" message, we now look for an EXACT match.
+                ### HASHTAG: THE FIX IS HERE
+                # Switched from `contains()` to an exact match `normalize-space(.)=` for precision.
+                exact_match_xpath = f'//table[@summary="Corsi"]//a[normalize-space(.)="{course_name}"]'
+                # We use a short wait here. If it finds the exact match, return True.
+                # If it times out, the exact match doesn't exist.
+                try:
+                    short_wait.until(EC.presence_of_element_located((By.XPATH, exact_match_xpath)))
+                    return True  # Exact match found
+                except TimeoutException:
+                    return False  # Exact match not found
         except Exception:
+            # If any other error occurs, safely assume it was not found.
             return False
 
-    ### HASHTAG: BUG FIX 1 - ADDED 'course_name' PARAMETER
-    # The original method was missing this parameter, which would cause a NameError and crash the app.
     def open_course_from_list(self, course_name):
         try:
-            link_xpath = f'//table[@summary="Corsi"]//a[contains(normalize-space(.), "{course_name}")]'
+            ### HASHTAG: THE FIX IS HERE
+            # Switched from `contains()` to an exact match `normalize-space(.)=` to target the correct link. 🎯
+            link_xpath = f'//table[@summary="Corsi"]//a[normalize-space(.)="{course_name}"]'
+
             link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
             link.click()
             self._pause_for_visual_check()
             print(f"Model: Clicked on existing course '{course_name}' in list.")
             return True
         except Exception as e:
-            print(f"Model: Unexpected error in open_course_from_list: {e}")
+            print(f"Model: Could not find or click the exact link for '{course_name}'. Error: {e}")
             return False
 
     def create_course(self, course_details):

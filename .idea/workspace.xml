@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated placeholder in edition creation course with warning">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="The fix involves two simple but crucial changes: one in the view to send the correct data type, and one in the model to use the data correctly.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -82,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00030" summary="As I solved issue with debug=false-&gt;i removed not necessary hashtags">
-      <option name="closed" value="true" />
-      <created>1758704588071</created>
-      <option name="number" value="00030" />
-      <option name="presentableId" value="LOCAL-00030" />
-      <option name="project" value="LOCAL" />
-      <updated>1758704588071</updated>
     </task>
     <task id="LOCAL-00031" summary="Translated display messages to italian">
       <option name="closed" value="true" />
@@ -475,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760284638679</updated>
     </task>
-    <option name="localTasksCounter" value="79" />
+    <task id="LOCAL-00079" summary="The fix involves two simple but crucial changes: one in the view to send the correct data type, and one in the model to use the data correctly.">
+      <option name="closed" value="true" />
+      <created>1760286438208</created>
+      <option name="number" value="00079" />
+      <option name="presentableId" value="LOCAL-00079" />
+      <option name="project" value="LOCAL" />
+      <updated>1760286438208</updated>
+    </task>
+    <option name="localTasksCounter" value="80" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -490,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added script to make the example text in the input box to disappear only when the user clicks inside to type" />
     <MESSAGE value=" Updated condition to check the required fields before running  logic" />
     <MESSAGE value="It showed an error in Streamlit UI, because of double button, i just removed it and script worked" />
     <MESSAGE value="added a native &quot;required&quot; field validation like in HTML" />
@@ -515,6 +513,7 @@
     <MESSAGE value="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way." />
     <MESSAGE value="IMPROVED SUPPLIER WORKFLOW: entire block has been updated to be faster and more reliable." />
     <MESSAGE value="Updated placeholder in edition creation course with warning" />
-    <option name="LAST_COMMIT_MESSAGE" value="Updated placeholder in edition creation course with warning" />
+    <MESSAGE value="The fix involves two simple but crucial changes: one in the view to send the correct data type, and one in the model to use the data correctly." />
+    <option name="LAST_COMMIT_MESSAGE" value="The fix involves two simple but crucial changes: one in the view to send the correct data type, and one in the model to use the data correctly." />
   </component>
 </project>
