@@ -179,6 +179,9 @@ class OracleAutomator:
         """
         try:
             course_name = edition_details['course_name']
+            # Use .get() for the optional title to prevent errors if it's missing
+            edition_title_optional = edition_details.get('edition_title', '')
+            edition_start_date = edition_details.get('edition_start_date')
             # parse start date
             start = edition_details.get('edition_start_date')
             if isinstance(start, str):
@@ -218,9 +221,23 @@ class OracleAutomator:
             self._pause_for_visual_check()
 
             # titolo edizione
-            titolo_edizione = self.wait.until(
+            titolo_edizione_field= self.wait.until(
                 EC.presence_of_element_located((By.XPATH, '//input[contains(@id, ":lsVwCls:ttlInp::content")]')))
-            titolo_edizione.send_keys("-" + edition_start_date.strftime("%d/%m/%Y"))
+
+            ### HASHTAG: NEW CONDITIONAL LOGIC FOR THE EDITION TITLE
+            # This block checks if the user provided a non-empty custom title.
+            if edition_title_optional and edition_title_optional.strip():
+                # CASE 1: User provided a custom title.
+                print(f"Using custom edition title: {edition_title_optional}")
+                # Clear the field first, as it's likely pre-filled with the course name.
+                titolo_edizione_field.clear()
+                titolo_edizione_field.send_keys(edition_title_optional)
+            else:
+                # CASE 2: User left the field blank. Use the default behavior.
+                print("Using default edition title logic (course name + date)")
+                # This appends the date to the existing course name in the field.
+                titolo_edizione_field.send_keys("-" + edition_start_date.strftime("%d/%m/%Y"))
+
             self._pause_for_visual_check()
 
             # description

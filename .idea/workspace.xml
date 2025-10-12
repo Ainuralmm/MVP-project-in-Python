@@ -4,9 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="The fix involves two simple but crucial changes: one in the view to send the correct data type, and one in the model to use the data correctly.">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Modified the XPath in both functions to use normalize-space(.) = &quot;{course_name}&quot; instead of contains(...).">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,14 +82,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00031" summary="Translated display messages to italian">
-      <option name="closed" value="true" />
-      <created>1758707261865</created>
-      <option name="number" value="00031" />
-      <option name="presentableId" value="LOCAL-00031" />
-      <option name="project" value="LOCAL" />
-      <updated>1758707261865</updated>
     </task>
     <task id="LOCAL-00032" summary="Translated display messages to italian">
       <option name="closed" value="true" />
@@ -474,7 +467,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760286438208</updated>
     </task>
-    <option name="localTasksCounter" value="80" />
+    <task id="LOCAL-00080" summary="Modified the XPath in both functions to use normalize-space(.) = &quot;{course_name}&quot; instead of contains(...).">
+      <option name="closed" value="true" />
+      <created>1760287552760</created>
+      <option name="number" value="00080" />
+      <option name="presentableId" value="LOCAL-00080" />
+      <option name="project" value="LOCAL" />
+      <updated>1760287552760</updated>
+    </task>
+    <option name="localTasksCounter" value="81" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -489,7 +490,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value=" Updated condition to check the required fields before running  logic" />
     <MESSAGE value="It showed an error in Streamlit UI, because of double button, i just removed it and script worked" />
     <MESSAGE value="added a native &quot;required&quot; field validation like in HTML" />
     <MESSAGE value="adding clear messgaes button" />
@@ -514,6 +514,7 @@
     <MESSAGE value="IMPROVED SUPPLIER WORKFLOW: entire block has been updated to be faster and more reliable." />
     <MESSAGE value="Updated placeholder in edition creation course with warning" />
     <MESSAGE value="The fix involves two simple but crucial changes: one in the view to send the correct data type, and one in the model to use the data correctly." />
-    <option name="LAST_COMMIT_MESSAGE" value="The fix involves two simple but crucial changes: one in the view to send the correct data type, and one in the model to use the data correctly." />
+    <MESSAGE value="Modified the XPath in both functions to use normalize-space(.) = &quot;{course_name}&quot; instead of contains(...)." />
+    <option name="LAST_COMMIT_MESSAGE" value="Modified the XPath in both functions to use normalize-space(.) = &quot;{course_name}&quot; instead of contains(...)." />
   </component>
 </project>

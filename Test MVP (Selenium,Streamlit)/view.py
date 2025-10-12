@@ -109,6 +109,13 @@ class CourseView:
     def _render_edition_form(self, is_disabled):
         with st.form(key='edition_form'):
             course_name = st.text_input("Nome del Corso Esistente", placeholder="Nome corso esistente")
+            ### HASHTAG: ADDED OPTIONAL EDITION TITLE INPUT
+            # This new field allows the user to specify a custom title.
+            # The placeholder explains the default behavior if left empty.
+            edition_title = st.text_input(
+                "Titolo Edizione (opzionale)",
+                placeholder="Lascia vuoto per usare il nome predefinito (Nome Corso - Data)"
+            )
             start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)", "15/10/2025")
             duration_days = st.number_input("Durata edizione (giorni)", min_value=1, value=3)
             # Other optional fields
@@ -138,9 +145,14 @@ class CourseView:
                 try:
                     edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
                     st.session_state.edition_details = {
-                        "course_name": course_name, "edition_start_date": edition_start,
-                        "duration_days": int(duration_days), "location": location,
-                        "supplier": supplier, "price": price, "description": description
+                        "course_name": course_name,
+                        "edition_title": edition_title,
+                        "edition_start_date": edition_start,
+                        "duration_days": int(duration_days),
+                        "location": location,
+                        "supplier": supplier,
+                        "price": price,
+                        "description": description
                     }
                     st.session_state.app_state = "RUNNING_EDITION"
                     st.session_state.edition_message = ""  # Clear old message
