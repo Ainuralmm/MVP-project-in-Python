@@ -88,15 +88,22 @@ class CourseView:
                     missing = True
                 if missing:
                     st.stop()  # stops here, doesn’t launch automation
-                # 3. If all validation passes, set the state and rerun
+                try:
+                    # Convert the user's string into a real date object
+                    start_date_obj = datetime.strptime(date_str, "%d/%m/%Y").date()
+                except ValueError:
+                    st.error("Formato data non valido. Usa GG/MM/AAAA.")
+                    st.stop()  # Stop if the date format is wrong
+
+                    # If all validation passes, set the state and rerun
                 st.session_state.course_details = {
                     "title": course_title,
                     "programme": programme,
                     "short_description": short_desc,
-                    "start_date": date_str
+                    "start_date": start_date_obj  # Pass the DATE OBJECT, not the string
                 }
                 st.session_state.app_state = "RUNNING_COURSE"
-                st.session_state.course_message = ""  # Clear any previous message
+                st.session_state.course_message = ""
                 st.rerun()
 
     def _render_edition_form(self, is_disabled):

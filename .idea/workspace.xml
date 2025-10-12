@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way.">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated placeholder in edition creation course with warning">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
@@ -82,22 +82,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00028" summary="Translated display messages to italian">
-      <option name="closed" value="true" />
-      <created>1758704456552</created>
-      <option name="number" value="00028" />
-      <option name="presentableId" value="LOCAL-00028" />
-      <option name="project" value="LOCAL" />
-      <updated>1758704456552</updated>
-    </task>
-    <task id="LOCAL-00029" summary="Added  new script which shows when another new window  open after saving a course. Like this we are sure that course was created.">
-      <option name="closed" value="true" />
-      <created>1758704541076</created>
-      <option name="number" value="00029" />
-      <option name="presentableId" value="LOCAL-00029" />
-      <option name="project" value="LOCAL" />
-      <updated>1758704541076</updated>
     </task>
     <task id="LOCAL-00030" summary="As I solved issue with debug=false-&gt;i removed not necessary hashtags">
       <option name="closed" value="true" />
@@ -475,7 +459,23 @@
       <option name="project" value="LOCAL" />
       <updated>1760282512132</updated>
     </task>
-    <option name="localTasksCounter" value="77" />
+    <task id="LOCAL-00077" summary="IMPROVED SUPPLIER WORKFLOW: entire block has been updated to be faster and more reliable.">
+      <option name="closed" value="true" />
+      <created>1760284590841</created>
+      <option name="number" value="00077" />
+      <option name="presentableId" value="LOCAL-00077" />
+      <option name="project" value="LOCAL" />
+      <updated>1760284590841</updated>
+    </task>
+    <task id="LOCAL-00078" summary="Updated placeholder in edition creation course with warning">
+      <option name="closed" value="true" />
+      <created>1760284638678</created>
+      <option name="number" value="00078" />
+      <option name="presentableId" value="LOCAL-00078" />
+      <option name="project" value="LOCAL" />
+      <updated>1760284638679</updated>
+    </task>
+    <option name="localTasksCounter" value="79" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -490,8 +490,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fortunately, the logic what I wanted is working: button disabled during the aut.process, and active after the process completed also show last message." />
-    <MESSAGE value="Added script of function to clean previous screen messages" />
     <MESSAGE value="Added script to make the example text in the input box to disappear only when the user clicks inside to type" />
     <MESSAGE value=" Updated condition to check the required fields before running  logic" />
     <MESSAGE value="It showed an error in Streamlit UI, because of double button, i just removed it and script worked" />
@@ -515,6 +513,8 @@
     <MESSAGE value="1. Added mandatory input boxes during the filling the forms for edition and course.&#10;2. Added description box for edition" />
     <MESSAGE value="Moved moderator type script inside of supplier condition" />
     <MESSAGE value="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way." />
-    <option name="LAST_COMMIT_MESSAGE" value="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way." />
+    <MESSAGE value="IMPROVED SUPPLIER WORKFLOW: entire block has been updated to be faster and more reliable." />
+    <MESSAGE value="Updated placeholder in edition creation course with warning" />
+    <option name="LAST_COMMIT_MESSAGE" value="Updated placeholder in edition creation course with warning" />
   </component>
 </project>

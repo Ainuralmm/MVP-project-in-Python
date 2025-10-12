@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.expected_conditions import element_to_be_clickable, presence_of_element_located
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
@@ -97,7 +98,7 @@ class OracleAutomator:
 
             crea_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srAtbl:_ATp:crtBtn"]/a/span')))
             crea_button.click()
-            #self._pause_for_visual_check()
+            self._pause_for_visual_check()
 
             # fill form fields (as before)
             title_field = self.wait.until(EC.presence_of_element_located(
@@ -121,7 +122,12 @@ class OracleAutomator:
             data_inizio_pubblic = self.wait.until(EC.visibility_of_element_located(
                 (By.XPATH, '//input[contains(@id, ":MAnt2:2:lsVwCrs:sdDt::content")]')))
             data_inizio_pubblic.clear()
+
+            # This line will now work because 'start_date' is a proper date object
             publication_date_str = course_details['start_date'].strftime("%d/%m/%Y")
+
+            ### HASHTAG: THE SECOND FIX IS HERE
+            # You must send the formatted STRING to send_keys, not the original object.
             data_inizio_pubblic.send_keys(publication_date_str)
             data_inizio_pubblic.send_keys(Keys.TAB)
             self._pause_for_visual_check()
@@ -375,6 +381,8 @@ class OracleAutomator:
                     # Optional: Click a 'Cancel' button here to close the popup gracefully
                     # self.driver.find_element(By.XPATH, "//button[text()='Annulla']").click()
 
+
+
             # add price
             if price:
                 # flag button 'Override determinazione prezzi'
@@ -412,6 +420,7 @@ class OracleAutomator:
                 add_costo_di_edizione.send_keys(price)
                 print("Costo di edizione was inserted correctly")
 
+            time.sleep(1)
             # save and close
             button_salva_e_chiudi_info_di_edizioni = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//button[text()='Salva e chiudi']")))
