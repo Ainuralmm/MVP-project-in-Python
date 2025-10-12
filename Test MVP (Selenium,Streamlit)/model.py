@@ -264,15 +264,28 @@ class OracleAutomator:
                 button_parole_chiave_cerca = self.wait.until(EC.element_to_be_clickable(
                     (By.XPATH, "//button[text()='Cerca' and contains(@id, 'primaryClassroomName1Id')]")))
                 button_parole_chiave_cerca.click()
-                self._pause_for_visual_check()
+
+                ### HASHTAG: FIX  - ADDED EXPLICIT WAIT FOR RESULTS
+                # Instead of a fixed pause,  now explicitly wait for the results table to appear after searching.
+
+                results_table_xpath = '//div[contains(@id, "primaryClassroomName1Id_afrLovInternalTableId::db")]'
+                self.wait.until(EC.presence_of_element_located((By.XPATH, results_table_xpath)))
 
                 try:
-                    self.wait.until(EC.presence_of_element_located((By.XPATH,
-                                                                    f'//div[contains(@id, "primaryClassroomName1Id_afrLovInternalTableId::db")]//tr[.//text()[contains(., "Nessuna riga da visualizzare")]]')))
+                    # Use a shorter wait time to check for the "No results" message
+                    short_wait = WebDriverWait(self.driver, 3)
+                    short_wait.until(EC.presence_of_element_located((By.XPATH,
+                                                                     f'{results_table_xpath}//tr[.//text()[contains(., "Nessuna riga da visualizzare")]]')))
                     print(f"⚠️ The location '{location}' was not found.")
                 except TimeoutException:
-                    list_aula_option_row = self.wait.until(EC.element_to_be_clickable((By.XPATH,
-                                                                                       f'//div[contains(@id, "primaryClassroomName1Id_afrLovInternalTableId::db")]//td[contains(@class, "xen") and .//span[text()="{location}"]]')))
+                    ### HASHTAG: FIX 2 - CASE-INSENSITIVE XPATH
+                    # The translate() function in XPath converts the text to lowercase before comparing it.
+                    # We also convert the user's input to lowercase with .lower() to ensure a match.
+                    location_lower = location.lower()
+                    case_insensitive_xpath = f"//td[contains(@class, 'xen') and .//span[translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{location_lower}']]"
+
+                    list_aula_option_row = self.wait.until(
+                        EC.element_to_be_clickable((By.XPATH, case_insensitive_xpath)))
                     list_aula_option_row.click()
                     self._pause_for_visual_check()
 
