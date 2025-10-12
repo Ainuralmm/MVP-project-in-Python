@@ -269,29 +269,33 @@ class OracleAutomator:
                 ok_button = self.wait.until(EC.element_to_be_clickable(
                     (By.XPATH, "//button[text()='OK' and contains(@id, 'primaryClassroomName1Id')]")))
                 ok_button.click()
+                print("Confirmed the selected course location")
                 self._pause_for_visual_check()
 
             # language
-            if language:
-                choose_lingua = self.wait.until(
-                    EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:lngSel::drop')]")))
-                choose_lingua.click()
-                self._pause_for_visual_check()
-                find_lingua = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), \"{language}\")]')))
-                find_lingua.click()
-                self._pause_for_visual_check()
+            language = ("Italiana")
+
+            choose_lingua = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:lngSel::drop')]")))
+            choose_lingua.click()
+            self._pause_for_visual_check()
+            find_lingua = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), \"{language}\")]')))
+            find_lingua.click()
+            print("Confirmed the selected language:", language)
+            self._pause_for_visual_check()
 
             # moderator type
-            if moderator_type:
-                choose_tipo_moderatore = self.wait.until(
-                    EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:socFaciType::drop')]")))
-                choose_tipo_moderatore.click()
-                self._pause_for_visual_check()
-                find_tipo_moderatore = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), \"{moderator_type}\")]')))
-                find_tipo_moderatore.click()
-                self._pause_for_visual_check()
+            moderator_type = ('Fornitore formazione')
+            choose_tipo_moderatore = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:socFaciType::drop')]")))
+            choose_tipo_moderatore.click()
+            self._pause_for_visual_check()
+            find_tipo_moderatore = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), \"{moderator_type}\")]')))
+            find_tipo_moderatore.click()
+            print("Confirmed the selected moderatore type:", moderator_type)
+            self._pause_for_visual_check()
 
             # supplier lookup & select
             if supplier:
@@ -328,15 +332,45 @@ class OracleAutomator:
                 ok_button_nome_fornitore = self.wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//button[text()='OK' and contains(@id, 'supplierNameId')]")))
                 ok_button_nome_fornitore.click()
+                print("Confirmed the selected moderatore type:", supplier)
                 self._pause_for_visual_check()
 
             # add price
             if price:
+                # flag button 'Override determinazione prezzi'
+                flag_determinzaione_prezzi = self.wait.until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, '//label[text()="Override determinazione prezzi"]')))
+                flag_determinzaione_prezzi.click()
+                print("Flagged button 'Override determinazione prezzi'")
+                self._pause_for_visual_check()
+
+                # pressing on button aggiungi voce linea
+                aggiungi_voce_linea = self.wait.until(EC.presence_of_element_located(
+                    (By.XPATH, "//img[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:addBtn::icon')]")))
+                aggiungi_voce_linea.click()
+                print("Clicked on button 'Aggiungi voce linea'")
+                self._pause_for_visual_check()
+
+                # choose prezzo di listino from VOCE LINEA
+                dropdown_voce_linea =self.wait.until(EC.presence_of_element_located(
+                    (By.XPATH, "//a[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:t1:0:soc2::drop')]")))
+                dropdown_voce_linea.click()
+                print("Clicked on dropdown button 'Choose voce linea'")
+                self._pause_for_visual_check()
+
+                choose_prezzo_di_listino = self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"Prezzo di listino")]')))
+                choose_prezzo_di_listino.click()
+                print("Clicked and chosen 'Prezzo di listino'")
+                self._pause_for_visual_check()
+
+                # add the price of the course: in the Costo enter taxable edition (e.g.: if the course costs € 1000.00 + VAT put 1000.00)
+                #costo_di_edizione = ('1000')
                 add_costo_di_edizione = self.wait.until(EC.presence_of_element_located(
                     (By.XPATH, "//input[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:t1:0:it1::content')]")))
-                add_costo_di_edizione.clear()
                 add_costo_di_edizione.send_keys(price)
-                self._pause_for_visual_check()
+                print("Costo di edizione was inserted correctly")
 
             # save and close
             button_salva_e_chiudi_info_di_edizioni = self.wait.until(
