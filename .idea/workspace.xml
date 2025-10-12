@@ -4,9 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Moved moderator type script inside of supplier condition">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,14 +82,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00027" summary="debug_mode=False -&gt; all the pauses can be disabled instantly&#10;-&gt;BUT the WEB does not have enough time to load as fast doing selenium , i have to solve it---&gt; However, that’s normal in web automation. Here’s why:&#10;&#10;1) When you turn off debug mode, the browser runs at full speed, and Selenium immediately tries to continue to the next step.&#10;&#10;2) But the web application (like Oracle or other internal tools) might need extra time to process actions (e.g., saving a course, loading a new screen).&#10;&#10;3) If Selenium doesn’t wait long enough, it moves on too early → causing missed saves or errors.">
-      <option name="closed" value="true" />
-      <created>1758632988396</created>
-      <option name="number" value="00027" />
-      <option name="presentableId" value="LOCAL-00027" />
-      <option name="project" value="LOCAL" />
-      <updated>1758632988396</updated>
     </task>
     <task id="LOCAL-00028" summary="Translated display messages to italian">
       <option name="closed" value="true" />
@@ -474,7 +467,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760281231577</updated>
     </task>
-    <option name="localTasksCounter" value="76" />
+    <task id="LOCAL-00076" summary="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way.">
+      <option name="closed" value="true" />
+      <created>1760282512132</created>
+      <option name="number" value="00076" />
+      <option name="presentableId" value="LOCAL-00076" />
+      <option name="project" value="LOCAL" />
+      <updated>1760282512132</updated>
+    </task>
+    <option name="localTasksCounter" value="77" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -489,7 +490,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Removed all unnecessary hashtags" />
     <MESSAGE value="Fortunately, the logic what I wanted is working: button disabled during the aut.process, and active after the process completed also show last message." />
     <MESSAGE value="Added script of function to clean previous screen messages" />
     <MESSAGE value="Added script to make the example text in the input box to disappear only when the user clicks inside to type" />
@@ -514,6 +514,7 @@
     <MESSAGE value="Updated script choosing language, supplier, and price" />
     <MESSAGE value="1. Added mandatory input boxes during the filling the forms for edition and course.&#10;2. Added description box for edition" />
     <MESSAGE value="Moved moderator type script inside of supplier condition" />
-    <option name="LAST_COMMIT_MESSAGE" value="Moved moderator type script inside of supplier condition" />
+    <MESSAGE value="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way." />
+    <option name="LAST_COMMIT_MESSAGE" value="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way." />
   </component>
 </project>
