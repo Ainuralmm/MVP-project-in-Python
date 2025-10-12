@@ -114,7 +114,7 @@ class CourseView:
             # The placeholder explains the default behavior if left empty.
             edition_title = st.text_input(
                 "Titolo Edizione (opzionale)",
-                placeholder="Lascia vuoto per usare il nome predefinito (Nome Corso - Data)"
+                placeholder="Lascia il campo vuoto per utilizzare automaticamente il nome predefinito (Nome corso - Data)"
             )
             start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)", "15/10/2025")
             duration_days = st.number_input("Durata edizione (giorni)", min_value=1, value=3)
