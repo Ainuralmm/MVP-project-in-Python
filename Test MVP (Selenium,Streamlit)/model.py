@@ -97,7 +97,7 @@ class OracleAutomator:
 
             crea_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srAtbl:_ATp:crtBtn"]/a/span')))
             crea_button.click()
-            self._pause_for_visual_check()
+            #self._pause_for_visual_check()
 
             # fill form fields (as before)
             title_field = self.wait.until(EC.presence_of_element_located(
@@ -182,12 +182,12 @@ class OracleAutomator:
             edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
             edizioni_tab = self.wait.until(EC.presence_of_element_located((By.XPATH, edizioni_tab_xpath)))
             edizioni_tab.click()
-            self._pause_for_visual_check()
+            #self._pause_for_visual_check()
 
             # Click Crea -> Edizione guidata da docente
             button_crea_edizioni = self.wait.until(EC.presence_of_element_located((By.XPATH, "//a[text()='Crea']")))
             button_crea_edizioni.click()
-            self._pause_for_visual_check()
+            #self._pause_for_visual_check()
 
             option_of_button_crea_edizioni = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//td[text()='Edizione guidata da docente']")))
@@ -308,56 +308,72 @@ class OracleAutomator:
             print("Confirmed the selected language:", language)
             self._pause_for_visual_check()
 
-
-
             # supplier lookup & select
             if supplier:
-                # moderator type
-                moderator_type = ('Fornitore formazione')
+                # Set moderator type to 'Fornitore formazione' first
+                moderator_type = 'Fornitore formazione'
                 choose_tipo_moderatore = self.wait.until(
-                    EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:socFaciType::drop')]")))
+                    EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, ':lsVwCls:socFaciType::drop')]"))
+                )
                 choose_tipo_moderatore.click()
-                self._pause_for_visual_check()
                 find_tipo_moderatore = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, f'//*[contains(text(), \"{moderator_type}\")]')))
+                    EC.element_to_be_clickable((By.XPATH, f'//li[text()="{moderator_type}"]'))
+                    # More specific than contains()
+                )
                 find_tipo_moderatore.click()
-                print("Confirmed the selected moderatore type:", moderator_type)
-                self._pause_for_visual_check()
-                choose_nome_fornitore_formazione = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::lovIconId')]")))
-                choose_nome_fornitore_formazione.click()
-                self._pause_for_visual_check()
+                print(f"Set moderator type to: {moderator_type}")
 
-                button_cerca_nome_fornitore_formazione = self.wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::dropdownPopup::popupsearch')]")))
-                button_cerca_nome_fornitore_formazione.click()
-                self._pause_for_visual_check()
+                # Now, handle the supplier lookup
+                # 1. Click the icon to open the search popup.
+                self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::lovIconId')]"))
+                ).click()
 
-                box = self.wait.until(EC.presence_of_element_located((By.XPATH,
-                                                                      "//input[contains(@id, ':lsVwCls:supplierNameId::_afrLovInternalQueryId:value00::content')]")))
+                # 2. Inside the popup, click the 'Search...' link to reveal the input field.
+                self.wait.until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::dropdownPopup::popupsearch')]"))
+                ).click()
+
+                # 3. Wait for the search box, enter the supplier name, and click the search button.
+                # We combine these actions as they happen quickly.
+                box = self.wait.until(EC.visibility_of_element_located((By.XPATH,
+                                                                        "//input[contains(@id, ':lsVwCls:supplierNameId::_afrLovInternalQueryId:value00::content')]")))
                 box.send_keys(supplier)
-                self._pause_for_visual_check()
 
-                search_btn = self.wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[text()='Cerca' and contains(@id, 'supplierNameId')]")))
-                search_btn.click()
-                self._pause_for_visual_check()
+                self.driver.find_element(By.XPATH,
+                                         "//button[text()='Cerca' and contains(@id, 'supplierNameId')]").click()
 
+                # 4. CRITICAL STEP: Now wait for the result using the robust, case-insensitive XPath.
+                # This single wait checks for either the desired result or a "no results" message.
+                print(f"Searching for supplier '{supplier}'...")
                 try:
-                    self.wait.until(EC.presence_of_element_located((By.XPATH,
-                                                                    '//*[contains(@id, "lsVwCls:supplierNameId_afrLovInternalTableId::db")]//tr[.//text()[contains(., "Nessuna riga da visualizzare")]]')))
-                    print(f"⚠️ The supplier '{supplier}' was not found.")
-                except TimeoutException:
-                    find_nome_fornitore_in_list = self.wait.until(EC.element_to_be_clickable((By.XPATH,
-                                                                                              f'//*[contains(@id, "lsVwCls:supplierNameId_afrLovInternalTableId::db")]//tr[.//text()[contains(., \"{supplier}\")]]')))
+                    # Use the new case-insensitive XPath to find the correct row
+                    supplier_row_xpath = (
+                        f'//div[contains(@id, "lsVwCls:supplierNameId_afrLovInternalTableId::db")]'
+                        f'//tr[contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "{supplier.lower()}")]'
+                    )
+
+                    find_nome_fornitore_in_list = self.wait.until(
+                        EC.element_to_be_clickable((By.XPATH, supplier_row_xpath))
+                    )
+
+                    print(f"Found supplier '{supplier}'. Clicking...")
                     find_nome_fornitore_in_list.click()
+
+                    # 5. Finally, click the 'OK' button to confirm the selection.
+                    self.wait.until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, "//button[text()='OK' and contains(@id, 'supplierNameId')]"))
+                    ).click()
+                    print(f"Successfully selected supplier: {supplier}")
                     self._pause_for_visual_check()
 
-                ok_button_nome_fornitore = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[text()='OK' and contains(@id, 'supplierNameId')]")))
-                ok_button_nome_fornitore.click()
-                print("Confirmed the selected moderatore type:", supplier)
-                self._pause_for_visual_check()
+                except TimeoutException:
+                    # This block runs only if the case-insensitive search fails to find the row.
+                    print(f"⚠️ The supplier '{supplier}' was not found after search.")
+                    # Optional: Click a 'Cancel' button here to close the popup gracefully
+                    # self.driver.find_element(By.XPATH, "//button[text()='Annulla']").click()
 
             # add price
             if price:
