@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Changed the input box placeholder message.">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated the _render_edition_form function to remove the &quot;Duration&quot; input and replace it with a required &quot;End Date&quot; input.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -82,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00034" summary="A script was added to allow users to control headless, debug_mode, and debug_pause settings from Streamlit.">
-      <option name="closed" value="true" />
-      <created>1758789065323</created>
-      <option name="number" value="00034" />
-      <option name="presentableId" value="LOCAL-00034" />
-      <option name="project" value="LOCAL" />
-      <updated>1758789065323</updated>
     </task>
     <task id="LOCAL-00035" summary="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed">
       <option name="closed" value="true" />
@@ -475,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760289278747</updated>
     </task>
-    <option name="localTasksCounter" value="83" />
+    <task id="LOCAL-00083" summary="Updated the _render_edition_form function to remove the &quot;Duration&quot; input and replace it with a required &quot;End Date&quot; input.">
+      <option name="closed" value="true" />
+      <created>1760367808423</created>
+      <option name="number" value="00083" />
+      <option name="presentableId" value="LOCAL-00083" />
+      <option name="project" value="LOCAL" />
+      <updated>1760367808423</updated>
+    </task>
+    <option name="localTasksCounter" value="84" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -490,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="adding clear messgaes button" />
     <MESSAGE value="Added “ Clear History” button without touching automation or logic flow" />
     <MESSAGE value="When Streamlit first starts (no history yet), the button should not be visible to keep the interface clean--&gt; the script was done" />
     <MESSAGE value="Added icon in button" />
@@ -515,6 +513,7 @@
     <MESSAGE value="Modified the XPath in both functions to use normalize-space(.) = &quot;{course_name}&quot; instead of contains(...)." />
     <MESSAGE value="Modified the &quot;Edition Title&quot; an optional field that overrides the default naming convention." />
     <MESSAGE value="Changed the input box placeholder message." />
-    <option name="LAST_COMMIT_MESSAGE" value="Changed the input box placeholder message." />
+    <MESSAGE value="Updated the _render_edition_form function to remove the &quot;Duration&quot; input and replace it with a required &quot;End Date&quot; input." />
+    <option name="LAST_COMMIT_MESSAGE" value="Updated the _render_edition_form function to remove the &quot;Duration&quot; input and replace it with a required &quot;End Date&quot; input." />
   </component>
 </project>

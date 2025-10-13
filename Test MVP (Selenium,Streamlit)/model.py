@@ -458,11 +458,18 @@ class OracleAutomator:
             button_salva_e_chiudi_info_di_edizioni.click()
             self._pause_for_visual_check()
 
-            ### HASHTAG: BUG FIX 2 - REMOVED INCORRECT LINE
 
             confirmation_xpath = "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']"
             self.wait.until(EC.presence_of_element_located((By.XPATH, confirmation_xpath)))
-            return f"✅🤩 Successo! Edizione per '{course_name}' creata: {edition_start_date.strftime('%d/%m/%Y')}"
+            # This checks if a custom title was provided and formats the message accordingly.
+            if edition_title_optional and edition_title_optional.strip():
+                # Case 1: The user provided a custom title.
+                final_message = f"✅🤩 Successo! L'edizione '{edition_title_optional}' per il corso '{course_name}' è stata creata con data iniziale: {edition_start_date.strftime('%d/%m/%Y')}."
+            else:
+                # Case 2: The title field was empty, so use a generic message.
+                final_message = f"✅🤩 Successo! Una nuova edizione per il corso '{course_name}' è stata creata con data iniziale: {edition_start_date.strftime('%d/%m/%Y')}."
+
+            return final_message
         except Exception as e:
             return f"‼️👩🏻‍✈️ Errore durante la creazione dell'edizione: {e}"
 
