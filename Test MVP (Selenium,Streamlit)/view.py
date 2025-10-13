@@ -117,11 +117,15 @@ class CourseView:
                 placeholder="Lascia il campo vuoto per utilizzare automaticamente il nome predefinito (Nome corso - Data)"
             )
             start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)", "15/10/2025")
-            duration_days = st.number_input("Durata edizione (giorni)", min_value=1, value=3)
+            ### REPLACED DURATION WITH END DATE
+            # The 'duration_days' number input is commented out and replaced
+            # with a text input for the edition's end date.
+            end_date_str = st.text_input("Data Fine Edizione (GG/MM/AAAA)", "17/10/2025")
+            #duration_days = st.number_input("Durata edizione (giorni)", min_value=1, value=3)
             # Other optional fields
             description = st.text_area("Descrizione (opzionale)", placeholder="Descrizione di Edizione")
-            location = st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA DE CARLI. Attenzione: È possibile inserire solo Aule Principali già esistenti nel database Oracle. Per inserire una nuova aula, è necessario prima crearla nel sistema Oracle.")
-            supplier = st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: ACCADEMIA EUROPEA. Attenzione: È possibile inserire solo Fornitori di Formazione già esistenti nel database Oracle. Per inserire un nuovo fornitore, è necessario prima crearlo nel sistema Oracle ")
+            location = st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA DE CARLI.\nAttenzione: È possibile inserire solo Aule Principali già esistenti nel database Oracle. Per inserire una nuova aula, è necessario prima crearla nel sistema Oracle.")
+            supplier = st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: ACCADEMIA EUROPEA. \nAttenzione: È possibile inserire solo Fornitori di Formazione già esistenti nel database Oracle. Per inserire un nuovo fornitore, è necessario prima crearlo nel sistema Oracle ")
             price = st.text_input("Prezzo (€) (opzionale)", placeholder="Esempio: 1000")
             submitted = st.form_submit_button("Crea Edizione", type="primary", disabled=is_disabled)
 
@@ -140,15 +144,26 @@ class CourseView:
                                 "⚠️ Il campo 'Data Inizio Edizione' è obbligatorio. Si prega di compilarlo </span>",
                                 unsafe_allow_html=True)
                     missing = True
+                if not end_date_str.strip():
+                    st.markdown("<span style ='color:red'> "
+                                "⚠️ Il campo 'Data Fine Edizione' è obbligatorio. Si prega di compilarlo </span>",
+                                unsafe_allow_html=True)
+                    missing = True
                 if missing:
                     st.stop()
                 try:
                     edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
+                    edition_end = datetime.strptime(end_date_str, "%d/%m/%Y").date()
+
+                    if edition_end < edition_start:
+                        st.error("La data di fine non può essere precedente alla data di inizio.")
+                        st.stop()
                     st.session_state.edition_details = {
                         "course_name": course_name,
                         "edition_title": edition_title,
                         "edition_start_date": edition_start,
-                        "duration_days": int(duration_days),
+                        "edition_end_date": edition_end,
+                        #"duration_days": int(duration_days),
                         "location": location,
                         "supplier": supplier,
                         "price": price,

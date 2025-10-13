@@ -169,7 +169,8 @@ class OracleAutomator:
         edition_details keys:
           - course_name (str) : name of existing course
           - edition_start_date (date or str %d/%m/%Y)
-          - duration_days (int)
+          - edition_end_date (date) : PREFERRED
+          - duration_days (int) : FALLBACK
           - description (str) : description of edition
           - location (str)
           - supplier (str)
@@ -181,22 +182,16 @@ class OracleAutomator:
             course_name = edition_details['course_name']
             # Use .get() for the optional title to prevent errors if it's missing
             edition_title_optional = edition_details.get('edition_title', '')
+            # parse start date and end date
             edition_start_date = edition_details.get('edition_start_date')
-            # parse start date
-            start = edition_details.get('edition_start_date')
-            if isinstance(start, str):
-                edition_start_date = datetime.strptime(start, "%d/%m/%Y")
-            else:
-                edition_start_date = start
-
-            duration_days = int(edition_details.get('duration_days', 1))
-
+            edition_end_date_obj = edition_details.get('edition_end_date')
             location = edition_details.get('location', "")
             supplier = edition_details.get('supplier', "")
             price = edition_details.get('price', "")
             description = edition_details.get('description', "")
             #language = edition_details.get('language', "")
             #moderator_type = edition_details.get('moderator_type', "")
+            #duration_days = int(edition_details.get('duration_days', 1))
 
 
             print(
@@ -263,7 +258,7 @@ class OracleAutomator:
             self._pause_for_visual_check()
 
             # publication end = edition_end + 1 day
-            edition_end_date_obj = edition_start_date + timedelta(days=duration_days - 1)
+            # This line now works perfectly with the dynamically sourced edition_end_date_obj
             publication_end_str = (edition_end_date_obj + timedelta(days=1)).strftime("%d/%m/%Y")
             edizione_data_fine_pubblicazione = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, '//input[contains(@id,"lsVwCls:edDt::content")]')))
@@ -278,6 +273,8 @@ class OracleAutomator:
             dettagli_ed_data_inizio_edizione.send_keys(edition_start_date.strftime("%d/%m/%Y"))
             self._pause_for_visual_check()
 
+            # set edition end
+            # This line also works perfectly with the new logic
             dettagli_ed_data_fine_edizione = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, "//input[contains(@id, ':lsVwCls:liEdDt::content')]")))
             dettagli_ed_data_fine_edizione.clear()
