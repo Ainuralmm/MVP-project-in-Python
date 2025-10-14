@@ -93,8 +93,9 @@ class OracleAutomator:
     def open_course_from_list(self, course_name):
         try:
             ### HASHTAG: THE FIX IS HERE
-            # Switched from `contains()` to an exact match `normalize-space(.)=` to target the correct link. 🎯
-            link_xpath = f'//table[@summary="Corsi"]//a[normalize-space(.)="{course_name}"]'
+            # Switched from `contains()` to an exact match `normalize-space(.)=` to target the correct link.
+            course_name_lowercase = course_name.lower()
+            link_xpath = f"//table[@summary='Corsi'] and .//span[translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{course_name_lowercase}']]"
 
             link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
             link.click()
