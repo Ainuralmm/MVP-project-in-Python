@@ -78,7 +78,8 @@ class OracleAutomator:
                 # If there's no "no data" message, we now look for an EXACT match.
                 ### HASHTAG: THE FIX IS HERE
                 # Switched from `contains()` to an exact match `normalize-space(.)=` for precision.
-                exact_match_xpath = f'//table[@summary="Corsi"]//a[normalize-space(.)="{course_name}"]'
+                course_name_lowercase = course_name.lower()
+                exact_match_xpath = f"//table[@summary='Corsi'] and .//span[translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{course_name_lowercase}']]"
                 # We use a short wait here. If it finds the exact match, return True.
                 # If it times out, the exact match doesn't exist.
                 try:
