@@ -3,33 +3,31 @@ from model import OracleAutomator
 from view import CourseView
 from presenter import CoursePresenter
 
+### HASHTAG: SIMPLIFIED AND CORRECTED LOGIC
+# The main script now initializes the view and lets it handle all rendering.
+# The controller logic only runs when the app is busy, creating the model
+# and presenter only when needed.
+
 if __name__ == "__main__":
-    #path of to Edge Webdriver
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
 
+    # 1. Initialize the View. It handles all state setup.
     view = CourseView()
     headless, debug_mode, debug_pause = view.get_user_options()
 
-    # Render the form (this will return None normally; submission triggers a rerun)
-    _ = view.render_form()
+    # 2. Let the View render the entire user interface.
+    view.render_ui()
 
-    # Start automation only when the user submitted and the form set this flag
-    if st.session_state.get("start_automation"):
+    # 3. Controller Logic: Only run this block if an automation has been started.
+    if st.session_state.app_state != "IDLE":
+        model = OracleAutomator(driver_path=DRIVER_PATH,
+                                debug_mode=debug_mode,
+                                debug_pause=debug_pause,
+                                headless=headless)
+        presenter = CoursePresenter(model, view)
 
-        course_details = st.session_state.get("course_details")
-        if  course_details:
-            model = OracleAutomator(driver_path = DRIVER_PATH,
-                            debug_mode = debug_mode, # pause for visual checks;  debug_mode=False -> all the pauses will be disabled instantly
-                            debug_pause = debug_pause, # how long to pause in seconds
-                            headless = headless)# set to True → browser hidden, False → browser visible
-
-            presenter = CoursePresenter(model,view)
-
-            #start the application
-            presenter.run(course_details)
-
-
-    else:
-        # safety: clear flag to avoid loop if something missing
-        st.session_state["start_automation"] = False
-
+        # Run the correct process based on the state
+        if st.session_state.app_state == "RUNNING_COURSE":
+            presenter.run_create_course(st.session_state.get("course_details"))
+        elif st.session_state.app_state == "RUNNING_EDITION":
+            presenter.run_create_edition(st.session_state.get("edition_details"))
