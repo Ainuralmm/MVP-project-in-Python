@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated the _render_edition_form function to remove the &quot;Duration&quot; input and replace it with a required &quot;End Date&quot; input.">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Deleted director &quot;Draft..&quot;">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
     </list>
@@ -21,7 +21,25 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <excluded-from-favorite>
+      <branch-storage>
+        <map>
+          <entry type="LOCAL">
+            <value>
+              <list>
+                <branch-info repo="$PROJECT_DIR$" source="main" />
+              </list>
+            </value>
+          </entry>
+        </map>
+      </branch-storage>
+    </excluded-from-favorite>
     <option name="PREVIEW_PUSH_PROTECTED_ONLY" value="true" />
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -44,21 +62,21 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.main.executor": "Run",
-    "Python.model.executor": "Run",
-    "Python.simple.executor": "Run",
-    "Python.view.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/ainuralmukambetova/PycharmProjects/DesignPattern/Test MVP (Selenium,Streamlit)",
-    "settings.editor.selected.configurable": "editor.preferences.tabs"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.model.executor&quot;: &quot;Run&quot;,
+    &quot;Python.simple.executor&quot;: &quot;Run&quot;,
+    &quot;Python.view.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;edition-creation&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/ainuralmukambetova/PycharmProjects/DesignPattern/Test MVP (Selenium,Streamlit)&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.tabs&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)" />
@@ -81,38 +99,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00035" summary="The script which allow users to control headless, debug_mode, and debug_pause settings from Streamlit is working well. The error .StreamlitAPIException is fixed">
-      <option name="closed" value="true" />
-      <created>1758796778648</created>
-      <option name="number" value="00035" />
-      <option name="presentableId" value="LOCAL-00035" />
-      <option name="project" value="LOCAL" />
-      <updated>1758796778648</updated>
-    </task>
-    <task id="LOCAL-00036" summary="Changed the date input field which shows italian format DD/MM/YYYY">
-      <option name="closed" value="true" />
-      <created>1758874876656</created>
-      <option name="number" value="00036" />
-      <option name="presentableId" value="LOCAL-00036" />
-      <option name="project" value="LOCAL" />
-      <updated>1758874876656</updated>
-    </task>
-    <task id="LOCAL-00037" summary="Added script if:&#10;1. User chooses `headless` (on/off).&#10;2. If `headless == False`, then show debug mode toggle.&#10;3. If `debug_mode == True`, then show pause time slider.">
-      <option name="closed" value="true" />
-      <created>1758875743416</created>
-      <option name="number" value="00037" />
-      <option name="presentableId" value="LOCAL-00037" />
-      <option name="project" value="LOCAL" />
-      <updated>1758875743416</updated>
-    </task>
-    <task id="LOCAL-00038" summary="since your &quot;debug mode&quot; isn’t really for all steps but only for when Selenium inserts values into input fields the label was renamed">
-      <option name="closed" value="true" />
-      <created>1758876480521</created>
-      <option name="number" value="00038" />
-      <option name="presentableId" value="LOCAL-00038" />
-      <option name="project" value="LOCAL" />
-      <updated>1758876480521</updated>
     </task>
     <task id="LOCAL-00039" summary="Disable the &quot;Crea Corso in Oracle&quot; button once the automation starts">
       <option name="closed" value="true" />
@@ -474,7 +460,39 @@
       <option name="project" value="LOCAL" />
       <updated>1760367808423</updated>
     </task>
-    <option name="localTasksCounter" value="84" />
+    <task id="LOCAL-00084" summary="Aggiornato il messaggio in fine. è leggermente diverso e più specifico in ogni caso, migliorando la chiarezza per l'utente.&#10;&#10;- L'edizione 'Edizione titolo'... (L'utente vede confermato il nome che ha scelto).&#10;&#10;- Una nuova edizione... (L'utente capisce che è stata creata un'edizione generica).">
+      <option name="closed" value="true" />
+      <created>1760369288545</created>
+      <option name="number" value="00084" />
+      <option name="presentableId" value="LOCAL-00084" />
+      <option name="project" value="LOCAL" />
+      <updated>1760369288545</updated>
+    </task>
+    <task id="LOCAL-00085" summary="During the search to not have trouble with lowercase or capitalised letters --&gt; added .lower () method">
+      <option name="closed" value="true" />
+      <created>1760447894064</created>
+      <option name="number" value="00085" />
+      <option name="presentableId" value="LOCAL-00085" />
+      <option name="project" value="LOCAL" />
+      <updated>1760447894064</updated>
+    </task>
+    <task id="LOCAL-00086" summary="During the search to not have trouble with lowercase or capitalised letters --&gt; added .lower () method">
+      <option name="closed" value="true" />
+      <created>1760448248854</created>
+      <option name="number" value="00086" />
+      <option name="presentableId" value="LOCAL-00086" />
+      <option name="project" value="LOCAL" />
+      <updated>1760448248855</updated>
+    </task>
+    <task id="LOCAL-00087" summary="Deleted director &quot;Draft..&quot;">
+      <option name="closed" value="true" />
+      <created>1760606097898</created>
+      <option name="number" value="00087" />
+      <option name="presentableId" value="LOCAL-00087" />
+      <option name="project" value="LOCAL" />
+      <updated>1760606097898</updated>
+    </task>
+    <option name="localTasksCounter" value="88" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -489,9 +507,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added “ Clear History” button without touching automation or logic flow" />
-    <MESSAGE value="When Streamlit first starts (no history yet), the button should not be visible to keep the interface clean--&gt; the script was done" />
-    <MESSAGE value="Added icon in button" />
     <MESSAGE value="Added color of the text  in button" />
     <MESSAGE value="Adding script of navigation to create edition of existed course" />
     <MESSAGE value="Added function for creation edition" />
@@ -514,6 +529,9 @@
     <MESSAGE value="Modified the &quot;Edition Title&quot; an optional field that overrides the default naming convention." />
     <MESSAGE value="Changed the input box placeholder message." />
     <MESSAGE value="Updated the _render_edition_form function to remove the &quot;Duration&quot; input and replace it with a required &quot;End Date&quot; input." />
-    <option name="LAST_COMMIT_MESSAGE" value="Updated the _render_edition_form function to remove the &quot;Duration&quot; input and replace it with a required &quot;End Date&quot; input." />
+    <MESSAGE value="Aggiornato il messaggio in fine. è leggermente diverso e più specifico in ogni caso, migliorando la chiarezza per l'utente.&#10;&#10;- L'edizione 'Edizione titolo'... (L'utente vede confermato il nome che ha scelto).&#10;&#10;- Una nuova edizione... (L'utente capisce che è stata creata un'edizione generica)." />
+    <MESSAGE value="During the search to not have trouble with lowercase or capitalised letters --&gt; added .lower () method" />
+    <MESSAGE value="Deleted director &quot;Draft..&quot;" />
+    <option name="LAST_COMMIT_MESSAGE" value="Deleted director &quot;Draft..&quot;" />
   </component>
 </project>

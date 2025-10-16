@@ -1,10 +1,9 @@
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.expected_conditions import element_to_be_clickable, presence_of_element_located
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
@@ -57,10 +56,11 @@ class OracleAutomator:
 
     def search_course(self, course_name):
         try:
+            capitalised_course_name = course_name.title()
             search_box = self.wait.until(EC.presence_of_element_located(
                 (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
             search_box.clear()
-            search_box.send_keys(course_name)
+            search_box.send_keys(capitalised_course_name)
             date_input = self.wait.until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
             date_input.clear()
@@ -68,7 +68,7 @@ class OracleAutomator:
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'))).click()
 
-            short_wait = WebDriverWait(self.driver, 4)
+            short_wait = WebDriverWait(self.driver, 5)
             try:
                 # First, check for the "no data" message. If it appears, the course definitely doesn't exist.
                 short_wait.until(
@@ -76,40 +76,39 @@ class OracleAutomator:
                 return False  # Course does not exist
             except TimeoutException:
                 # If there's no "no data" message, we now look for an EXACT match.
-                ### HASHTAG: THE FIX IS HERE
+                course_name_lower = course_name.lower()
                 # Switched from `contains()` to an exact match `normalize-space(.)=` for precision.
-                course_name_lowercase = course_name.lower()
-                exact_match_xpath = f"//table[@summary='Corsi'] and .//span[translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{course_name_lowercase}']]"
-                # We use a short wait here. If it finds the exact match, return True.
-                # If it times out, the exact match doesn't exist.
-                try:
-                    short_wait.until(EC.presence_of_element_located((By.XPATH, exact_match_xpath)))
-                    return True  # Exact match found
-                except TimeoutException:
-                    return False  # Exact match not found
-        except Exception:
+                # This XPath converts the link text to lowercase and compares it to our lowercase variable.
+                case_insensitive_xpath = f"//table[@summary='Corsi']//a[translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{course_name_lower}']"
+                self.wait.until(EC.presence_of_element_located((By.XPATH, case_insensitive_xpath)))
+                print(f"Course '{course_name}' found in search results.")
+                return True
+        except Exception as e:
             # If any other error occurs, safely assume it was not found.
+            print(f"An error occurred during search_course: {e}")
             return False
 
     def open_course_from_list(self, course_name):
         try:
             ### HASHTAG: THE FIX IS HERE
             # Switched from `contains()` to an exact match `normalize-space(.)=` to target the correct link.
-            course_name_lowercase = course_name.lower()
-            link_xpath = f"//table[@summary='Corsi'] and .//span[translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{course_name_lowercase}']]"
+            # This XPath now finds the link even if use
+            course_name_lower = course_name.lower()
+            # Switched from `contains()` to an exact match `normalize-space(.)=` to target the correct link.
+            case_insensitive_xpath = f"//table[@summary='Corsi']//a[translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{course_name_lower}']"
 
-            link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
+            link = self.wait.until(EC.element_to_be_clickable((By.XPATH, case_insensitive_xpath)))
             link.click()
             self._pause_for_visual_check()
             print(f"Model: Clicked on existing course '{course_name}' in list.")
             return True
         except Exception as e:
-            print(f"Model: Could not find or click the exact link for '{course_name}'. Error: {e}")
+            print(f"Model: Could not find or click the link for '{course_name}'. Error: {e}")
             return False
 
     def create_course(self, course_details):
         try:
-            course_name = course_details['title']
+            course_name = course_details['title'].title()
             if not self.navigate_to_courses_page():
                 return f"‼️ Error: Cannot reach the Corsi page."
             if self.search_course(course_name):
@@ -181,7 +180,7 @@ class OracleAutomator:
           - moderator_type (str)
         """
         try:
-            course_name = edition_details['course_name']
+            course_name = edition_details['course_name'].title()
             # Use .get() for the optional title to prevent errors if it's missing
             edition_title_optional = edition_details.get('edition_title', '')
             # parse start date and end date
