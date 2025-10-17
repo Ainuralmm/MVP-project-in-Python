@@ -1,0 +1,12 @@
+# Python cache files
+__pycache__/
+*.pyc
+
+# macOS files
+.DS_Store
+
+# Virtual environment folder
+.venv/
+
+# Streamlit secrets file (important for security)
+.streamlit/secrets.toml
