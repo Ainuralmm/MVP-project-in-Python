@@ -54,20 +54,48 @@ class CourseView:
                 if st.session_state.edition_message:
                     self.show_message("edition", st.session_state.edition_message, show_clear_button=True)
 
+            ### HASHTAG: STEP 1 - CREATE CALLBACK FUNCTIONS ###
+            # These are helper functions that contain the logic to clear the form fields.
+            # They are defined within the class so they can be easily referenced.
+    def _clear_course_form_callback(self):
+        st.session_state.course_title = ""
+        st.session_state.course_programme = ""
+        st.session_state.course_short_desc = ""
+        st.session_state.course_date_str = "01/01/2023"
+
+    def _clear_edition_form_callback(self):
+        st.session_state.edition_course_name = ""
+        st.session_state.edition_title = ""
+        st.session_state.edition_start_date_str = ""
+        st.session_state.edition_end_date_str = ""
+        st.session_state.edition_description = ""
+        st.session_state.edition_location = ""
+        st.session_state.edition_supplier = ""
+        st.session_state.edition_price = ""
+
     def _render_course_form(self, is_disabled):
         with st.form(key='course_form'):
             course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati")
             programme = st.text_area("Dettagli del Programma", placeholder="Campo opzionale...")
             short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati Informatica")
             date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", "01/01/2023")
+            #submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled)
 
-            submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled)
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled,
+                                                  use_container_width=True)
+            with col2:
+                ### HASHTAG: STEP 2 - USE THE `on_click` PARAMETER ###
+                # Instead of checking `if clear_clicked`, we now pass our callback function
+                # directly to the button's `on_click` parameter.
+                st.form_submit_button("Pulisci 🧹", use_container_width=True, on_click=self._clear_course_form_callback())
 
-            ### HASHTAG: CORRECTED INDENTATION AND LOGIC
-            # This entire 'if submitted' block has been moved inside the `_render_course_form`
-            # method and the `with st.form(...)` block, where it belongs.
-            # It now uses the correct `app_state` logic.
+            # The `if clear_clicked:` block is no longer needed here.
+
             if submitted:
+                # Your existing validation and submission logic remains unchanged and works perfectly.
+                course_title = st.session_state.course_title
                 # to show a red warning directly under the field that is missing.
                 missing = False
 
@@ -109,8 +137,6 @@ class CourseView:
     def _render_edition_form(self, is_disabled):
         with st.form(key='edition_form'):
             course_name = st.text_input("Nome del Corso Esistente", placeholder="Nome corso esistente")
-            ### HASHTAG: ADDED OPTIONAL EDITION TITLE INPUT
-            # This new field allows the user to specify a custom title.
             # The placeholder explains the default behavior if left empty.
             edition_title = st.text_input(
                 "Titolo Edizione (opzionale)",
@@ -127,8 +153,14 @@ class CourseView:
             location = st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA DE CARLI.\nAttenzione: È possibile inserire solo Aule Principali già esistenti nel database Oracle. Per inserire una nuova aula, è necessario prima crearla nel sistema Oracle.")
             supplier = st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: ACCADEMIA EUROPEA. \nAttenzione: È possibile inserire solo Fornitori di Formazione già esistenti nel database Oracle. Per inserire un nuovo fornitore, è necessario prima crearlo nel sistema Oracle ")
             price = st.text_input("Prezzo (€) (opzionale)", placeholder="Esempio: 1000")
-            submitted = st.form_submit_button("Crea Edizione", type="primary", disabled=is_disabled)
-
+            #submitted = st.form_submit_button("Crea Edizione", type="primary", disabled=is_disabled)
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                submitted = st.form_submit_button("Crea Edizione", type="primary", disabled=is_disabled,
+                                                  use_container_width=True)
+            with col2:
+                # Use the on_click parameter for the edition form's clear button
+                st.form_submit_button("Pulisci 🧹", use_container_width=True, on_click=self._clear_edition_form_callback)
             if submitted:
                 # to show a red warning directly under the field that is missing.
                 missing = False
@@ -177,23 +209,23 @@ class CourseView:
 
     def update_progress(self, form_type, message, percentage):
         placeholder = self.course_output_placeholder if form_type == "course" else self.edition_output_placeholder
-        with placeholder.container():
-            st.info(f"⏳ {message}")
-            st.progress(percentage)
+        if hasattr(self, 'course_output_placeholder') and placeholder:
+            with placeholder.container():
+                st.info(f"⏳ {message}")
+                st.progress(percentage)
 
     def show_message(self, form_type, message, show_clear_button=False):
         placeholder = self.course_output_placeholder if form_type == "course" else self.edition_output_placeholder
         message_key = "course_message" if form_type == "course" else "edition_message"
-
         st.session_state[message_key] = message
+        if hasattr(self, 'course_output_placeholder') and placeholder:
+            with placeholder.container():
+                if "✅" in message:
+                    st.success(message)
+                else:
+                    st.error(message)
 
-        with placeholder.container():
-            if "✅" in message:
-                st.success(message)
-            else:
-                st.error(message)
-
-            if show_clear_button:
-                if st.button(f"🧹 Cancella Messaggio", key=f"clear_{form_type}"):
-                    st.session_state[message_key] = ""
-                    st.rerun()
+                if show_clear_button:
+                    if st.button(f"🧹 Cancella Messaggio", key=f"clear_{form_type}"):
+                        st.session_state[message_key] = ""
+                        st.rerun()
