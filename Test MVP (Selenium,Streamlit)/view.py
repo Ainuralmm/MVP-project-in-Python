@@ -7,9 +7,21 @@ class CourseView:
     # ... ( __init__, get_user_options, and render_ui methods are perfect and do not need to be changed) ...
     def __init__(self):
         st.set_page_config(layout='centered')
-        if "app_state" not in st.session_state: st.session_state.app_state = "IDLE"
+        if "app_state" not in st.session_state: st.session_state.app_state = "IDLE" #It's the default, resting state. means:The app is not busy. It's just waiting for you to fill in a form and click a button.
         if "course_message" not in st.session_state: st.session_state.course_message = ""
         if "edition_message" not in st.session_state: st.session_state.edition_message = ""
+
+        ### THE FIX - INITIALIZE WIDGET STATE HERE ###
+        # If the key for a widget doesn't exist in memory, create it with its default value.
+        # This becomes the single source of truth.
+        if "course_date_str_key" not in st.session_state:
+            st.session_state.course_date_str_key = "01/01/2023"
+        # (You can do this for all your other inputs too)
+        if "edition_start_date_str_key" not in st.session_state:
+            st.session_state.edition_start_date_str_key = ""
+        if "edition_end_date_str_key" not in st.session_state:
+            st.session_state.edition_end_date_str_key = ""
+
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
 
@@ -72,7 +84,10 @@ class CourseView:
                                      key="course_programme_key")
             short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati Informatica",
                                        key="course_short_desc_key")
-            date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", "01/01/2023", key="course_date_str_key")
+            ### HASHTAG: THE FIX - REMOVE THE CONFLICTING DEFAULT ###
+            # The `value` parameter is no longer needed because the widget will
+            # automatically use the value from st.session_state.course_date_str_key.
+            date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", key="course_date_str_key")
 
             col1, col2 = st.columns([3, 1])
             with col1:
