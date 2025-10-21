@@ -38,6 +38,7 @@ class CourseView:
 
     def render_ui(self):
         is_running = st.session_state.app_state != "IDLE"
+        # --- Course Form Container ---
         with st.container(border=True):
             st.header("1. Creazione Nuovo Corso")
             if st.session_state.app_state == "RUNNING_COURSE":
@@ -45,8 +46,9 @@ class CourseView:
             else:
                 self._render_course_form(is_disabled=is_running)
                 self.course_output_placeholder = st.empty()
-                if st.session_state.course_message: self.show_message("course", st.session_state.course_message,
-                                                                      show_clear_button=True)
+                if st.session_state.course_message: self.show_message("course", st.session_state.course_message,show_clear_button = True)
+
+        # --- Edition Form Container ---
         with st.container(border=True):
             st.header("2. Creazione Nuova Edizione")
             if st.session_state.app_state == "RUNNING_EDITION":
@@ -54,8 +56,19 @@ class CourseView:
             else:
                 self._render_edition_form(is_disabled=is_running)
                 self.edition_output_placeholder = st.empty()
-                if st.session_state.edition_message: self.show_message("edition", st.session_state.edition_message,
-                                                                       show_clear_button=True)
+                if st.session_state.edition_message: self.show_message("edition", st.session_state.edition_message,show_clear_button = True)
+
+        ### HASHTAG: ADD NEW CONTAINER FOR ACTIVITY FORM
+        with st.container(border=True):
+            st.header("3. Creazione Attività (per Edizione Esistente)")
+            if st.session_state.app_state == "RUNNING_ACTIVITY":
+                self.activity_output_placeholder = st.empty()
+            else:
+                self._render_activity_form(is_disabled=is_running)
+                self.activity_output_placeholder = st.empty()
+                if st.session_state.activity_message:
+                    self.show_message("activity", st.session_state.activity_message, show_clear_button=True)
+
 
     def _clear_course_form_callback(self):
         st.session_state.course_title_key = ""
@@ -72,6 +85,18 @@ class CourseView:
         st.session_state.edition_location_key = ""
         st.session_state.edition_supplier_key = ""
         st.session_state.edition_price_key = ""
+
+    def _clear_activity_form_callback(self):
+        st.session_state.activity_course_name_key = ""
+        st.session_state.activity_edition_name_key = ""
+        st.session_state.activity_start_date_key = "20/10/2025"
+        st.session_state.num_activities = 1
+        # Clear any dynamically generated keys
+        for i in range(30):  # Clear up to 30 keys just in case
+            if f"activity_title_{i}" in st.session_state:
+                st.session_state[f"activity_title_{i}"] = ""
+            if f"activity_desc_{i}" in st.session_state:
+                st.session_state[f"activity_desc_{i}"] = ""
 
     def _render_course_form(self, is_disabled):
         with st.form(key='course_form'):
@@ -183,18 +208,113 @@ class CourseView:
             except ValueError:
                 st.error("Formato data non valido. Usa GG/MM/AAAA.")
 
+        ### HASHTAG: ADD NEW RENDER METHOD FOR ACTIVITY FORM
+    def _render_activity_form(self, is_disabled):
+        # This number input controls how many forms are drawn
+        # It's outside the form so it can trigger a rerun when changed
+        num_activities = st.number_input(
+            "Quanti giorni di attività?",
+            min_value=1,
+            max_value=30,  # Set a reasonable limit
+            key="num_activities"
+        )
+
+        with st.form(key='activity_form'):
+            st.text_input("Nome del Corso Esistente", placeholder="Corso per cui creare attività",
+                            key="activity_course_name_key")
+            st.text_input("Nome Esatto Edizione", placeholder="Edizione esatta a cui aggiungere attività",
+                            key="activity_edition_name_key")
+            st.text_input("Data Inizio Attività (Giorno 1) (GG/MM/AAAA)", "20/10/2025",
+                            key="activity_start_date_key")
+
+            st.divider()
+
+            # Dynamically create input fields for each activity day
+            for i in range(num_activities):
+                st.subheader(f"Giorno {i + 1}")
+                st.text_input(f"Titolo Attività Giorno {i + 1}", key=f"activity_title_{i}")
+                st.text_area(f"Descrizione Attività Giorno {i + 1}", key=f"activity_desc_{i}")
+
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                submitted = st.form_submit_button("Crea Attività", type="primary", disabled=is_disabled,
+                                                      use_container_width=True)
+            with col2:
+                st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                                          on_click=self._clear_activity_form_callback)
+
+            if submitted:
+                # Collect all data
+                course_name = st.session_state.activity_course_name_key
+                edition_name = st.session_state.activity_edition_name_key
+                start_date_str = st.session_state.activity_start_date_key
+
+                if not all([course_name.strip(), edition_name.strip(), start_date_str.strip()]):
+                    st.error("I campi 'Nome Corso', 'Nome Edizione' e 'Data Inizio' sono obbligatori.")
+                    st.stop()
+
+                try:
+                    start_date = datetime.strptime(start_date_str, "%d/%m/%Y").date()
+
+                    activities_list = []
+                    for i in range(num_activities):
+                        title = st.session_state[f"activity_title_{i}"]
+                        desc = st.session_state[f"activity_desc_{i}"]
+                        if not title.strip() or not desc.strip():
+                            st.error(f"Titolo e Descrizione sono obbligatori per il Giorno {i + 1}.")
+                            st.stop()
+
+                        activities_list.append({
+                            "title": title,
+                            "description": desc,
+                            "date": start_date + timedelta(days=i)  # Auto-calculate date
+                        })
+
+                    st.session_state.activity_details = {
+                        "course_name": course_name,
+                        "edition_name": edition_name,
+                        "activities": activities_list
+                    }
+                    st.session_state.app_state = "RUNNING_ACTIVITY"
+                    st.session_state.activity_message = ""
+                    st.rerun()
+                except ValueError:
+                    st.error("Formato data non valido. Usa GG/MM/AAAA.")
+                except Exception as e:
+                    st.error(f"Errore nella raccolta dati: {e}")
+
     def update_progress(self, form_type, message, percentage):
-        placeholder = self.course_output_placeholder if form_type == "course" else self.edition_output_placeholder
-        if hasattr(self, 'course_output_placeholder') and placeholder:
+        placeholder = None
+        if form_type == "course":
+            placeholder = self.course_output_placeholder
+        elif form_type == "edition":
+            placeholder = self.edition_output_placeholder
+        elif form_type == "activity":
+            placeholder = self.activity_output_placeholder
+
+        if hasattr(self, 'course_output_placeholder') and placeholder:  # Use a base attribute check
             with placeholder.container():
                 st.info(f"⏳ {message}")
                 st.progress(percentage)
 
     def show_message(self, form_type, message, show_clear_button=False):
-        placeholder = self.course_output_placeholder if form_type == "course" else self.edition_output_placeholder
-        message_key = "course_message" if form_type == "course" else "edition_message"
+        placeholder = None
+        message_key = ""
+        if form_type == "course":
+            placeholder = self.course_output_placeholder
+            message_key = "course_message"
+        elif form_type == "edition":
+            placeholder = self.edition_output_placeholder
+            message_key = "edition_message"
+        elif form_type == "activity":
+            placeholder = self.activity_output_placeholder
+            message_key = "activity_message"
+
+        if not placeholder or not message_key:
+            return  # Safety check
+
         st.session_state[message_key] = message
-        if hasattr(self, 'course_output_placeholder') and placeholder:
+        if hasattr(self, 'course_output_placeholder') and placeholder:  # Use a base attribute check
             with placeholder.container():
                 if "✅" in message:
                     st.success(message)
