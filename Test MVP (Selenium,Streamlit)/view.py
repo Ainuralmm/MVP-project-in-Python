@@ -10,6 +10,10 @@ class CourseView:
         if "app_state" not in st.session_state: st.session_state.app_state = "IDLE" #It's the default, resting state. means:The app is not busy. It's just waiting for you to fill in a form and click a button.
         if "course_message" not in st.session_state: st.session_state.course_message = ""
         if "edition_message" not in st.session_state: st.session_state.edition_message = ""
+        if "activity_message" not in st.session_state:
+            st.session_state.activity_message = ""
+        if "num_activities" not in st.session_state:
+            st.session_state.num_activities = 1
 
         ### THE FIX - INITIALIZE WIDGET STATE HERE ###
         # If the key for a widget doesn't exist in memory, create it with its default value.
