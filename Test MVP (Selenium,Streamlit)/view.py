@@ -93,7 +93,8 @@ class CourseView:
     def _clear_activity_form_callback(self):
         st.session_state.activity_course_name_key = ""
         st.session_state.activity_edition_name_key = ""
-        st.session_state.activity_start_date_key = "20/10/2025"
+        st.session_state.activity_edition_publish_date_key = ""  # <-- ADDED THIS
+        st.session_state.activity_start_date_key = ""
         st.session_state.num_activities = 1
         # Clear any dynamically generated keys
         for i in range(30):  # Clear up to 30 keys just in case
@@ -219,46 +220,55 @@ class CourseView:
         num_activities = st.number_input(
             "Quanti giorni di attività?",
             min_value=1,
-            max_value=30,  # Set a reasonable limit
+            max_value=35,  # Set a reasonable limit
             key="num_activities"
         )
 
         with st.form(key='activity_form'):
+            st.subheader("1. Trova Edizione")
             st.text_input("Nome del Corso Esistente", placeholder="Corso per cui creare attività",
-                            key="activity_course_name_key")
+                          key="activity_course_name_key")
             st.text_input("Nome Esatto Edizione", placeholder="Edizione esatta a cui aggiungere attività",
-                            key="activity_edition_name_key")
-            st.text_input("Data Inizio Attività (Giorno 1) (GG/MM/AAAA)", "20/10/2025",
-                            key="activity_start_date_key")
+                          key="activity_edition_name_key")
+
+            ### HASHTAG: ADDED NEW PUBLISH DATE FIELD
+            # This is the new field to find the unique edition, as you requested.
+            st.text_input("Data Pubblicazione Edizione (GG/MM/AAAA)",
+                          placeholder="La 'Publish Start Date' dell'edizione", key="activity_edition_publish_date_key")
 
             st.divider()
 
-            # Dynamically create input fields for each activity day
+            st.subheader("2. Dettagli Attività")
+            st.text_input("Data Inizio Attività (Giorno 1) (GG/MM/AAAA)", "20/10/2025", key="activity_start_date_key")
+
             for i in range(num_activities):
-                st.subheader(f"Giorno {i + 1}")
+                st.markdown(f"**Giorno {i + 1}**")
                 st.text_input(f"Titolo Attività Giorno {i + 1}", key=f"activity_title_{i}")
                 st.text_area(f"Descrizione Attività Giorno {i + 1}", key=f"activity_desc_{i}")
 
             col1, col2 = st.columns([3, 1])
             with col1:
                 submitted = st.form_submit_button("Crea Attività", type="primary", disabled=is_disabled,
-                                                      use_container_width=True)
+                                                  use_container_width=True)
             with col2:
                 st.form_submit_button("Pulisci 🧹", use_container_width=True,
-                                          on_click=self._clear_activity_form_callback)
-
+                                      on_click=self._clear_activity_form_callback)
             if submitted:
                 # Collect all data
                 course_name = st.session_state.activity_course_name_key
                 edition_name = st.session_state.activity_edition_name_key
+                edition_publish_date_str = st.session_state.activity_edition_publish_date_key  # <-- Get new data
                 start_date_str = st.session_state.activity_start_date_key
 
-                if not all([course_name.strip(), edition_name.strip(), start_date_str.strip()]):
-                    st.error("I campi 'Nome Corso', 'Nome Edizione' e 'Data Inizio' sono obbligatori.")
+                if not all([course_name.strip(), edition_name.strip(), start_date_str.strip(),
+                            edition_publish_date_str.strip()]):
+                    st.error("Tutti i campi in 'Trova Edizione' e 'Data Inizio Attività' sono obbligatori.")
                     st.stop()
 
                 try:
                     start_date = datetime.strptime(start_date_str, "%d/%m/%Y").date()
+                    edition_publish_date = datetime.strptime(edition_publish_date_str,
+                                                             "%d/%m/%Y").date()  # <-- Convert new data
 
                     activities_list = []
                     for i in range(num_activities):
@@ -271,12 +281,13 @@ class CourseView:
                         activities_list.append({
                             "title": title,
                             "description": desc,
-                            "date": start_date + timedelta(days=i)  # Auto-calculate date
+                            "date": start_date + timedelta(days=i)
                         })
 
                     st.session_state.activity_details = {
                         "course_name": course_name,
                         "edition_name": edition_name,
+                        "edition_publish_date": edition_publish_date,  # <-- Pass new data to model
                         "activities": activities_list
                     }
                     st.session_state.app_state = "RUNNING_ACTIVITY"

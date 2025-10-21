@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Deleted director &quot;Draft..&quot;">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="ADDED NEW STATE FOR ACTIVITY FORM">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,7 +37,7 @@
     <option name="PREVIEW_PUSH_PROTECTED_ONLY" value="true" />
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="main" />
+        <entry key="$PROJECT_DIR$" value="edition-creation" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -72,7 +72,7 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;edition-creation&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;creazione-attività&quot;,
     &quot;last_opened_file_path&quot;: &quot;/Users/ainuralmukambetova/PycharmProjects/DesignPattern/Test MVP (Selenium,Streamlit)&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.tabs&quot;
   }
@@ -99,70 +99,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00039" summary="Disable the &quot;Crea Corso in Oracle&quot; button once the automation starts">
-      <option name="closed" value="true" />
-      <created>1758885283275</created>
-      <option name="number" value="00039" />
-      <option name="presentableId" value="LOCAL-00039" />
-      <option name="project" value="LOCAL" />
-      <updated>1758885283275</updated>
-    </task>
-    <task id="LOCAL-00040" summary="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is not working well.The button is still active during automation process.">
-      <option name="closed" value="true" />
-      <created>1758886641829</created>
-      <option name="number" value="00040" />
-      <option name="presentableId" value="LOCAL-00040" />
-      <option name="project" value="LOCAL" />
-      <updated>1758886641829</updated>
-    </task>
-    <task id="LOCAL-00041" summary="The script disable the &quot;Crea Corso in Oracle&quot; button once the automation starts - is working. The flow was updated. And now everything is working perfectly.">
-      <option name="closed" value="true" />
-      <created>1759137323566</created>
-      <option name="number" value="00041" />
-      <option name="presentableId" value="LOCAL-00041" />
-      <option name="project" value="LOCAL" />
-      <updated>1759137323570</updated>
-    </task>
-    <task id="LOCAL-00042" summary="Fixed qlatm of Pycharm that code inreachable, and To leave the display messages after finishing the running automation--&gt;the script was changed.">
-      <option name="closed" value="true" />
-      <created>1759139166576</created>
-      <option name="number" value="00042" />
-      <option name="presentableId" value="LOCAL-00042" />
-      <option name="project" value="LOCAL" />
-      <updated>1759139166576</updated>
-    </task>
-    <task id="LOCAL-00043" summary="Added  script to make active button after finishing course creation">
-      <option name="closed" value="true" />
-      <created>1759141479830</created>
-      <option name="number" value="00043" />
-      <option name="presentableId" value="LOCAL-00043" />
-      <option name="project" value="LOCAL" />
-      <updated>1759141479830</updated>
-    </task>
-    <task id="LOCAL-00044" summary="The issue with the submit button remaining disabled after the course creation is complete:&#10;1)Removed the Rerun Trigger from &#10;2) Implement the Final Rerun in main.py">
-      <option name="closed" value="true" />
-      <created>1759315009753</created>
-      <option name="number" value="00044" />
-      <option name="presentableId" value="LOCAL-00044" />
-      <option name="project" value="LOCAL" />
-      <updated>1759315009753</updated>
-    </task>
-    <task id="LOCAL-00045" summary="Trying to solve issue with disabled button and progress status message of process">
-      <option name="closed" value="true" />
-      <created>1759335529257</created>
-      <option name="number" value="00045" />
-      <option name="presentableId" value="LOCAL-00045" />
-      <option name="project" value="LOCAL" />
-      <updated>1759335529257</updated>
-    </task>
-    <task id="LOCAL-00046" summary="Removed all unnecessary hashtags">
-      <option name="closed" value="true" />
-      <created>1759336050974</created>
-      <option name="number" value="00046" />
-      <option name="presentableId" value="LOCAL-00046" />
-      <option name="project" value="LOCAL" />
-      <updated>1759336050974</updated>
     </task>
     <task id="LOCAL-00047" summary="Removed all unnecessary hashtags">
       <option name="closed" value="true" />
@@ -492,7 +428,71 @@
       <option name="project" value="LOCAL" />
       <updated>1760606097898</updated>
     </task>
-    <option name="localTasksCounter" value="88" />
+    <task id="LOCAL-00088" summary="Adding 'pulisci'button">
+      <option name="closed" value="true" />
+      <created>1760950518466</created>
+      <option name="number" value="00088" />
+      <option name="presentableId" value="LOCAL-00088" />
+      <option name="project" value="LOCAL" />
+      <updated>1760950518466</updated>
+    </task>
+    <task id="LOCAL-00089" summary="Updated script 'pulisci'button. Now is everything working. But streamlit shows warning aboout 2 conflicting sources of truth for a widget's value">
+      <option name="closed" value="true" />
+      <created>1761038615732</created>
+      <option name="number" value="00089" />
+      <option name="presentableId" value="LOCAL-00089" />
+      <option name="project" value="LOCAL" />
+      <updated>1761038615732</updated>
+    </task>
+    <task id="LOCAL-00090" summary="Fixed streamlit  warning aboout 2 conflicting sources of truth for a widget's value">
+      <option name="closed" value="true" />
+      <created>1761039909543</created>
+      <option name="number" value="00090" />
+      <option name="presentableId" value="LOCAL-00090" />
+      <option name="project" value="LOCAL" />
+      <updated>1761039909543</updated>
+    </task>
+    <task id="LOCAL-00091" summary="Added new automatation logic for creating activity:&#10;1. A new public method create_activities that the presenter will call. This method handles the full flow (login, find course, find edition, loop and create activities).&#10;2.A new private helper method _open_edition_from_list to find the specific edition you want.&#10;3.create_single_activity function, converted into a private class method _create_single_activity.">
+      <option name="closed" value="true" />
+      <created>1761057219250</created>
+      <option name="number" value="00091" />
+      <option name="presentableId" value="LOCAL-00091" />
+      <option name="project" value="LOCAL" />
+      <updated>1761057219250</updated>
+    </task>
+    <task id="LOCAL-00092" summary="Added the new form and its logic. This includes:&#10;1. Initializing new state variables in `__init__`.&#10;2. Adding a new container to `render_ui`.&#10;3. Creating the new `_render_activity_form` method, which will dynamically generate inputs based on a number input.&#10;4. Creating the `_clear_activity_form_callback`.&#10;5. Updating `update_progress` and `show_message` to handle the new `&quot;activity&quot;` form type.">
+      <option name="closed" value="true" />
+      <created>1761058071606</created>
+      <option name="number" value="00092" />
+      <option name="presentableId" value="LOCAL-00092" />
+      <option name="project" value="LOCAL" />
+      <updated>1761058071606</updated>
+    </task>
+    <task id="LOCAL-00093" summary="Added the new run_create_activities method to handle the logic for the third flow.">
+      <option name="closed" value="true" />
+      <created>1761058105591</created>
+      <option name="number" value="00093" />
+      <option name="presentableId" value="LOCAL-00093" />
+      <option name="project" value="LOCAL" />
+      <updated>1761058105591</updated>
+    </task>
+    <task id="LOCAL-00094" summary="Updated the main controller logic to recognize and dispatch the new RUNNING_ACTIVITY state.">
+      <option name="closed" value="true" />
+      <created>1761058207641</created>
+      <option name="number" value="00094" />
+      <option name="presentableId" value="LOCAL-00094" />
+      <option name="project" value="LOCAL" />
+      <updated>1761058207642</updated>
+    </task>
+    <task id="LOCAL-00095" summary="ADDED NEW STATE FOR ACTIVITY FORM">
+      <option name="closed" value="true" />
+      <created>1761058519865</created>
+      <option name="number" value="00095" />
+      <option name="presentableId" value="LOCAL-00095" />
+      <option name="project" value="LOCAL" />
+      <updated>1761058519866</updated>
+    </task>
+    <option name="localTasksCounter" value="96" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -507,14 +507,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added color of the text  in button" />
-    <MESSAGE value="Adding script of navigation to create edition of existed course" />
-    <MESSAGE value="Added function for creation edition" />
-    <MESSAGE value="Removed edition creation script" />
-    <MESSAGE value="Reorganised total logic due to the  addition of the edition creation part." />
-    <MESSAGE value="Addition of the edition duration days" />
-    <MESSAGE value="Updated logic according to addition of creation edition and Added of the edition duration days" />
-    <MESSAGE value="Updated logic according to addition of creation edition --&gt;another try" />
     <MESSAGE value="Another try --&gt; Updated logic according to addition of creation edition" />
     <MESSAGE value="Last Another try --&gt; updated logic according to addition of creation edition" />
     <MESSAGE value="Changing the text function in course creation which will disappear as soon as User type" />
@@ -532,6 +524,14 @@
     <MESSAGE value="Aggiornato il messaggio in fine. è leggermente diverso e più specifico in ogni caso, migliorando la chiarezza per l'utente.&#10;&#10;- L'edizione 'Edizione titolo'... (L'utente vede confermato il nome che ha scelto).&#10;&#10;- Una nuova edizione... (L'utente capisce che è stata creata un'edizione generica)." />
     <MESSAGE value="During the search to not have trouble with lowercase or capitalised letters --&gt; added .lower () method" />
     <MESSAGE value="Deleted director &quot;Draft..&quot;" />
-    <option name="LAST_COMMIT_MESSAGE" value="Deleted director &quot;Draft..&quot;" />
+    <MESSAGE value="Adding 'pulisci'button" />
+    <MESSAGE value="Updated script 'pulisci'button. Now is everything working. But streamlit shows warning aboout 2 conflicting sources of truth for a widget's value" />
+    <MESSAGE value="Fixed streamlit  warning aboout 2 conflicting sources of truth for a widget's value" />
+    <MESSAGE value="Added new automatation logic for creating activity:&#10;1. A new public method create_activities that the presenter will call. This method handles the full flow (login, find course, find edition, loop and create activities).&#10;2.A new private helper method _open_edition_from_list to find the specific edition you want.&#10;3.create_single_activity function, converted into a private class method _create_single_activity." />
+    <MESSAGE value="Added the new form and its logic. This includes:&#10;1. Initializing new state variables in `__init__`.&#10;2. Adding a new container to `render_ui`.&#10;3. Creating the new `_render_activity_form` method, which will dynamically generate inputs based on a number input.&#10;4. Creating the `_clear_activity_form_callback`.&#10;5. Updating `update_progress` and `show_message` to handle the new `&quot;activity&quot;` form type." />
+    <MESSAGE value="Added the new run_create_activities method to handle the logic for the third flow." />
+    <MESSAGE value="Updated the main controller logic to recognize and dispatch the new RUNNING_ACTIVITY state." />
+    <MESSAGE value="ADDED NEW STATE FOR ACTIVITY FORM" />
+    <option name="LAST_COMMIT_MESSAGE" value="ADDED NEW STATE FOR ACTIVITY FORM" />
   </component>
 </project>
