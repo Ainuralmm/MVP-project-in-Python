@@ -474,6 +474,123 @@ class OracleAutomator:
         except Exception as e:
             return f"‼️👩🏻‍✈️ Errore durante la creazione dell'edizione: {e}"
 
+    def _open_edition_from_list(self, edition_name):
+        try:
+            # We wait for the table of editions to be present first
+            self.wait.until(EC.presence_of_element_located((By.XPATH, '//table[contains(@summary, "Edizioni")]')))
+
+            # Now we find the exact link to click
+            link_xpath = f'//table[contains(@summary, "Edizioni")]//a[normalize-space(.)="{edition_name}"]'
+            link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
+            link.click()
+            self._pause_for_visual_check()
+            print(f"Model: Clicked on existing edition '{edition_name}'.")
+            return True
+        except Exception as e:
+            print(f"Model: Could not find or click edition '{edition_name}'. Error: {e}")
+            return False
+
+    def _create_single_activity(self, unique_title, full_description, activity_date_obj):
+        try:
+            activity_date_str = activity_date_obj.strftime('%d/%m/%Y')
+            button_aggiungi_attivita = self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']"))
+            )
+            button_aggiungi_attivita.click()
+            print(f"Clicked 'Aggiungi' button for a new activity on {activity_date_str}")
+            self._pause_for_visual_check()
+
+            box_attivita_titolo = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Titolo"]')))
+            box_attivita_titolo.send_keys(unique_title)
+            self._pause_for_visual_check()
+
+            desc_per_elenco_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Descrizione per elenco"]')))
+            desc_per_elenco_attivita.send_keys(f"{unique_title}-{activity_date_str}")
+            self._pause_for_visual_check()
+
+            desc_dettagliata_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//div[@aria-label="Editor editing area: main"]')))
+            desc_dettagliata_attivita.send_keys(full_description)
+            self._pause_for_visual_check()
+
+            data_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Data attività"]')))
+            self.driver.execute_script("arguments[0].value=arguments[1];", data_attivita, activity_date_str)
+            self._pause_for_visual_check()
+
+            time_ora_inizio_attivita = "09.00"
+            ora_inizio_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Ora inizio"]')))
+            ora_inizio_attivita.send_keys(time_ora_inizio_attivita)
+            self._pause_for_visual_check()
+
+            time_ora_fine_attivita = "11.00"
+            ora_fine_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Ora fine"]')))
+            ora_fine_attivita.send_keys(time_ora_fine_attivita)
+            self._pause_for_visual_check()
+
+            ok_button_attivita = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//a[./span[text()="OK"]]')))
+            ok_button_attivita.click()
+            print(f"Clicked on OK button for activity on {activity_date_str}")
+            self.wait.until(
+                EC.invisibility_of_element_located((By.XPATH, '//a[./span[text()="OK"]]')))  # Wait for popup to close
+            return True
+
+        except Exception as e:
+            print(f"Error creating activity '{unique_title}': {e}")
+            return False
+
+    ### HASHTAG: ADD THIS NEW PUBLIC METHOD FOR THE PRESENTER
+    # This method coordinates the entire "Create Activities" flow.
+    def create_activities(self, activity_details, url, user, pw):
+        try:
+            course_name = activity_details['course_name']
+            edition_name = activity_details['edition_name']
+
+            # 1. Login and navigate to the course list
+            if not self.login(url, user, pw):
+                return "‼️ Errore: Login fallito."
+            if not self.navigate_to_courses_page():
+                return "‼️ Errore: Navigazione alla pagina corsi fallita."
+
+            # 2. Find and open the exact course
+            if not self.search_course(course_name):
+                return f"‼️ Errore: Corso '{course_name}' non trovato."
+            if not self.open_course_from_list(course_name):
+                return f"‼️ Errore: Impossibile aprire il corso '{course_name}'."
+
+            # 3. Navigate to "Edizioni" tab and open the exact edition
+            edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath))).click()
+
+            if not self._open_edition_from_list(edition_name):
+                return f"‼️ Errore: Edizione esatta '{edition_name}' non trovata."
+
+            # 4. We are now on the correct page. Loop through and create activities.
+            total = len(activity_details['activities'])
+            for i, activity in enumerate(activity_details['activities']):
+                print(f"--- Creazione attività {i + 1} di {total} ---")
+                success = self._create_single_activity(
+                    unique_title=activity['title'],
+                    full_description=activity['description'],
+                    activity_date_obj=activity['date']
+                )
+                if not success:
+                    # Try to click "Annulla" to escape the popup if it's stuck
+                    try:
+                        self.driver.find_element(By.XPATH, '//a[./span[text()="Annulla"]]').click()
+                    except:
+                        pass
+                    return f"‼️ Errore durante la creazione dell'attività: {activity['title']}"
+
+            return f"✅🤩 Successo! {total} attività create per l'edizione '{edition_name}'."
+
+        except Exception as e:
+            return f"‼️ Errore generale nel processo di creazione attività: {e}"
+
     def close_driver(self):
         print("Model: Closing driver.")
         self.driver.quit()
