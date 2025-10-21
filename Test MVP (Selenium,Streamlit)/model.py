@@ -474,20 +474,52 @@ class OracleAutomator:
         except Exception as e:
             return f"‼️👩🏻‍✈️ Errore durante la creazione dell'edizione: {e}"
 
-    def _open_edition_from_list(self, edition_name):
+        # This function uses the search form on the Offerings page (from your screenshots)
+        # to find the exact edition based on its title and publish start date.
+    def _search_and_open_edition(self, edition_name, edition_publish_date_obj):
         try:
-            # We wait for the table of editions to be present first
-            self.wait.until(EC.presence_of_element_located((By.XPATH, '//table[contains(@summary, "Edizioni")]')))
+            print(
+                f"Searching for edition '{edition_name}' with publish date {edition_publish_date_obj.strftime('%d/%m/%Y')}")
 
-            # Now we find the exact link to click
+            # Find the "Offering Title" input field
+            # We use `aria-label` as it's often more stable than dynamic IDs
+            title_input = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, "//input[@aria-label='Offering Title']"))
+            )
+            title_input.clear()
+            title_input.send_keys(edition_name)
+            self._pause_for_visual_check()
+
+            # Find the "Publish Start Date" input field
+            date_input = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, "//input[@aria-label='Publish Start Date']"))
+            )
+            date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
+
+            # Use JavaScript to set the date, as it's more reliable
+            self.driver.execute_script("arguments[0].value=arguments[1];", date_input, date_str)
+            date_input.send_keys(Keys.TAB)  # Send Tab to trigger any on-screen validation
+            self._pause_for_visual_check()
+
+            # Click the "Search" button
+            search_button = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//button[text()='Search']"))
+            )
+            search_button.click()
+
+            # Wait for the search results to load and filter
+            self.wait.until(EC.staleness_of(search_button))  # Wait for the page to react
+
+            # Now, click the exact link in the filtered results
             link_xpath = f'//table[contains(@summary, "Edizioni")]//a[normalize-space(.)="{edition_name}"]'
             link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
             link.click()
             self._pause_for_visual_check()
-            print(f"Model: Clicked on existing edition '{edition_name}'.")
+            print(f"Model: Found and clicked on edition '{edition_name}'.")
             return True
+
         except Exception as e:
-            print(f"Model: Could not find or click edition '{edition_name}'. Error: {e}")
+            print(f"Model: Could not find or click edition '{edition_name}' with date {date_str}. Error: {e}")
             return False
 
     def _create_single_activity(self, unique_title, full_description, activity_date_obj):
@@ -566,8 +598,9 @@ class OracleAutomator:
             edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
             self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath))).click()
 
-            if not self._open_edition_from_list(edition_name):
-                return f"‼️ Errore: Edizione esatta '{edition_name}' non trovata."
+            # Call the new search function with the date
+            if not self._search_and_open_edition(edition_name, activity_details['edition_publish_date']):
+                return f"‼️ Errore: Edizione esatta '{edition_name}' con data pubblicazione {activity_details['edition_publish_date'].strftime('%d/%m/%Y')} non trovata."
 
             # 4. We are now on the correct page. Loop through and create activities.
             total = len(activity_details['activities'])

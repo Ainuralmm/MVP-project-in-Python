@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="ADDED NEW STATE FOR ACTIVITY FORM">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
-    </list>
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="1`_clear_activity_form_callback`: Added the new key to the clear logic.&#10;2.`_render_activity_form`: Added the new &quot;Edition Publish Start Date&quot; input field and validation logic." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -99,14 +96,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00047" summary="Removed all unnecessary hashtags">
-      <option name="closed" value="true" />
-      <created>1759336346466</created>
-      <option name="number" value="00047" />
-      <option name="presentableId" value="LOCAL-00047" />
-      <option name="project" value="LOCAL" />
-      <updated>1759336346469</updated>
     </task>
     <task id="LOCAL-00048" summary="Fortunately, the logic what I wanted is working: button disabled during the aut.process, and active after the process completed also show last message.">
       <option name="closed" value="true" />
@@ -492,7 +481,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761058519866</updated>
     </task>
-    <option name="localTasksCounter" value="96" />
+    <task id="LOCAL-00096" summary="1`_clear_activity_form_callback`: Added the new key to the clear logic.&#10;2.`_render_activity_form`: Added the new &quot;Edition Publish Start Date&quot; input field and validation logic.">
+      <option name="closed" value="true" />
+      <created>1761059040885</created>
+      <option name="number" value="00096" />
+      <option name="presentableId" value="LOCAL-00096" />
+      <option name="project" value="LOCAL" />
+      <updated>1761059040885</updated>
+    </task>
+    <option name="localTasksCounter" value="97" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -507,7 +504,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Another try --&gt; Updated logic according to addition of creation edition" />
     <MESSAGE value="Last Another try --&gt; updated logic according to addition of creation edition" />
     <MESSAGE value="Changing the text function in course creation which will disappear as soon as User type" />
     <MESSAGE value="Updated script choosing language, supplier, and price" />
@@ -532,6 +528,7 @@
     <MESSAGE value="Added the new run_create_activities method to handle the logic for the third flow." />
     <MESSAGE value="Updated the main controller logic to recognize and dispatch the new RUNNING_ACTIVITY state." />
     <MESSAGE value="ADDED NEW STATE FOR ACTIVITY FORM" />
-    <option name="LAST_COMMIT_MESSAGE" value="ADDED NEW STATE FOR ACTIVITY FORM" />
+    <MESSAGE value="1`_clear_activity_form_callback`: Added the new key to the clear logic.&#10;2.`_render_activity_form`: Added the new &quot;Edition Publish Start Date&quot; input field and validation logic." />
+    <option name="LAST_COMMIT_MESSAGE" value="1`_clear_activity_form_callback`: Added the new key to the clear logic.&#10;2.`_render_activity_form`: Added the new &quot;Edition Publish Start Date&quot; input field and validation logic." />
   </component>
 </project>
