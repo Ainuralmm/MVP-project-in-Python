@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Replacing the simple _open_edition_from_list with a new, robust _search_and_open_edition function that performs the search">
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="1. Updated the `__init__` Method&#10;Added the default value for the activity date to your `__init__` function. This will set the initial value for the widget in session state, creating a single source of truth.&#10;2. Updated the `_render_activity_form` Method:&#10;Removed the hardcoded default `value` from the `st.text_input` call. The widget will automatically read its value from `st.session_state` using its `key`.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,7 +37,7 @@
     <option name="PREVIEW_PUSH_PROTECTED_ONLY" value="true" />
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="edition-creation" />
+        <entry key="$PROJECT_DIR$" value="creazione-attività" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -62,21 +62,21 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.model.executor&quot;: &quot;Run&quot;,
-    &quot;Python.simple.executor&quot;: &quot;Run&quot;,
-    &quot;Python.view.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;creazione-attività&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/ainuralmukambetova/PycharmProjects/DesignPattern/Test MVP (Selenium,Streamlit)&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.tabs&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.main.executor": "Run",
+    "Python.model.executor": "Run",
+    "Python.simple.executor": "Run",
+    "Python.view.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "activity-creation-inside-of-edition-creation-oneflow",
+    "last_opened_file_path": "/Users/ainuralmukambetova/PycharmProjects/DesignPattern/Test MVP (Selenium,Streamlit)",
+    "settings.editor.selected.configurable": "editor.preferences.tabs"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)" />
@@ -99,14 +99,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00049" summary="Added script of function to clean previous screen messages">
-      <option name="closed" value="true" />
-      <created>1759406447481</created>
-      <option name="number" value="00049" />
-      <option name="presentableId" value="LOCAL-00049" />
-      <option name="project" value="LOCAL" />
-      <updated>1759406447482</updated>
     </task>
     <task id="LOCAL-00050" summary="Added script to make the example text in the input box to disappear only when the user clicks inside to type">
       <option name="closed" value="true" />
@@ -492,7 +484,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761059360723</updated>
     </task>
-    <option name="localTasksCounter" value="98" />
+    <task id="LOCAL-00098" summary="1. Updated the `__init__` Method&#10;Added the default value for the activity date to your `__init__` function. This will set the initial value for the widget in session state, creating a single source of truth.&#10;2. Updated the `_render_activity_form` Method:&#10;Removed the hardcoded default `value` from the `st.text_input` call. The widget will automatically read its value from `st.session_state` using its `key`.">
+      <option name="closed" value="true" />
+      <created>1761215324338</created>
+      <option name="number" value="00098" />
+      <option name="presentableId" value="LOCAL-00098" />
+      <option name="project" value="LOCAL" />
+      <updated>1761215324338</updated>
+    </task>
+    <option name="localTasksCounter" value="99" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -507,7 +507,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Changing the text function in course creation which will disappear as soon as User type" />
     <MESSAGE value="Updated script choosing language, supplier, and price" />
     <MESSAGE value="1. Added mandatory input boxes during the filling the forms for edition and course.&#10;2. Added description box for edition" />
     <MESSAGE value="Moved moderator type script inside of supplier condition" />
@@ -532,6 +531,7 @@
     <MESSAGE value="ADDED NEW STATE FOR ACTIVITY FORM" />
     <MESSAGE value="1`_clear_activity_form_callback`: Added the new key to the clear logic.&#10;2.`_render_activity_form`: Added the new &quot;Edition Publish Start Date&quot; input field and validation logic." />
     <MESSAGE value="Replacing the simple _open_edition_from_list with a new, robust _search_and_open_edition function that performs the search" />
-    <option name="LAST_COMMIT_MESSAGE" value="Replacing the simple _open_edition_from_list with a new, robust _search_and_open_edition function that performs the search" />
+    <MESSAGE value="1. Updated the `__init__` Method&#10;Added the default value for the activity date to your `__init__` function. This will set the initial value for the widget in session state, creating a single source of truth.&#10;2. Updated the `_render_activity_form` Method:&#10;Removed the hardcoded default `value` from the `st.text_input` call. The widget will automatically read its value from `st.session_state` using its `key`." />
+    <option name="LAST_COMMIT_MESSAGE" value="1. Updated the `__init__` Method&#10;Added the default value for the activity date to your `__init__` function. This will set the initial value for the widget in session state, creating a single source of truth.&#10;2. Updated the `_render_activity_form` Method:&#10;Removed the hardcoded default `value` from the `st.text_input` call. The widget will automatically read its value from `st.session_state` using its `key`." />
   </component>
 </project>
