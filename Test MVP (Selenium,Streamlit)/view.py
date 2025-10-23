@@ -16,7 +16,6 @@ class CourseView:
         if "num_activities" not in st.session_state:
             st.session_state.num_activities = 1
 
-        ### THE FIX - INITIALIZE WIDGET STATE HERE ###
         # If the key for a widget doesn't exist in memory, create it with its default value.
         # This becomes the single source of truth.
         if "course_date_str_key" not in st.session_state:
@@ -26,6 +25,8 @@ class CourseView:
             st.session_state.edition_start_date_str_key = ""
         if "edition_end_date_str_key" not in st.session_state:
             st.session_state.edition_end_date_str_key = ""
+        if "activity_start_date_key" not in st.session_state:
+            st.session_state.activity_start_date_key = ""
 
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
@@ -235,7 +236,7 @@ class CourseView:
             ### HASHTAG: ADDED NEW PUBLISH DATE FIELD
             # This is the new field to find the unique edition, as you requested.
             st.text_input("Data Pubblicazione Edizione (GG/MM/AAAA)",
-                          placeholder="La 'Publish Start Date' dell'edizione", key="activity_edition_publish_date_key")
+                          placeholder="La 'Publish Start Date' dell'edizione", key="activity_start_date_key")
 
             st.divider()
 

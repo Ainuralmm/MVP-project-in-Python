@@ -48,12 +48,12 @@
     &quot;assignee&quot;: &quot;Ainuralmm&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/Ainuralmm/simple-MVP-project-in-Python.git&quot;,
-    &quot;accountId&quot;: &quot;ea734be7-7a0d-4368-b975-df89f13704a0&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Ainuralmm/MVP-project-in-Python.git",
+    "accountId": "ea734be7-7a0d-4368-b975-df89f13704a0"
   }
-}</component>
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 7
 }</component>
