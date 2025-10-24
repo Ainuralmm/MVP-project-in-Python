@@ -39,13 +39,15 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
-    def run_create_edition(self, edition_details):
+    def run_create_edition_and_activities(self, edition_details):
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.secrets['ORACLE_USER']
             oracle_pass = st.secrets['ORACLE_PASS']
             course_name = edition_details['course_name']
 
+            num_activities = len(edition_details.get('activities', []))
+            # Use "edition" for UI updates, as it's one combined form
             self.view.update_progress("edition", "Accesso a Oracle...", 10)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
@@ -78,40 +80,7 @@ class CoursePresenter:
             self.view.show_message("edition", error_message)
 
         finally:
-            print("Presenter: Automation finished. Cleaning up.")
-            self.model.close_driver()
-            st.session_state.app_state = "IDLE"
-            st.rerun()
-
-    def run_create_activities(self, activity_details):
-        try:
-            oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
-
-            num_activities = len(activity_details.get('activities', []))
-            self.view.update_progress("activity", "Accesso a Oracle in corso...", 10)
-
-            # The model's create_activities method handles the full flow
-            # We pass credentials to it since it's a new, separate login session
-            result_message = self.model.create_activities(
-                activity_details,
-                oracle_url,
-                oracle_user,
-                oracle_pass
-            )
-            time.sleep(1)
-
-            self.view.update_progress("activity", "Processo completato!", 100)
-            self.view.show_message("activity", result_message)
-
-        except Exception as e:
-            error_message = f"‼️ Si è verificato un errore: {str(e)}"
-            print(f"Presenter Error: {error_message}")
-            self.view.show_message("activity", error_message)
-
-        finally:
-            print("Presenter (Activity): Automation finished. Cleaning up.")
+            print("Presenter (Edition+Activity): Automation finished. Cleaning up.")
             self.model.close_driver()
             st.session_state.app_state = "IDLE"
             st.rerun()

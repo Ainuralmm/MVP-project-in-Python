@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated `model.py`:&#10;- The `create_edition` method now accepts the list of activities and loops through them *after* saving the edition details.&#10;- The `_create_single_activity` helper is updated to accept times and includes a placeholder for your future input.&#10;- Removed unused methods (`create_activities`, `_search_and_open_edition`).">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/view.py" afterDir="false" />
-    </list>
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated view.py&#10;- Removed the separate Activity form logic (_render_activity_form, _clear_activity_form_callback).&#10;- Added the activity fields and dynamic generation logic into _render_edition_form.&#10;- Updated _clear_edition_form_callback to clear the new activity fields.&#10;- Updated state initialization." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -99,14 +96,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00051" summary=" Updated condition to check the required fields before running  logic">
-      <option name="closed" value="true" />
-      <created>1759483854641</created>
-      <option name="number" value="00051" />
-      <option name="presentableId" value="LOCAL-00051" />
-      <option name="project" value="LOCAL" />
-      <updated>1759483854641</updated>
     </task>
     <task id="LOCAL-00052" summary="It showed an error in Streamlit UI, because of double button, i just removed it and script worked">
       <option name="closed" value="true" />
@@ -492,7 +481,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761236747775</updated>
     </task>
-    <option name="localTasksCounter" value="100" />
+    <task id="LOCAL-00100" summary="Updated view.py&#10;- Removed the separate Activity form logic (_render_activity_form, _clear_activity_form_callback).&#10;- Added the activity fields and dynamic generation logic into _render_edition_form.&#10;- Updated _clear_edition_form_callback to clear the new activity fields.&#10;- Updated state initialization.">
+      <option name="closed" value="true" />
+      <created>1761294850265</created>
+      <option name="number" value="00100" />
+      <option name="presentableId" value="LOCAL-00100" />
+      <option name="project" value="LOCAL" />
+      <updated>1761294850265</updated>
+    </task>
+    <option name="localTasksCounter" value="101" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -507,7 +504,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="1. Added mandatory input boxes during the filling the forms for edition and course.&#10;2. Added description box for edition" />
     <MESSAGE value="Moved moderator type script inside of supplier condition" />
     <MESSAGE value="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way." />
     <MESSAGE value="IMPROVED SUPPLIER WORKFLOW: entire block has been updated to be faster and more reliable." />
@@ -532,6 +528,7 @@
     <MESSAGE value="Replacing the simple _open_edition_from_list with a new, robust _search_and_open_edition function that performs the search" />
     <MESSAGE value="1. Updated the `__init__` Method&#10;Added the default value for the activity date to your `__init__` function. This will set the initial value for the widget in session state, creating a single source of truth.&#10;2. Updated the `_render_activity_form` Method:&#10;Removed the hardcoded default `value` from the `st.text_input` call. The widget will automatically read its value from `st.session_state` using its `key`." />
     <MESSAGE value="Updated `model.py`:&#10;- The `create_edition` method now accepts the list of activities and loops through them *after* saving the edition details.&#10;- The `_create_single_activity` helper is updated to accept times and includes a placeholder for your future input.&#10;- Removed unused methods (`create_activities`, `_search_and_open_edition`)." />
-    <option name="LAST_COMMIT_MESSAGE" value="Updated `model.py`:&#10;- The `create_edition` method now accepts the list of activities and loops through them *after* saving the edition details.&#10;- The `_create_single_activity` helper is updated to accept times and includes a placeholder for your future input.&#10;- Removed unused methods (`create_activities`, `_search_and_open_edition`)." />
+    <MESSAGE value="Updated view.py&#10;- Removed the separate Activity form logic (_render_activity_form, _clear_activity_form_callback).&#10;- Added the activity fields and dynamic generation logic into _render_edition_form.&#10;- Updated _clear_edition_form_callback to clear the new activity fields.&#10;- Updated state initialization." />
+    <option name="LAST_COMMIT_MESSAGE" value="Updated view.py&#10;- Removed the separate Activity form logic (_render_activity_form, _clear_activity_form_callback).&#10;- Added the activity fields and dynamic generation logic into _render_edition_form.&#10;- Updated _clear_edition_form_callback to clear the new activity fields.&#10;- Updated state initialization." />
   </component>
 </project>
