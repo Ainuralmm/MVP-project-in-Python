@@ -54,27 +54,18 @@ class CourseView:
                 self.course_output_placeholder = st.empty()
                 if st.session_state.course_message: self.show_message("course", st.session_state.course_message,show_clear_button = True)
 
-        # --- Edition Form Container ---
+            # --- Combined Edition + Activity Form Container ---
+            ### HASHTAG: Simplified UI - Only 2 Forms Now
         with st.container(border=True):
-            st.header("2. Creazione Nuova Edizione")
+            st.header("2. Creazione Nuova Edizione + Attività")
             if st.session_state.app_state == "RUNNING_EDITION":
                 self.edition_output_placeholder = st.empty()
             else:
-                self._render_edition_form(is_disabled=is_running)
+                self._render_edition_form(is_disabled=is_running)  # This now includes activities
                 self.edition_output_placeholder = st.empty()
-                if st.session_state.edition_message: self.show_message("edition", st.session_state.edition_message,show_clear_button = True)
-
-        ### HASHTAG: ADD NEW CONTAINER FOR ACTIVITY FORM
-        with st.container(border=True):
-            st.header("3. Creazione Attività (per Edizione Esistente)")
-            if st.session_state.app_state == "RUNNING_ACTIVITY":
-                self.activity_output_placeholder = st.empty()
-            else:
-                self._render_activity_form(is_disabled=is_running)
-                self.activity_output_placeholder = st.empty()
-                if st.session_state.activity_message:
-                    self.show_message("activity", st.session_state.activity_message, show_clear_button=True)
-
+                if st.session_state.edition_message:
+                    self.show_message("edition", st.session_state.edition_message,
+                                              show_clear_button=True)  # Use 'edition' message key
 
     def _clear_course_form_callback(self):
         st.session_state.course_title_key = ""
@@ -82,7 +73,8 @@ class CourseView:
         st.session_state.course_short_desc_key = ""
         st.session_state.course_date_str_key = "01/01/2023"
 
-    def _clear_edition_form_callback(self):
+    ### HASHTAG: Updated Clear Callback for Combined Form
+    def _clear_edition_activity_form_callback(self):
         st.session_state.edition_course_name_key = ""
         st.session_state.edition_title_key = ""
         st.session_state.edition_start_date_str_key = ""
@@ -91,19 +83,15 @@ class CourseView:
         st.session_state.edition_location_key = ""
         st.session_state.edition_supplier_key = ""
         st.session_state.edition_price_key = ""
-
-    def _clear_activity_form_callback(self):
-        st.session_state.activity_course_name_key = ""
-        st.session_state.activity_edition_name_key = ""
-        st.session_state.activity_edition_publish_date_key = ""  # <-- ADDED THIS
-        st.session_state.activity_start_date_key = ""
-        st.session_state.num_activities = 1
-        # Clear any dynamically generated keys
-        for i in range(30):  # Clear up to 30 keys just in case
-            if f"activity_title_{i}" in st.session_state:
-                st.session_state[f"activity_title_{i}"] = ""
-            if f"activity_desc_{i}" in st.session_state:
-                st.session_state[f"activity_desc_{i}"] = ""
+        st.session_state.num_activities = 1  # Reset number of activities
+    # Clear dynamic activity fields
+        for i in range(30):  # Adjust limit if needed
+            if f"activity_title_{i}" in st.session_state: st.session_state[f"activity_title_{i}"] = ""
+            if f"activity_desc_{i}" in st.session_state: st.session_state[f"activity_desc_{i}"] = ""
+            if f"activity_date_{i}" in st.session_state: st.session_state[f"activity_date_{i}"] = ""
+            if f"activity_start_time_{i}" in st.session_state: st.session_state[f"activity_start_time_{i}"] = "00:00"
+            if f"activity_end_time_{i}" in st.session_state: st.session_state[f"activity_end_time_{i}"] = "00:00"
+            if f"activity_future_field_{i}" in st.session_state: st.session_state[f"activity_future_field_{i}"] = ""
 
     def _render_course_form(self, is_disabled):
         with st.form(key='course_form'):
@@ -160,145 +148,139 @@ class CourseView:
                 st.error("Formato data non valido. Usa GG/MM/AAAA.")
                 st.stop()
 
-    def _render_edition_form(self, is_disabled):
-        with st.form(key='edition_form'):
-            ### HASHTAG: VARIABLES RESTORED FOR EDITION FORM ✅
-            course_name = st.text_input("Nome del Corso Esistente", placeholder="Nome corso esistente",
-                                        key="edition_course_name_key")
-            edition_title = st.text_input("Titolo Edizione (opzionale)", placeholder="Lascia vuoto...",
-                                          key="edition_title_key")
-            start_date_str = st.text_input("Data Inizio Edizione (GG/MM/AAAA)",
-                                           key="edition_start_date_str_key")
-            end_date_str = st.text_input("Data Fine Edizione (GG/MM/AAAA)",
-                                         key="edition_end_date_str_key")
-            description = st.text_area("Descrizione (opzionale)", placeholder="Descrizione...",
-                                       key="edition_description_key")
-            location = st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA DE CARLI",
-                                    key="edition_location_key")
-            supplier = st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: AEIT",
-                                    key="edition_supplier_key")
-            price = st.text_input("Prezzo (€) (opzionale)", placeholder="Esempio: 1000", key="edition_price_key")
+        ### HASHTAG: COMBINED EDITION AND ACTIVITY RENDER METHOD
+    def _render_edition_form(self, is_disabled):  # Renamed for clarity, handles both now
+            # Number input outside the form
+            num_activities = st.number_input(
+                "Quanti giorni di attività?",
+                min_value=1,
+                max_value=30,  # Sensible limit
+                key="num_activities"
+            )
 
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                submitted = st.form_submit_button("Crea Edizione", type="primary", disabled=is_disabled,
-                                                  use_container_width=True)
-            with col2:
-                st.form_submit_button("Pulisci 🧹", use_container_width=True, on_click=self._clear_edition_form_callback)
+            with st.form(key='edition_activity_form'):  # Renamed key
+                # --- Edition Details ---
+                st.subheader("Dettagli Edizione")
+                st.text_input("Nome del Corso Esistente", placeholder="Nome corso esistente",
+                              key="edition_course_name_key")
+                st.text_input("Titolo Edizione (opzionale)",
+                              placeholder="Lascia vuoto per usare il nome predefinito...", key="edition_title_key")
+                st.text_input("Data Inizio Edizione (GG/MM/AAAA)", key="edition_start_date_str_key")
+                st.text_input("Data Fine Edizione (GG/MM/AAAA)", key="edition_end_date_str_key")
+                st.text_area("Descrizione Edizione (opzionale)", placeholder="Descrizione...",
+                             key="edition_description_key")
+                st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA...", key="edition_location_key")
+                st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: ACCADEMIA...",
+                             key="edition_supplier_key")
+                st.text_input("Prezzo Edizione (€) (opzionale)", placeholder="Esempio: 1000", key="edition_price_key")
 
-        if submitted:
-            # YOUR VALIDATION LOGIC WORKS AGAIN
-            missing = False
-            if not course_name.strip():
-                st.markdown("...", unsafe_allow_html=True)
-                missing = True
-            # ... (rest of your validation)
-            if missing:
-                st.stop()
+                st.divider()
 
-            # The rest of your submission logic remains unchanged.
-            try:
-                edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
-                edition_end = datetime.strptime(end_date_str, "%d/%m/%Y").date()
-                if edition_end < edition_start:
-                    st.error("La data di fine non può essere precedente alla data di inizio.")
+                # --- Activity Details (Dynamic) ---
+                st.subheader("Dettagli Attività")
+                for i in range(num_activities):
+                    st.markdown(f"**Giorno {i + 1}**")
+                    cols = st.columns([2, 1, 1, 1])  # Layout columns
+                    with cols[0]:
+                        st.text_input(f"Titolo Attività", key=f"activity_title_{i}")
+                    with cols[1]:
+                        st.text_input(f"Data (GG/MM/AAAA)", key=f"activity_date_{i}",
+                                      placeholder=f"Data giorno {i + 1}")
+                    with cols[2]:
+                        st.text_input(f"Ora Inizio (HH:MM)", key=f"activity_start_time_{i}", value="09:00")
+                    with cols[3]:
+                        st.text_input(f"Ora Fine (HH:MM)", key=f"activity_end_time_{i}", value="11:00")
+
+                    st.text_area(f"Descrizione Attività", key=f"activity_desc_{i}", height=100)
+
+                    ### HASHTAG: PLACEHOLDER FOR FUTURE INPUT ###
+                    # st.text_input(f"Campo Futuro Giorno {i+1}", key=f"activity_future_field_{i}")
+
+                    st.markdown("---")  # Separator between days
+
+                # --- Buttons ---
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    submitted = st.form_submit_button("Crea Edizione e Attività", type="primary", disabled=is_disabled,
+                                                      use_container_width=True)
+                with col2:
+                    st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                                          on_click=self._clear_edition_activity_form_callback)  # Use updated callback
+
+            # --- Submission Logic ---
+            if submitted:
+                # Collect Edition Data
+                course_name = st.session_state.edition_course_name_key
+                edition_title = st.session_state.edition_title_key
+                start_date_str = st.session_state.edition_start_date_str_key
+                end_date_str = st.session_state.edition_end_date_str_key
+                description = st.session_state.edition_description_key
+                location = st.session_state.edition_location_key
+                supplier = st.session_state.edition_supplier_key
+                price = st.session_state.edition_price_key
+
+                # Validate Edition Data
+                if not all([course_name.strip(), start_date_str.strip(), end_date_str.strip()]):
+                    st.error("I campi 'Nome Corso', 'Data Inizio Edizione' e 'Data Fine Edizione' sono obbligatori.")
                     st.stop()
+                try:
+                    edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
+                    edition_end = datetime.strptime(end_date_str, "%d/%m/%Y").date()
+                    if edition_end < edition_start:
+                        st.error("La data di fine edizione non può essere precedente alla data di inizio.")
+                        st.stop()
+                except ValueError:
+                    st.error("Formato data edizione non valido. Usa GG/MM/AAAA.")
+                    st.stop()
+
+                # Collect Activity Data
+                activities_list = []
+                all_activities_valid = True
+                for i in range(num_activities):
+                    title = st.session_state.get(f"activity_title_{i}", "")
+                    act_desc = st.session_state.get(f"activity_desc_{i}", "")
+                    act_date_str = st.session_state.get(f"activity_date_{i}", "")
+                    start_time = st.session_state.get(f"activity_start_time_{i}", "09:00")
+                    end_time = st.session_state.get(f"activity_end_time_{i}", "11:00")
+                    future_val = st.session_state.get(f"activity_future_field_{i}", "")  # Get future value
+
+                    if not all([title.strip(), act_desc.strip(), act_date_str.strip()]):
+                        st.error(f"Titolo, Descrizione e Data sono obbligatori per l'attività del Giorno {i + 1}.")
+                        all_activities_valid = False
+                        break  # Stop validation on first error
+                    try:
+                        act_date = datetime.strptime(act_date_str, "%d/%m/%Y").date()
+                        # Basic time format check (HH:MM) - could be more robust
+                        datetime.strptime(start_time, "%H:%M")
+                        datetime.strptime(end_time, "%H:%M")
+                    except ValueError:
+                        st.error(
+                            f"Formato data o ora non valido per l'attività del Giorno {i + 1}. Usa GG/MM/AAAA e HH:MM.")
+                        all_activities_valid = False
+                        break
+
+                    activities_list.append({
+                        "title": title,
+                        "description": act_desc,
+                        "date": act_date,
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "future_field": future_val  # Include future value
+                    })
+
+                if not all_activities_valid:
+                    st.stop()
+
+                # If all valid, proceed
                 st.session_state.edition_details = {
                     "course_name": course_name, "edition_title": edition_title,
                     "edition_start_date": edition_start, "edition_end_date": edition_end,
-                    "location": location, "supplier": supplier,
-                    "price": price, "description": description
+                    "location": location, "supplier": supplier, "price": price, "description": description,
+                    "activities": activities_list  # Add the collected activities
                 }
-                st.session_state.app_state = "RUNNING_EDITION"
+                st.session_state.app_state = "RUNNING_EDITION"  # Still use EDITION state
                 st.session_state.edition_message = ""
                 st.rerun()
-            except ValueError:
-                st.error("Formato data non valido. Usa GG/MM/AAAA.")
-
-        ### HASHTAG: ADD NEW RENDER METHOD FOR ACTIVITY FORM
-    def _render_activity_form(self, is_disabled):
-        # This number input controls how many forms are drawn
-        # It's outside the form so it can trigger a rerun when changed
-        num_activities = st.number_input(
-            "Quanti giorni di attività?",
-            min_value=1,
-            max_value=35,  # Set a reasonable limit
-            key="num_activities"
-        )
-
-        with st.form(key='activity_form'):
-            st.subheader("1. Trova Edizione")
-            st.text_input("Nome del Corso Esistente", placeholder="Corso per cui creare attività",
-                          key="activity_course_name_key")
-            st.text_input("Nome Esatto Edizione", placeholder="Edizione esatta a cui aggiungere attività",
-                          key="activity_edition_name_key")
-
-            ### HASHTAG: ADDED NEW PUBLISH DATE FIELD
-            # This is the new field to find the unique edition, as you requested.
-            st.text_input("Data Pubblicazione Edizione (GG/MM/AAAA)",
-                          placeholder="La 'Publish Start Date' dell'edizione", key="activity_start_date_key")
-
-            st.divider()
-
-            st.subheader("2. Dettagli Attività")
-            st.text_input("Data Inizio Attività (Giorno 1) (GG/MM/AAAA)", "20/10/2025", key="activity_start_date_key")
-
-            for i in range(num_activities):
-                st.markdown(f"**Giorno {i + 1}**")
-                st.text_input(f"Titolo Attività Giorno {i + 1}", key=f"activity_title_{i}")
-                st.text_area(f"Descrizione Attività Giorno {i + 1}", key=f"activity_desc_{i}")
-
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                submitted = st.form_submit_button("Crea Attività", type="primary", disabled=is_disabled,
-                                                  use_container_width=True)
-            with col2:
-                st.form_submit_button("Pulisci 🧹", use_container_width=True,
-                                      on_click=self._clear_activity_form_callback)
-            if submitted:
-                # Collect all data
-                course_name = st.session_state.activity_course_name_key
-                edition_name = st.session_state.activity_edition_name_key
-                edition_publish_date_str = st.session_state.activity_edition_publish_date_key  # <-- Get new data
-                start_date_str = st.session_state.activity_start_date_key
-
-                if not all([course_name.strip(), edition_name.strip(), start_date_str.strip(),
-                            edition_publish_date_str.strip()]):
-                    st.error("Tutti i campi in 'Trova Edizione' e 'Data Inizio Attività' sono obbligatori.")
-                    st.stop()
-
-                try:
-                    start_date = datetime.strptime(start_date_str, "%d/%m/%Y").date()
-                    edition_publish_date = datetime.strptime(edition_publish_date_str,
-                                                             "%d/%m/%Y").date()  # <-- Convert new data
-
-                    activities_list = []
-                    for i in range(num_activities):
-                        title = st.session_state[f"activity_title_{i}"]
-                        desc = st.session_state[f"activity_desc_{i}"]
-                        if not title.strip() or not desc.strip():
-                            st.error(f"Titolo e Descrizione sono obbligatori per il Giorno {i + 1}.")
-                            st.stop()
-
-                        activities_list.append({
-                            "title": title,
-                            "description": desc,
-                            "date": start_date + timedelta(days=i)
-                        })
-
-                    st.session_state.activity_details = {
-                        "course_name": course_name,
-                        "edition_name": edition_name,
-                        "edition_publish_date": edition_publish_date,  # <-- Pass new data to model
-                        "activities": activities_list
-                    }
-                    st.session_state.app_state = "RUNNING_ACTIVITY"
-                    st.session_state.activity_message = ""
-                    st.rerun()
-                except ValueError:
-                    st.error("Formato data non valido. Usa GG/MM/AAAA.")
-                except Exception as e:
-                    st.error(f"Errore nella raccolta dati: {e}")
 
     def update_progress(self, form_type, message, percentage):
         placeholder = None
@@ -306,8 +288,6 @@ class CourseView:
             placeholder = self.course_output_placeholder
         elif form_type == "edition":
             placeholder = self.edition_output_placeholder
-        elif form_type == "activity":
-            placeholder = self.activity_output_placeholder
 
         if hasattr(self, 'course_output_placeholder') and placeholder:  # Use a base attribute check
             with placeholder.container():
@@ -323,9 +303,7 @@ class CourseView:
         elif form_type == "edition":
             placeholder = self.edition_output_placeholder
             message_key = "edition_message"
-        elif form_type == "activity":
-            placeholder = self.activity_output_placeholder
-            message_key = "activity_message"
+
 
         if not placeholder or not message_key:
             return  # Safety check
