@@ -101,7 +101,17 @@ class OracleAutomator:
             link.click()
             self._pause_for_visual_check()
             print(f"Model: Clicked on existing course '{course_name}' in list.")
+            ### HASHTAG: THE FIX - WAIT FOR THE NEXT PAGE TO LOAD ✅ ###
+            # Add a wait here for an element that ONLY exists on the course details page.
+            # Waiting for the "Edizioni" tab itself to be clickable is a robust choice.
+            edizioni_tab_xpath_on_details_page = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath_on_details_page)))
+            print(f"Model: Course details page loaded successfully (found Edizioni tab).")
+            # You can keep or remove the _pause_for_visual_check here, this explicit wait is better.
+            # self._pause_for_visual_check()
+            # Only return True AFTER the next page is confirmed loaded.
             return True
+
         except Exception as e:
             print(f"Model: Could not find or click the link for '{course_name}'. Error: {e}")
             return False
