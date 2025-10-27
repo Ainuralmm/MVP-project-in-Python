@@ -294,6 +294,7 @@ class OracleAutomator:
             edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
             edizioni_tab = self.wait.until(EC.presence_of_element_located((By.XPATH, edizioni_tab_xpath)))
             edizioni_tab.click()
+            print("Model: Clicked 'Edizioni' tab.")
             #self._pause_for_visual_check()
 
             # Click Crea -> Edizione guidata da docente
