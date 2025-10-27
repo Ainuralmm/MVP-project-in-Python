@@ -68,7 +68,7 @@ class CoursePresenter:
                 raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
 
             self.view.update_progress("edition", "Creazione della nuova edizione...", 70)
-            result_message = self.model.create_edition(edition_details)
+            result_message = self.model.create_edition_and_activities(edition_details)
             time.sleep(1)
 
             self.view.update_progress("edition", "Processo completato!", 100)

@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated presenter.py&#10;- Removed run_create_activities.&#10;- Renamed run_create_edition to run_create_edition_and_activities for clarity.&#10;- Updated the model method call inside the renamed function." />
+    <list default="true" id="2a89f539-94d1-40e0-a4a8-496469bbd118" name="Changes" comment="Updated main.py&#10;- Removed the RUNNING_ACTIVITY state check.&#10;- Updated the call in the RUNNING_EDITION state to use the renamed presenter method.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test MVP (Selenium,Streamlit)/presenter.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -96,14 +100,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1757405254462</updated>
-    </task>
-    <task id="LOCAL-00053" summary="added a native &quot;required&quot; field validation like in HTML">
-      <option name="closed" value="true" />
-      <created>1759507507556</created>
-      <option name="number" value="00053" />
-      <option name="presentableId" value="LOCAL-00053" />
-      <option name="project" value="LOCAL" />
-      <updated>1759507507556</updated>
     </task>
     <task id="LOCAL-00054" summary="adding clear messgaes button">
       <option name="closed" value="true" />
@@ -489,7 +485,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761295358825</updated>
     </task>
-    <option name="localTasksCounter" value="102" />
+    <task id="LOCAL-00102" summary="Updated main.py&#10;- Removed the RUNNING_ACTIVITY state check.&#10;- Updated the call in the RUNNING_EDITION state to use the renamed presenter method.">
+      <option name="closed" value="true" />
+      <created>1761295550002</created>
+      <option name="number" value="00102" />
+      <option name="presentableId" value="LOCAL-00102" />
+      <option name="project" value="LOCAL" />
+      <updated>1761295550002</updated>
+    </task>
+    <option name="localTasksCounter" value="103" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -504,7 +508,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Speeded up the process of choosing aula (removing pause) and reversing the user input to lowercase to find the searching element even the user write name of aula in capitalised way." />
     <MESSAGE value="IMPROVED SUPPLIER WORKFLOW: entire block has been updated to be faster and more reliable." />
     <MESSAGE value="Updated placeholder in edition creation course with warning" />
     <MESSAGE value="The fix involves two simple but crucial changes: one in the view to send the correct data type, and one in the model to use the data correctly." />
@@ -529,6 +532,7 @@
     <MESSAGE value="Updated `model.py`:&#10;- The `create_edition` method now accepts the list of activities and loops through them *after* saving the edition details.&#10;- The `_create_single_activity` helper is updated to accept times and includes a placeholder for your future input.&#10;- Removed unused methods (`create_activities`, `_search_and_open_edition`)." />
     <MESSAGE value="Updated view.py&#10;- Removed the separate Activity form logic (_render_activity_form, _clear_activity_form_callback).&#10;- Added the activity fields and dynamic generation logic into _render_edition_form.&#10;- Updated _clear_edition_form_callback to clear the new activity fields.&#10;- Updated state initialization." />
     <MESSAGE value="Updated presenter.py&#10;- Removed run_create_activities.&#10;- Renamed run_create_edition to run_create_edition_and_activities for clarity.&#10;- Updated the model method call inside the renamed function." />
-    <option name="LAST_COMMIT_MESSAGE" value="Updated presenter.py&#10;- Removed run_create_activities.&#10;- Renamed run_create_edition to run_create_edition_and_activities for clarity.&#10;- Updated the model method call inside the renamed function." />
+    <MESSAGE value="Updated main.py&#10;- Removed the RUNNING_ACTIVITY state check.&#10;- Updated the call in the RUNNING_EDITION state to use the renamed presenter method." />
+    <option name="LAST_COMMIT_MESSAGE" value="Updated main.py&#10;- Removed the RUNNING_ACTIVITY state check.&#10;- Updated the call in the RUNNING_EDITION state to use the renamed presenter method." />
   </component>
 </project>
