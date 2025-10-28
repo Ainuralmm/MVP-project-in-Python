@@ -253,20 +253,28 @@ class CourseView:
                         # Basic time format check (HH:MM) - could be more robust
                         datetime.strptime(start_time, "%H.%M")
                         datetime.strptime(end_time, "%H.%M")
+                        # Check if activity date is outside the edition start/end range.
+                        if act_date < edition_start or act_date > edition_end:
+                            st.error(
+                                f"La data dell'attività (Giorno {i + 1}: {act_date_str}) deve essere compresa tra l'inizio ({start_date_str}) e la fine ({end_date_str}) dell'edizione.")
+                            all_activities_valid = False
+                            break  # Stop checking further activities if one is invalid
+
                     except ValueError:
-                        st.error(
-                            f"Formato data o ora non valido per l'attività del Giorno {i + 1}. Usa GG/MM/AAAA e HH:MM.")
+                        st.error(f"Formato data o ora non valido per Giorno {i + 1}. Usa GG/MM/AAAA e HH.MM (con il punto).")
                         all_activities_valid = False
                         break
 
-                    activities_list.append({
-                        "title": title,
-                        "description": act_desc,
-                        "date": act_date,
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "future_field": future_val  # Include future value
-                    })
+                    # Append only if validation passed up to this point
+                    if all_activities_valid:
+                        activities_list.append({
+                            "title": title,
+                            "description": act_desc,
+                            "date": act_date,
+                            "start_time": start_time,
+                            "end_time": end_time,
+                            "future_field": future_val  # Include future value
+                        })
 
                 if not all_activities_valid:
                     st.stop()
