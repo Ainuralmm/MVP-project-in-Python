@@ -229,7 +229,7 @@ class OracleAutomator:
             print(f"Clicked OK for activity '{unique_title}' on {activity_date_str}")
             # Wait for the OK button popup to disappear before proceeding
             self.wait.until(EC.invisibility_of_element_located((By.XPATH, '//a[./span[text()="OK"]]')))
-            self._pause_for_visual_check(0.5)  # Short pause after popup closes
+            self._pause_for_visual_check()  # Short pause after popup closes
             return True
 
         except Exception as e:
@@ -279,22 +279,15 @@ class OracleAutomator:
             #duration_days = int(edition_details.get('duration_days', 1))
             activities = edition_details.get('activities', [])  # Get the list of activities
 
-            print(f"Model (EDITION+ACTIVITY): Starting creation for {course_name}")
-
-            # --- PART 1: Create Edition (Navigate, Find Course, Fill Form) ---
-            if not self.navigate_to_courses_page():
-                return "‼️ Errore: Navigazione alla pagina corsi fallita."
-            if not self.search_course(course_name):
-                return f"‼️ Errore: Corso '{course_name}' non trovato. Crealo prima."
-            if not self.open_course_from_list(course_name):
-                return f"‼️ Errore: Impossibile aprire il corso '{course_name}'."
+            print(
+                f"Model (EDITION): Creating edition for {course_name} start {edition_start_date.strftime('%d/%m/%Y')}")
+            self._pause_for_visual_check()
 
             # Assumes we are on course detail page; if not, try to click the course from list
             # Click 'Edizioni' tab
             edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
             edizioni_tab = self.wait.until(EC.presence_of_element_located((By.XPATH, edizioni_tab_xpath)))
             edizioni_tab.click()
-            print("Model: Clicked 'Edizioni' tab.")
             #self._pause_for_visual_check()
 
             # Click Crea -> Edizione guidata da docente
