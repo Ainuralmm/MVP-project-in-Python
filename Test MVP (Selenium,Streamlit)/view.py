@@ -89,8 +89,8 @@ class CourseView:
             if f"activity_title_{i}" in st.session_state: st.session_state[f"activity_title_{i}"] = ""
             if f"activity_desc_{i}" in st.session_state: st.session_state[f"activity_desc_{i}"] = ""
             if f"activity_date_{i}" in st.session_state: st.session_state[f"activity_date_{i}"] = ""
-            if f"activity_start_time_{i}" in st.session_state: st.session_state[f"activity_start_time_{i}"] = "00.00"
-            if f"activity_end_time_{i}" in st.session_state: st.session_state[f"activity_end_time_{i}"] = "00.00"
+            if f"activity_start_time_{i}" in st.session_state: st.session_state[f"activity_start_time_{i}"] = ""
+            if f"activity_end_time_{i}" in st.session_state: st.session_state[f"activity_end_time_{i}"] = ""
             if f"activity_future_field_{i}" in st.session_state: st.session_state[f"activity_future_field_{i}"] = ""
 
     def _render_course_form(self, is_disabled):
@@ -187,9 +187,9 @@ class CourseView:
                         st.text_input(f"Data (GG/MM/AAAA)", key=f"activity_date_{i}",
                                       placeholder=f"Data giorno {i + 1}")
                     with cols[2]:
-                        st.text_input(f"Ora Inizio (HH:MM)", key=f"activity_start_time_{i}", value="09.00")
+                        st.text_input(f"Ora Inizio (HH:MM)", key=f"activity_start_time_{i}")
                     with cols[3]:
-                        st.text_input(f"Ora Fine (HH:MM)", key=f"activity_end_time_{i}", value="11.00")
+                        st.text_input(f"Ora Fine (HH:MM)", key=f"activity_end_time_{i}")
 
                     st.text_area(f"Descrizione Attività", key=f"activity_desc_{i}", height=100)
 
