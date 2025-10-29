@@ -35,10 +35,7 @@ class CourseView:
                 st.session_state[f"activity_start_time_{i}"] = "09.00"
             if f"activity_end_time_{i}" not in st.session_state:
                 st.session_state[f"activity_end_time_{i}"] = "11.00"
-            # Dates and others can start empty implicitly
-
-            st.image("logo-agsm.jpg", width=200)
-
+        # Dates and others can start empty implicitly
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
 
