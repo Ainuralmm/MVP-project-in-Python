@@ -8,25 +8,36 @@ class CourseView:
     # ... ( __init__, get_user_options, and render_ui methods are perfect and do not need to be changed) ...
     def __init__(self):
         st.set_page_config(layout='centered')
+        # --- Basic App State ---
         if "app_state" not in st.session_state: st.session_state.app_state = "IDLE" #It's the default, resting state. means:The app is not busy. It's just waiting for you to fill in a form and click a button.
         if "course_message" not in st.session_state: st.session_state.course_message = ""
         if "edition_message" not in st.session_state: st.session_state.edition_message = ""
-        if "activity_message" not in st.session_state:
-            st.session_state.activity_message = ""
+
         if "num_activities" not in st.session_state:
             st.session_state.num_activities = 1
 
+        # --- Initialize Widget States (Single Source of Truth) ---
         # If the key for a widget doesn't exist in memory, create it with its default value.
         # This becomes the single source of truth.
         if "course_date_str_key" not in st.session_state:
             st.session_state.course_date_str_key = "01/01/2023"
         # (You can do this for all your other inputs too)
-        if "edition_start_date_str_key" not in st.session_state:
-            st.session_state.edition_start_date_str_key = ""
-        if "edition_end_date_str_key" not in st.session_state:
-            st.session_state.edition_end_date_str_key = ""
-        if "activity_start_date_key" not in st.session_state:
-            st.session_state.activity_start_date_key = ""
+        # if "edition_start_date_str_key" not in st.session_state:
+        #     st.session_state.edition_start_date_str_key = ""
+        # if "edition_end_date_str_key" not in st.session_state:
+        #     st.session_state.edition_end_date_str_key = ""
+        # if "activity_start_date_key" not in st.session_state:
+        #     st.session_state.activity_start_date_key = ""
+
+        # Initialize activity time defaults (important for consistency)
+        for i in range(30):  # Loop up to your max
+            if f"activity_start_time_{i}" not in st.session_state:
+                st.session_state[f"activity_start_time_{i}"] = "09.00"
+            if f"activity_end_time_{i}" not in st.session_state:
+                st.session_state[f"activity_end_time_{i}"] = "11.00"
+            # Dates and others can start empty implicitly
+
+            st.image("logo-agsm.jpg", width=200)
 
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
@@ -89,8 +100,8 @@ class CourseView:
             if f"activity_title_{i}" in st.session_state: st.session_state[f"activity_title_{i}"] = ""
             if f"activity_desc_{i}" in st.session_state: st.session_state[f"activity_desc_{i}"] = ""
             if f"activity_date_{i}" in st.session_state: st.session_state[f"activity_date_{i}"] = ""
-            if f"activity_start_time_{i}" in st.session_state: st.session_state[f"activity_start_time_{i}"] = ""
-            if f"activity_end_time_{i}" in st.session_state: st.session_state[f"activity_end_time_{i}"] = ""
+            if f"activity_start_time_{i}" in st.session_state: st.session_state[f"activity_start_time_{i}"] = "00.00"
+            if f"activity_end_time_{i}" in st.session_state: st.session_state[f"activity_end_time_{i}"] = "00.00"
             if f"activity_future_field_{i}" in st.session_state: st.session_state[f"activity_future_field_{i}"] = ""
 
     def _render_course_form(self, is_disabled):
@@ -169,8 +180,8 @@ class CourseView:
                 st.text_input("Data Fine Edizione (GG/MM/AAAA)", key="edition_end_date_str_key")
                 st.text_area("Descrizione Edizione (opzionale)", placeholder="Descrizione...",
                              key="edition_description_key")
-                st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA...", key="edition_location_key")
-                st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: ACCADEMIA...",
+                st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA DE CARLI", key="edition_location_key")
+                st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: AEIT",
                              key="edition_supplier_key")
                 st.text_input("Prezzo Edizione (€) (opzionale)", placeholder="Esempio: 1000", key="edition_price_key")
 
