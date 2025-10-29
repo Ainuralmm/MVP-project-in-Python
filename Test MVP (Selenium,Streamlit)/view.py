@@ -209,7 +209,7 @@ class CourseView:
 
             # --- Submission Logic ---
             if submitted:
-                # Collect Edition Data
+                # --- 1. Collect ALL string inputs first ---
                 course_name = st.session_state.edition_course_name_key
                 edition_title = st.session_state.edition_title_key
                 start_date_str = st.session_state.edition_start_date_str_key
@@ -219,63 +219,65 @@ class CourseView:
                 supplier = st.session_state.edition_supplier_key
                 price = st.session_state.edition_price_key
 
-                # Validate Edition Data
+                # --- 2. Basic Required Field Validation ---
                 if not all([course_name.strip(), start_date_str.strip(), end_date_str.strip()]):
                     st.error("I campi 'Nome Corso', 'Data Inizio Edizione' e 'Data Fine Edizione' sono obbligatori.")
                     st.stop()
+                # --- 3. Parse Dates & Perform ALL Validations within a try/except ---
                 try:
+                    # Parse Edition Dates
                     edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
                     edition_end = datetime.strptime(end_date_str, "%d/%m/%Y").date()
+                    # Validate Edition Date Range
                     if edition_end < edition_start:
                         st.error("La data di fine edizione non può essere precedente alla data di inizio.")
                         st.stop()
+                    # --- Loop for Activity Validation ---
+                        # Collect Activity Data
+                    activities_list = []
+
+                    for i in range(num_activities):
+                            title = st.session_state.get(f"activity_title_{i}", "")
+                            act_desc = st.session_state.get(f"activity_desc_{i}", "")
+                            act_date_str = st.session_state.get(f"activity_date_{i}", "")
+                            start_time = st.session_state.get(f"activity_start_time_{i}", "09:00")
+                            end_time = st.session_state.get(f"activity_end_time_{i}", "11:00")
+                            future_val = st.session_state.get(f"activity_future_field_{i}", "")  # Get future value
+
+                            # 1. Validate required fields for *this* activity
+                            if not all([title.strip(), act_desc.strip(), act_date_str.strip()]):
+                                st.error(
+                                    f"Titolo, Descrizione e Data sono obbligatori per l'attività del Giorno {i + 1}.")
+                                st.stop()  # Stop validation on first error
+                            # 2. Try parsing and validating date/time formats AND range
+
+                            act_date = datetime.strptime(act_date_str, "%d/%m/%Y").date()
+                            # Basic time format check (HH:MM) - could be more robust
+                            datetime.strptime(start_time, "%H.%M")
+                            datetime.strptime(end_time, "%H.%M")
+                            # Check if activity date is outside the edition start/end range.
+                            if act_date < edition_start or act_date > edition_end:
+                                    st.error(
+                                        f"La data dell'attività (Giorno {i + 1}: {act_date_str}) deve essere compresa tra l'inizio ({start_date_str}) e la fine ({end_date_str}) dell'edizione.")
+                                    # all_activities_valid = False
+                                    st.stop()  # Stop checking further activities if one is invalid
+                            # 3. If validation passes for this activity, append it
+                            activities_list.append({
+                                        "title": title,
+                                        "description": act_desc,
+                                        "date": act_date,
+                                        "start_time": start_time,
+                                        "end_time": end_time,
+                                        "future_field": future_val  # Include future value
+                                    })
                 except ValueError:
-                    st.error("Formato data edizione non valido. Usa GG/MM/AAAA.")
-                    st.stop()
+                    # This catches errors from ANY strptime call (edition or activity)
+                    st.error("Formato data o ora non valido. Usa GG/MM/AAAA e HH.MM (con il punto).")
+                    st.stop()  # Stop if any date/time format is wrong
 
-                # Collect Activity Data
-                activities_list = []
-                #all_activities_valid = True
-                for i in range(num_activities):
-                    title = st.session_state.get(f"activity_title_{i}", "")
-                    act_desc = st.session_state.get(f"activity_desc_{i}", "")
-                    act_date_str = st.session_state.get(f"activity_date_{i}", "")
-                    start_time = st.session_state.get(f"activity_start_time_{i}", "09:00")
-                    end_time = st.session_state.get(f"activity_end_time_{i}", "11:00")
-                    future_val = st.session_state.get(f"activity_future_field_{i}", "")  # Get future value
 
-                    # 1. Validate required fields for *this* activity
-                    if not all([title.strip(), act_desc.strip(), act_date_str.strip()]):
-                        st.error(f"Titolo, Descrizione e Data sono obbligatori per l'attività del Giorno {i + 1}.")
-                        #all_activities_valid = False
-                        st.stop()  # Stop validation on first error
-                    # 2. Try parsing and validating date/time formats AND range
-                    try:
-                        act_date = datetime.strptime(act_date_str, "%d/%m/%Y").date()
-                        # Basic time format check (HH:MM) - could be more robust
-                        datetime.strptime(start_time, "%H.%M")
-                        datetime.strptime(end_time, "%H.%M")
-                        # Check if activity date is outside the edition start/end range.
-                        if act_date < edition_start or act_date > edition_end:
-                            st.error(
-                                f"La data dell'attività (Giorno {i + 1}: {act_date_str}) deve essere compresa tra l'inizio ({start_date_str}) e la fine ({end_date_str}) dell'edizione.")
-                            #all_activities_valid = False
-                            st.stop()  # Stop checking further activities if one is invalid
 
-                    except ValueError:
-                        st.error(f"Formato data o ora non valido per Giorno {i + 1}. Usa GG/MM/AAAA e HH.MM (con il punto).")
-                        #all_activities_valid = False
-                        st.stop()
 
-                    # 3. If validation passes for this activity, append it
-                    activities_list.append({
-                        "title": title,
-                        "description": act_desc,
-                        "date": act_date,
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "future_field": future_val  # Include future value
-                    })
 
                 #  If the loop completes without stopping, all activities are valid. Proceed.
                 st.session_state.edition_details = {
