@@ -1,5 +1,5 @@
 import time
-from datetime import timedelta
+from datetime import timedelta, datetime
 from dateutil.relativedelta import relativedelta
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
@@ -56,19 +56,28 @@ class OracleAutomator:
 
     def search_course(self, course_name):
         try:
-            capitalised_course_name = course_name.title()
-            search_box = self.wait.until(EC.presence_of_element_located(
-                (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
+            # Remove any leading/trailing whitespace before converting case
+            cleaned_course_name = course_name.strip()
+            capitalised_course_name = cleaned_course_name.title()
+            ### HASHTAG: ADDED EXPLICIT WAIT BEFORE SEARCH BOX INTERACTION ✅ ###
+            search_box_locator = (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')
+            search_box = self.wait.until(EC.element_to_be_clickable(search_box_locator))  # Wait for clickable
             search_box.clear()
             search_box.send_keys(capitalised_course_name)
+            self._pause_for_visual_check()# Pause after sending keys
             date_input = self.wait.until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
             date_input.clear()
             date_input.send_keys("01/01/2000")
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'))).click()
+            self._pause_for_visual_check()
+            search_button_locator = (By.XPATH,
+                                     '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]')
+            search_button = self.wait.until(EC.element_to_be_clickable(search_button_locator))  # Wait for clickable
+            search_button.click()
+            print("Clicked Search button.")
 
-            short_wait = WebDriverWait(self.driver, 5)
+            # --- Wait for results or 'No Data' ---
+            short_wait = WebDriverWait(self.driver, 7)
             try:
                 # First, check for the "no data" message. If it appears, the course definitely doesn't exist.
                 short_wait.until(
@@ -76,16 +85,30 @@ class OracleAutomator:
                 return False  # Course does not exist
             except TimeoutException:
                 # If there's no "no data" message, we now look for an EXACT match.
-                course_name_lower = course_name.lower()
+                course_name_lower = cleaned_course_name.lower()
                 # Switched from `contains()` to an exact match `normalize-space(.)=` for precision.
                 # This XPath converts the link text to lowercase and compares it to our lowercase variable.
                 case_insensitive_xpath = f"//table[@summary='Corsi']//a[translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{course_name_lower}']"
                 self.wait.until(EC.presence_of_element_located((By.XPATH, case_insensitive_xpath)))
-                print(f"Course '{course_name}' found in search results.")
-                return True
+                try:
+                    # Check if an element matching the case-insensitive XPath exists
+                    short_wait.until(EC.presence_of_element_located((By.XPATH, case_insensitive_xpath)))
+                    print(f"Search successful: Found exact match for '{course_name}'.")
+                    return True  # Exact match found
+                except TimeoutException:
+                    print(f"Search failed: 'Nessun dato' not found, but exact match for '{course_name}' also not found.")
+                    return False  # Exact match not found
         except Exception as e:
             # If any other error occurs, safely assume it was not found.
             print(f"An error occurred during search_course: {e}")
+            # Add screenshot on error
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                ss_path = f"error_search_course_{timestamp}.png"
+                self.driver.save_screenshot(ss_path)
+                print(f"Saved screenshot on search error: {ss_path}")
+            except Exception as ss_e:
+                print(f"Could not save screenshot: {ss_e}")
             return False
 
     def open_course_from_list(self, course_name):

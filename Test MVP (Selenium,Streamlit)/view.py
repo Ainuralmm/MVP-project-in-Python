@@ -276,9 +276,6 @@ class CourseView:
                     st.stop()  # Stop if any date/time format is wrong
 
 
-
-
-
                 #  If the loop completes without stopping, all activities are valid. Proceed.
                 st.session_state.edition_details = {
                     "course_name": course_name, "edition_title": edition_title,
