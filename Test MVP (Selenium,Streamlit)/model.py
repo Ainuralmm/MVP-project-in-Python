@@ -350,7 +350,7 @@ class OracleAutomator:
                         (By.XPATH, '//div[contains(@aria-label, "main") and @role="textbox"]')))
 
                 # Combine everything into a single f-string before sending
-                full_description_text = f"{course_name}-{edition_start_date.strftime('%d/%m/%Y')}-{description}"
+                full_description_text = f"{course_name}-{edition_start_date.strftime('%d/%m/%Y')}-/n{description}"
                 descirione_edizione.send_keys(full_description_text)
 
                 # Removed the extra dot at the end of this line
