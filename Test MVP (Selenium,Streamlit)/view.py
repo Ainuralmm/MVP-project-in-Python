@@ -195,9 +195,9 @@ class CourseView:
                         st.text_input(f"Data (GG/MM/AAAA)", key=f"activity_date_{i}",
                                       placeholder=f"Data giorno {i + 1}")
                     with cols[2]:
-                        st.text_input(f"Ora Inizio (HH:MM)", key=f"activity_start_time_{i}")
+                        st.text_input(f"Ora Inizio (HH.MM)", key=f"activity_start_time_{i}")
                     with cols[3]:
-                        st.text_input(f"Ora Fine (HH:MM)", key=f"activity_end_time_{i}")
+                        st.text_input(f"Ora Fine (HH.MM)", key=f"activity_end_time_{i}")
 
                     st.text_area(f"Descrizione Attività", key=f"activity_desc_{i}", height=100)
 
@@ -260,7 +260,7 @@ class CourseView:
                             # 2. Try parsing and validating date/time formats AND range
 
                             act_date = datetime.strptime(act_date_str, "%d/%m/%Y").date()
-                            # Basic time format check (HH:MM) - could be more robust
+                            # Basic time format check (HH.MM) - could be more robust
                             datetime.strptime(start_time, "%H.%M")
                             datetime.strptime(end_time, "%H.%M")
                             # Check if activity date is outside the edition start/end range.
