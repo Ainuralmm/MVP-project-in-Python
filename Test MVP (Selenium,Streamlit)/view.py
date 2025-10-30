@@ -202,7 +202,7 @@ class CourseView:
                     st.text_area(f"Descrizione Attività", key=f"activity_desc_{i}", height=100)
 
                     ### HASHTAG: PLACEHOLDER FOR FUTURE INPUT ###
-                    # st.text_input(f"Campo Futuro Giorno {i+1}", key=f"activity_future_field_{i}")
+                    st.text_input(f"Impegno previsto in ore", key=f"impegno_previsto_in_ore_{i}")
 
                     st.markdown("---")  # Separator between days
 
@@ -250,7 +250,7 @@ class CourseView:
                             act_date_str = st.session_state.get(f"activity_date_{i}", "")
                             start_time = st.session_state.get(f"activity_start_time_{i}", "09:00")
                             end_time = st.session_state.get(f"activity_end_time_{i}", "11:00")
-                            future_val = st.session_state.get(f"activity_future_field_{i}", "")  # Get future value
+                            impegno_previsto_in_ore = st.session_state.get(f"impegno_previsto_in_ore_{i}", "")  # Get future value
 
                             # 1. Validate required fields for *this* activity
                             if not all([title.strip(), act_desc.strip(), act_date_str.strip()]):

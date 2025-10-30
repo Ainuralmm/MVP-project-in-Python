@@ -197,7 +197,7 @@ class OracleAutomator:
             return f"‼️👩🏻‍✈️ Errore durante la creazione del corso. Controlla la console."
 
     ### HASHTAG: UPDATED HELPER FOR ACTIVITY CREATION
-    def _create_single_activity(self, unique_title, full_description, activity_date_obj, start_time_str, end_time_str, future_input_value):
+    def _create_single_activity(self, unique_title, full_description, activity_date_obj, start_time_str, end_time_str,impegno_previsto_in_ore):
         try:
             activity_date_str = activity_date_obj.strftime('%d/%m/%Y')
             button_aggiungi_attivita = self.wait.until(EC.element_to_be_clickable(
@@ -238,12 +238,12 @@ class OracleAutomator:
             ### HASHTAG: PLACEHOLDER FOR FUTURE INPUT FIELD ###
             # Replace 'YOUR_FUTURE_FIELD_XPATH_SELECTOR' with the actual XPATH
             # Replace 'future_input_value' with the data from the view
-            # If future_input_value: # Check if user provided input
-            #     future_field = self.wait.until(EC.presence_of_element_located((By.XPATH, 'YOUR_FUTURE_FIELD_XPATH_SELECTOR')))
-            #     future_field.clear()
-            #     future_field.send_keys(future_input_value)
-            #     print(f"Entered future field value: {future_input_value}")
-            #     self._pause_for_visual_check()
+            if impegno_previsto_in_ore: # Check if user provided input
+                 impeg_pre_in_ore = self.wait.until(EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Impegno previsto in ore"]')))
+                 impeg_pre_in_ore.clear()
+                 impeg_pre_in_ore.send_keys(impegno_previsto_in_ore)
+                 print(f"Entered future field value: {impegno_previsto_in_ore}")
+                 self._pause_for_visual_check()
 
             # Save and press OK button
             ok_button_attivita = self.wait.until(
