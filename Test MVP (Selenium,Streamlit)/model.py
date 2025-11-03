@@ -584,7 +584,7 @@ class OracleAutomator:
                     activity_date_obj=activity['date'],
                     start_time_str=activity['start_time'],
                     end_time_str=activity['end_time'],
-                    future_input_value=activity.get('future_field', '')  # Safely get future value
+                    impegno_previsto_in_ore=activity.get('impegno_previsto_in_ore', '')  # Safely get future value
                 )
                 if not success:
                     # If one activity fails, report the error and stop

@@ -276,7 +276,7 @@ class CourseView:
                                         "date": act_date,
                                         "start_time": start_time,
                                         "end_time": end_time,
-                                        "future_field": future_val  # Include future value
+                                        "impegno_previsto_in_ore": impegno_previsto_in_ore  # Include future value
                                     })
                 except ValueError:
                     # This catches errors from ANY strptime call (edition or activity)
