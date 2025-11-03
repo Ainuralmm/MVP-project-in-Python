@@ -9,6 +9,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.options import Options
 from selenium.common.exceptions import TimeoutException
+from streamlit import date_input
+
 
 class OracleAutomator:
     def __init__(self, driver_path, debug_mode=False, debug_pause=1, headless=False):
@@ -598,6 +600,76 @@ class OracleAutomator:
         except Exception as e:
             print(f"ERROR in create_edition_and_activities: {e}")
             return f"‼️👩🏻‍✈️ Errore generale durante la creazione dell'edizione o delle attività: {e}"
+
+        ### --- START: NEW METHODS FOR STUDENT INSERTION --- ###
+
+        # Helper to find and open the specific edition using search
+    def _search_and_open_edition(self, edition_name, edition_publish_date_obj, search_button):
+            try:
+                date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
+
+                print(
+                    f"Searching for edition '{edition_name}' with publish date {edition_publish_date_obj.strftime('%d/%m/%Y')}")
+
+                title_input_edizione = self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
+                title_input_edizione.clear()
+                title_input_edizione.send_keys(edition_name)
+
+                date_input_edizione = self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Data inizio pubblicazione']")))
+                date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
+                self.driver.execute_script("arguments[0].value=arguments[1];", date_input_edizione, date_str)
+                date_input.send_keys(Keys.TAB)
+
+                search_button_edizione = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
+                search_button_edizione.click()
+                self.wait.until(EC.staleness_of(search_button))  # Wait for page reaction
+
+                ### HASHTAG: NEW STRATEGY - DO NOT USE THE SEARCH FORM ✅ ###
+                # The search form on the page is unreliable.
+                # Instead, we will wait for the full table to be present.
+                table_xpath = '//table[contains(@summary, "Edizioni")]'
+                self.wait.until(EC.presence_of_element_located((By.XPATH, table_xpath)))
+                print("Model: Editions table is present. Scanning for exact match...")
+
+                ### HASHTAG: FIND THE ROW BY EXACT TEXT IN OTHER COLUMNS ✅ ###
+                # This XPath is complex but precise. It looks for a table row (<tr>) that:
+                # 1. Contains a link (<a>) whose *full title attribute* matches the edition_name.
+                #    (Hovering over the link often reveals the full title, which we assume matches)
+                # 2. AND contains a span (<span>) with the exact publish date string.
+                #
+                # We must find the link this way, as the link's visible text is truncated.
+
+                # First, try to find by the link's *title attribute* (what you see when you hover)
+                try:
+                    link_xpath = (
+                        f'//tr[.//span[text()="{date_str}"]]'  # Find rows with the correct date
+                        f'//a[@title="{edition_name}"]'  # Then find the link with the matching *hover title*
+                    )
+                    link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
+                    print(f"Model: Found link by exact title attribute and date: '{edition_name}'.")
+
+                except TimeoutException:
+                # Fallback: If title attribute fails, find by row index based on date
+                # This is less safe if dates are duplicated, but a good fallback.
+                    print("Model: Could not find by title attribute. Falling back to first row matching date...")
+                    link_xpath = (
+                        f'//tr[.//span[text()="{date_str}"]]'  # Find the *row* with the correct date
+                        f'//a[1]'  # Get the first link in that row
+                    )
+                    link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
+                    print(f"Model: Found first link in row with matching date '{date_str}'.")
+
+                link.click()
+                self._pause_for_visual_check()
+                print(f"Model: Clicked on edition link.")
+                return True
+
+            except Exception as e:
+                print(f"Model: Could not find/click edition '{edition_name}' with date {date_str}. Error: {e}")
+                return False
 
     def close_driver(self):
         print("Model: Closing driver.")
