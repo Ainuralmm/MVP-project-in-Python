@@ -8,7 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.options import Options
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
 from streamlit import date_input
 
 
@@ -670,6 +670,171 @@ class OracleAutomator:
             except Exception as e:
                 print(f"Model: Could not find/click edition '{edition_name}' with date {date_str}. Error: {e}")
                 return False
+
+    def _perform_student_addition_steps(self, student_list, conv_online, conv_presenza):
+        try:
+            # Click on the 'Allievi' tab
+            allievi_tab = self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, "//div[contains(@id, ':clDtSp1:UPsp1:learnerTile::text')]"))
+            )
+            allievi_tab.click()
+            print("Clicked on 'Allievi' tab")
+            self._pause_for_visual_check(2)  # একটু লম্বা বিরতি দিন
+
+            # Press button "Aggiungi allievi"
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[normalize-space()='Aggiungi allievi']"))).click()
+            print("Clicked on 'Aggiungi allievi' button")
+            self._pause_for_visual_check(2)
+
+            # Click on 'Assegnazione volontaria'
+            self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, '//td[contains(@class, "xo2") and normalize-space()="Assegnazione volontaria"]'))).click()
+            print("Clicked on 'Assegnazione volontaria' option")
+            self._pause_for_visual_check(2)
+
+            # Choose 'assegna come--Team Organizzazione and Sviluppo'
+            list_assegna_come = "Team Organizzazione & Sviluppo"
+            print(f"Attempting to select '{list_assegna_come}' from dropdown.")
+            try:
+                # Use a specific, stable selector if possible, otherwise rely on text/position
+                # This XPath assumes it's an input acting like a dropdown trigger
+                assegna_come_input_xpath = '//input[contains(@id, ":clDtSp1:UPsp1:r11:1:r5:0:SP2:r1:0:soc2::content")]'  # Adjust if needed
+                assegna_come_trigger = self.wait.until(EC.element_to_be_clickable((By.XPATH, assegna_come_input_xpath)))
+                assegna_come_trigger.click()
+                print("Clicked the dropdown trigger.")
+            except ElementClickInterceptedException:
+                print("Click intercepted. Trying JavaScript click.")
+                assegna_come_trigger = self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, assegna_come_input_xpath)))
+                self.driver.execute_script("arguments[0].click();", assegna_come_trigger)
+            self._pause_for_visual_check()
+
+            # Click the option from the list (ensure it's visible)
+            option_xpath = f"//li[contains(text(), '{list_assegna_come}')]"  # Adjust if it's not an <li>
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, option_xpath))).click()
+            print(f"Selected '{list_assegna_come}'.")
+            self._pause_for_visual_check()
+
+            # Press button NEXT
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
+            print("Clicked first 'Successivo' button")
+            self._pause_for_visual_check()
+            time.sleep(2)# Longer pause for next page
+
+            # Add multiple people using a loop
+            print(f"--- Adding {len(student_list)} students ---")
+            person_input_xpath = '//input[@aria-label="Aggiungi una persona"]'
+            for i, persona in enumerate(student_list):
+                try:
+                    # Wait for input field to be ready each time
+                    aggiungi_una_persona = self.wait.until(EC.element_to_be_clickable((By.XPATH, person_input_xpath)))
+                    aggiungi_una_persona.clear()
+                    aggiungi_una_persona.send_keys(persona)
+                    self._pause_for_visual_check()
+                    time.sleep(0.5)# Short pause before Enter
+                    aggiungi_una_persona.send_keys(Keys.ENTER)
+                    print(f"({i + 1}/{len(student_list)}) Added '{persona}'.")
+                    # Optional: Add a wait here to confirm the person was added visually if needed
+                    # self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[contains(text(),'{persona}')]"))) # Example wait
+                    self._pause_for_visual_check()
+                    time.sleep(1.5)# Pause after adding
+                except Exception as e:
+                    print(f"Could not add '{persona}'. Maybe not found or error: {e}")
+                    # Decide if you want to stop or continue if one person fails
+
+            # Press button NEXT
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
+            print("Clicked second 'Successivo' button")
+            self._pause_for_visual_check()
+            time.sleep(2)
+
+            # Press button Sottometti
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Sottometti']"))).click()
+            print("Clicked 'Sottometti' button")
+            self._pause_for_visual_check()
+            time.sleep(2)
+
+            # Wait for overlay and press OK
+            print("Waiting for overlay...")
+            self.wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@id,':1:cfmDlg::ok')]"))).click()
+            print("Clicked 'OK' after submission")
+            self._pause_for_visual_check()
+            time.sleep(2)
+
+            # --- Send Notifications ---
+            print("--- Starting notification process ---")
+            # Click 'Azione di massa'
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[text()='Azione di massa']"))).click()
+            print("Clicked 'Azione di massa'")
+            self._pause_for_visual_check()
+
+            # Click 'Invia avviso' using JavaScript for robustness
+            invia_avviso_xpath = "//td[normalize-space()='Invia avviso']"  # Simpler XPath
+            try:
+                invia_avviso_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, invia_avviso_xpath)))
+                self.driver.execute_script("arguments[0].click();", invia_avviso_element)
+                print("Clicked 'Invia avviso'")
+            except Exception as e:
+                print(f"Failed to click 'Invia avviso'. Error: {e}")
+                return False  # Critical step failed
+            self._pause_for_visual_check()
+            time.sleep(2)
+
+            # Click 'Utilizzare tutti i # risultati...'
+            try:
+                utilizzare_label_xpath = "//label[contains(normalize-space(),'Utilizzare tutti i') and contains(normalize-space(),'risultati dei criteri di ricerca')]"
+                self.wait.until(EC.element_to_be_clickable((By.XPATH, utilizzare_label_xpath))).click()
+                print("Selected 'Utilizzare tutti i risultati...'")
+            except Exception as e:
+                print(f"Failed to click 'Utilizzare tutti...' label. Error: {e}")
+                # Maybe try clicking the radio input directly as a fallback if needed
+                return False  # Critical step failed
+            self._pause_for_visual_check()
+
+            # Click 'Successivo'
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
+            print("Clicked 'Successivo' for notifications")
+            self._pause_for_visual_check()
+            time.sleep(2)
+
+            # Flag Convocazione options based on input
+            if conv_online:
+                self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//label[contains(@id,':itt1:5:sbc1::Label1')]"))).click()
+                print("Flagged 'CONVOCAZIONE PARTECIPANTE - ONLINE'")
+                self._pause_for_visual_check()
+            if conv_presenza:
+                self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//label[contains(@id,':itt1:6:sbc1::Label1')]"))).click()
+                print("Flagged 'CONVOCAZIONE PARTECIPANTE - PRESENZA'")  # Typo corrected
+                self._pause_for_visual_check()
+
+            # Click 'Sottometti'
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Sottometti']"))).click()
+            print("Clicked 'Sottometti' for notifications")
+            self._pause_for_visual_check()
+
+            # Click final 'OK'
+            self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(@id,'masUpdt:dc_d11::ok')]"))).click()
+            print("Clicked final 'OK'")
+            self._pause_for_visual_check()
+            time.sleep(2)
+
+            return True  # Indicate success
+
+        except Exception as e:
+            print(f"An error occurred during student addition steps: {e}")
+            # Add screenshot on error
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                ss_path = f"error_add_students_{timestamp}.png"
+                self.driver.save_screenshot(ss_path)
+                print(f"Saved screenshot on student add error: {ss_path}")
+            except Exception as ss_e:
+                print(f"Could not save screenshot: {ss_e}")
+            return False  # Indicate failure
 
     def close_driver(self):
         print("Model: Closing driver.")
