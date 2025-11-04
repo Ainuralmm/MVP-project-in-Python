@@ -6,9 +6,6 @@ class CoursePresenter:
         self.model = model
         self.view = view
 
-    ### HASHTAG: GUARANTEED STATE RESET WITH TRY...FINALLY
-    # This is the most important fix. The code in the `finally` block ALWAYS runs,
-    # even if an error occurs. Resetting the state here guarantees your UI will unlock.
     def run_create_course(self, course_details):
         try:
             oracle_url = st.secrets['ORACLE_URL']
@@ -82,5 +79,43 @@ class CoursePresenter:
         finally:
             print("Presenter (Edition+Activity): Automation finished. Cleaning up.")
             self.model.close_driver()
+            st.session_state.app_state = "IDLE"
+            st.rerun()
+
+    ### HASHTAG: ADDED METHOD FOR STUDENT FLOW ###
+    def run_add_students(self, student_details):
+        try:
+            oracle_url = st.secrets['ORACLE_URL']
+            oracle_user = st.secrets['ORACLE_USER']
+            oracle_pass = st.secrets['ORACLE_PASS']
+
+            num_students = len(student_details.get('students', []))
+            # Use "student" placeholder for UI updates
+            self.view.update_progress("student", "Accesso a Oracle...", 10)
+
+            # Login happens inside the model's add_students method now
+            # as it's a separate flow needing its own navigation.
+            # self.model.login(...) # No login needed here
+
+            self.view.update_progress("student", f"Ricerca edizione e aggiunta di {num_students} allievi...", 30)
+
+            # Call the new model method
+            result_message = self.model.add_students_to_edition(student_details)
+            time.sleep(1)  # Small pause
+            self.view.update_progress("student", f"Aggiunta di {num_students} allievi...", 50)
+
+            self.view.update_progress("student", "Processo completato!", 100)
+            self.view.show_message("student", result_message)
+
+        except Exception as e:
+            error_message = f"‼️ Si è verificato un errore: {str(e)}"
+            print(f"Presenter Error (Student Add): {error_message}")
+            self.view.show_message("student", error_message)
+
+        finally:
+            print("Presenter (Student Add): Automation finished. Cleaning up.")
+            # Ensure model driver is closed even if login happens inside model method
+            if hasattr(self.model, 'driver') and self.model.driver:
+                self.model.close_driver()
             st.session_state.app_state = "IDLE"
             st.rerun()
