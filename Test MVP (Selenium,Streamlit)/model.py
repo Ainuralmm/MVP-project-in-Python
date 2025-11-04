@@ -836,6 +836,53 @@ class OracleAutomator:
                 print(f"Could not save screenshot: {ss_e}")
             return False  # Indicate failure
 
+        # Public method called by the presenter
+    def add_students_to_edition(self, student_details):
+            try:
+                course_name = student_details['course_name'].title()
+                edition_name = student_details['edition_name']
+                edition_publish_date = student_details['edition_publish_date']
+                student_list = student_details['students']
+                conv_online = student_details['convocazione_online']
+                conv_presenza = student_details['convocazione_presenza']
+
+                print(
+                    f"Model (STUDENTS): Starting addition for {len(student_list)} students to {course_name} / {edition_name}")
+
+                # 1. Navigate & Find Course (These steps are needed here for this separate flow)
+                if not self.navigate_to_courses_page():
+                    return "‼️ Errore: Navigazione alla pagina corsi fallita."
+                if not self.search_course(course_name):
+                    return f"‼️ Errore: Corso '{course_name}' non trovato."
+                if not self.open_course_from_list(course_name):
+                    return f"‼️ Errore: Impossibile aprire il corso '{course_name}'."
+
+                # 2. Go to Edizioni Tab and Find the Specific Edition
+                edizioni_tab_xpath = "//div[normalize-space(.)='Edizioni' and contains(@class, 'Tile')]"
+                try:
+                    edizioni_tab_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath)))
+                    self.driver.execute_script("arguments[0].click();", edizioni_tab_element)
+                    print("Clicked 'Edizioni' tab using JavaScript.")
+                    # Wait for the search box on the editions page to confirm load
+                    self.wait.until(EC.presence_of_element_located((By.XPATH, "//input[@aria-label='Offering Title']")))
+                except Exception as e:
+                    return f"‼️ Errore: Impossibile fare clic sulla scheda 'Edizioni'. Error: {e}"
+
+                if not self._search_and_open_edition(edition_name, edition_publish_date):
+                    return f"‼️ Errore: Edizione '{edition_name}' (pubbl. {edition_publish_date.strftime('%d/%m/%Y')}) non trovata."
+
+                # 3. Perform the Student Addition Steps
+                success = self._perform_student_addition_steps(student_list, conv_online, conv_presenza)
+
+                if success:
+                    return f"✅🤩 Successo! {len(student_list)} allievi aggiunti all'edizione '{edition_name}'."
+                else:
+                    return f"‼️👩🏻‍✈️ Errore durante l'aggiunta degli allievi all'edizione '{edition_name}'. Controllare la console."
+
+            except Exception as e:
+                print(f"ERROR in add_students_to_edition: {e}")
+                return f"‼️👩🏻‍✈️ Errore generale durante l'aggiunta degli allievi: {e}"
+
     def close_driver(self):
         print("Model: Closing driver.")
         self.driver.quit()
