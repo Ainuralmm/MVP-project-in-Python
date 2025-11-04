@@ -417,8 +417,9 @@ class CourseView:
             placeholder = self.course_output_placeholder
         elif form_type == "edition":
             placeholder = self.edition_output_placeholder
-
-        if hasattr(self, 'course_output_placeholder') and placeholder:  # Use a base attribute check
+        elif form_type == "student": placeholder = self.student_output_placeholder # Added student
+        # Check if the specific placeholder attribute exists before using it
+        if placeholder and hasattr(self, f"{form_type}_output_placeholder") :  # Use a base attribute check
             with placeholder.container():
                 st.info(f"⏳ {message}")
                 st.progress(percentage)
@@ -432,13 +433,16 @@ class CourseView:
         elif form_type == "edition":
             placeholder = self.edition_output_placeholder
             message_key = "edition_message"
-
+        elif form_type == "student":  # Added student
+            placeholder = self.student_output_placeholder
+            message_key = "student_message"
 
         if not placeholder or not message_key:
             return  # Safety check
 
         st.session_state[message_key] = message
-        if hasattr(self, 'course_output_placeholder') and placeholder:  # Use a base attribute check
+        # Check if the specific placeholder attribute exists before using it
+        if placeholder and hasattr(self, f"{form_type}_output_placeholder"):
             with placeholder.container():
                 if "✅" in message:
                     st.success(message)
