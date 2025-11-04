@@ -731,7 +731,7 @@ class OracleAutomator:
                     aggiungi_una_persona.clear()
                     aggiungi_una_persona.send_keys(persona)
                     self._pause_for_visual_check()
-                    time.sleep(0.5)# Short pause before Enter
+                    time.sleep(1)# Short pause before Enter
                     aggiungi_una_persona.send_keys(Keys.ENTER)
                     print(f"({i + 1}/{len(student_list)}) Added '{persona}'.")
                     # Optional: Add a wait here to confirm the person was added visually if needed
