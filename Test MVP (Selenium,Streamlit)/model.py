@@ -836,7 +836,7 @@ class OracleAutomator:
                 print(f"Could not save screenshot: {ss_e}")
             return False  # Indicate failure
 
-        # Public method called by the presenter
+    # Public method called by the presenter
     def add_students_to_edition(self, student_details):
             try:
                 course_name = student_details['course_name'].title()
