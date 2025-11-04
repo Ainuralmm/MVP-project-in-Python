@@ -10,11 +10,15 @@ class CourseView:
         st.set_page_config(layout='centered')
         # --- Basic App State ---
         if "app_state" not in st.session_state: st.session_state.app_state = "IDLE" #It's the default, resting state. means:The app is not busy. It's just waiting for you to fill in a form and click a button.
+        # --- Message States ---
         if "course_message" not in st.session_state: st.session_state.course_message = ""
         if "edition_message" not in st.session_state: st.session_state.edition_message = ""
-
+        if "student_message" not in st.session_state: st.session_state.student_message = "" # New message state
+        # --- Form Specific State ---
         if "num_activities" not in st.session_state:
             st.session_state.num_activities = 1
+        if "num_students" not in st.session_state: st.session_state.num_students = 1 # New student count state
+
 
         # --- Initialize Widget States (Single Source of Truth) ---
         # If the key for a widget doesn't exist in memory, create it with its default value.
@@ -62,8 +66,7 @@ class CourseView:
                 self.course_output_placeholder = st.empty()
                 if st.session_state.course_message: self.show_message("course", st.session_state.course_message,show_clear_button = True)
 
-            # --- Combined Edition + Activity Form Container ---
-            ### HASHTAG: Simplified UI - Only 2 Forms Now
+        # --- Combined Edition + Activity Form Container ---
         with st.container(border=True):
             st.header("2. Creazione Nuova Edizione + Attività")
             if st.session_state.app_state == "RUNNING_EDITION":
@@ -74,6 +77,15 @@ class CourseView:
                 if st.session_state.edition_message:
                     self.show_message("edition", st.session_state.edition_message,
                                               show_clear_button=True)  # Use 'edition' message key
+            ### HASHTAG: ADDED STUDENT FORM CONTAINER ###
+        with st.container(border=True):
+            st.header("3. Aggiungi Allievi (a Edizione Esistente)")
+            if st.session_state.app_state == "RUNNING_STUDENTS":
+                self.student_output_placeholder = st.empty()  # New placeholder
+            else:
+                self._render_student_form(is_disabled=is_running)
+                self.student_output_placeholder = st.empty()  # New placeholder
+                if st.session_state.student_message: self.show_message("student", st.session_state.student_message,  True)  # New message type
 
     def _clear_course_form_callback(self):
         st.session_state.course_title_key = ""
@@ -100,6 +112,19 @@ class CourseView:
             if f"activity_start_time_{i}" in st.session_state: st.session_state[f"activity_start_time_{i}"] = "00.00"
             if f"activity_end_time_{i}" in st.session_state: st.session_state[f"activity_end_time_{i}"] = "00.00"
             if f"activity_future_field_{i}" in st.session_state: st.session_state[f"activity_future_field_{i}"] = ""
+
+        ### HASHTAG: ADDED STUDENT FORM CLEAR CALLBACK ###
+    def _clear_student_form_callback(self):
+            st.session_state.student_course_name_key = ""
+            st.session_state.student_edition_name_key = ""
+            st.session_state.student_edition_publish_date_key = ""
+            st.session_state.num_students = 1
+            st.session_state.student_convocazione_online = True  # Default to True? Or False?
+            st.session_state.student_convocazione_presenza = True  # Default to True? Or False?
+            # Clear dynamic student name fields
+            for i in range(50):  # Max 50 students
+                if f"student_name_{i}" in st.session_state:
+                    st.session_state[f"student_name_{i}"] = ""
 
     def _render_course_form(self, is_disabled):
         with st.form(key='course_form'):
@@ -294,6 +319,97 @@ class CourseView:
                 st.session_state.app_state = "RUNNING_EDITION"  # Still use EDITION state
                 st.session_state.edition_message = ""
                 st.rerun()
+            ### HASHTAG: ADDED STUDENT FORM RENDER METHOD ###
+
+    def _render_student_form(self, is_disabled):
+        num_students = st.number_input(
+            "Quanti allievi da aggiungere?",
+            min_value=1,
+            max_value=50,  # Max 50 students
+            key="num_students"
+        )
+
+        with st.form(key='student_form'):
+            st.subheader("1. Trova Edizione Esistente")
+            st.text_input("Nome del Corso Esistente", placeholder="Corso a cui appartiene l'edizione",
+                          key="student_course_name_key")
+            st.text_input("Nome Esatto Edizione",
+                          placeholder="Inserisci il nome esatto e completo dell'edizione (non troncato)",
+                          key="student_edition_name_key")
+            st.text_input("Data Pubblicazione Edizione (GG/MM/AAAA)",
+                          placeholder="La 'Publish Start Date' dell'edizione", key="student_edition_publish_date_key")
+
+        st.divider()
+        st.subheader("2. Dettagli Allievi")
+        # Dynamically create input fields for each student name
+        student_names_inputs = []
+        for i in range(num_students):
+            student_name = st.text_input(f"Nome e Cognome Allievo {i + 1}", key=f"student_name_{i}")
+            student_names_inputs.append(student_name)
+            # Future placeholder:
+            # st.text_input(f"Codice Fiscale Allievo {i+1} (Opzionale)", key=f"student_cf_{i}")
+
+        st.divider()
+        st.subheader("3. Opzioni Convocazione")
+        st.checkbox("Invia Convocazione Online", key="student_convocazione_online", value=True)
+        st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza", value=True)
+
+        # --- Buttons ---
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            submitted = st.form_submit_button("Aggiungi Allievi", type="primary", disabled=is_disabled,
+                                              use_container_width=True)
+        with col2:
+            st.form_submit_button("Pulisci 🧹", use_container_width=True, on_click=self._clear_student_form_callback)
+
+    # --- Submission Logic ---
+        if submitted:
+            # Collect data
+            course_name = st.session_state.student_course_name_key
+            edition_name = st.session_state.student_edition_name_key
+            edition_publish_date_str = st.session_state.student_edition_publish_date_key
+            conv_online = st.session_state.student_convocazione_online
+            conv_presenza = st.session_state.student_convocazione_presenza
+
+            # Basic Validation
+            if not all([course_name.strip(), edition_name.strip(), edition_publish_date_str.strip()]):
+                st.error("I campi 'Nome Corso', 'Nome Edizione' e 'Data Pubblicazione' sono obbligatori.")
+                st.stop()
+            if not conv_online and not conv_presenza:
+                st.error("Selezionare almeno un tipo di convocazione (Online o Presenza).")
+                st.stop()
+
+            try:
+                edition_publish_date = datetime.strptime(edition_publish_date_str, "%d/%m/%Y").date()
+            except ValueError:
+                st.error("Formato Data Pubblicazione Edizione non valido. Usa GG/MM/AAAA.")
+                st.stop()
+                # Collect student names
+            student_list = []
+            all_students_valid = True
+            for i in range(num_students):
+                    name = st.session_state.get(f"student_name_{i}", "").strip()
+                    if not name:
+                        st.error(f"Il nome per l'Allievo {i + 1} è obbligatorio.")
+                        all_students_valid = False
+                        break
+                    student_list.append(name)
+
+            if not all_students_valid:
+                    st.stop()
+
+            # If all valid, proceed
+            st.session_state.student_details = {
+                    "course_name": course_name,
+                    "edition_name": edition_name,
+                    "edition_publish_date": edition_publish_date,
+                    "students": student_list,
+                    "convocazione_online": conv_online,
+                    "convocazione_presenza": conv_presenza
+                }
+            st.session_state.app_state = "RUNNING_STUDENTS"  # New state
+            st.session_state.student_message = ""  # Use new message key
+            st.rerun()
 
     def update_progress(self, form_type, message, percentage):
         placeholder = None
