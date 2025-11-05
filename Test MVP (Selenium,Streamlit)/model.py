@@ -601,6 +601,22 @@ class OracleAutomator:
         ### --- START: NEW METHODS FOR STUDENT INSERTION --- ###
 
         # Helper to find and open the specific edition using search
+        ### HASHTAG: NEW HELPER FUNCTION FOR PRESENTER ✅ ###
+        # This simple function is called by the presenter after opening the course.
+        def open_edizioni_tab(self):
+            try:
+                edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
+                edizioni_tab_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath)))
+                self.driver.execute_script("arguments[0].click();", edizioni_tab_element)
+                print("Clicked 'Edizioni' tab using JavaScript.")
+                # Wait for the search box on the editions page to confirm load
+                self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, "//input[contains(@aria-label, 'Titolo edizione')]")))
+                return True
+            except Exception as e:
+                print(f"Errore: Impossibile fare clic sulla scheda 'Edizioni'. Error: {e}")
+                return False
+
 
     def search_and_open_edition(self, student_details ):
             try:
