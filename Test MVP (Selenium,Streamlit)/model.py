@@ -601,9 +601,10 @@ class OracleAutomator:
         ### --- START: NEW METHODS FOR STUDENT INSERTION --- ###
 
         # Helper to find and open the specific edition using search
-        ### HASHTAG: NEW HELPER FUNCTION FOR PRESENTER ✅ ###
-        # This simple function is called by the presenter after opening the course.
-        def open_edizioni_tab(self):
+
+    ### HASHTAG: NEW HELPER FUNCTION FOR PRESENTER ✅ ###
+    # This simple function is called by the presenter after opening the course.
+    def open_edizioni_tab(self):
             try:
                 edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
                 edizioni_tab_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath)))
@@ -617,22 +618,9 @@ class OracleAutomator:
                 print(f"Errore: Impossibile fare clic sulla scheda 'Edizioni'. Error: {e}")
                 return False
 
-
-    def search_and_open_edition(self, student_details ):
+    def _search_and_open_edition(self, edition_name, edition_publish_date_obj):
             try:
-                edition_name = student_details['edition_name']
-                edition_publish_date_obj= student_details['edition_publish_date']
-                # 1. Go to Edizioni Tab and Find the Specific Edition
-                edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
-                edizioni_tab_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath)))
-                self.driver.execute_script("arguments[0].click();", edizioni_tab_element)
-                print("Clicked 'Edizioni' tab using JavaScript.")
-                # Wait for the search box on the editions page to confirm load
-                self.wait.until(
-                        EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
-
                 date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
-
                 print(
                     f"Searching for edition '{edition_name}' with publish date {edition_publish_date_obj.strftime('%d/%m/%Y')}")
 
@@ -650,22 +638,7 @@ class OracleAutomator:
                 search_button_edizione = self.wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
                 search_button_edizione.click()
-                # self.wait.until(EC.staleness_of(search_button_edizione))  # Wait for page reaction
-
-                ### HASHTAG: NEW STRATEGY - DO NOT USE THE SEARCH FORM ✅ ###
-                # The search form on the page is unreliable.
-                # Instead, we will wait for the full table to be present.
-                table_xpath = '//table[contains(@summary, "Edizioni")]'
-                self.wait.until(EC.presence_of_element_located((By.XPATH, table_xpath)))
-                print("Model: Editions table is present. Scanning for exact match...")
-
-                ### HASHTAG: FIND THE ROW BY EXACT TEXT IN OTHER COLUMNS ✅ ###
-                # This XPath is complex but precise. It looks for a table row (<tr>) that:
-                # 1. Contains a link (<a>) whose *full title attribute* matches the edition_name.
-                #    (Hovering over the link often reveals the full title, which we assume matches)
-                # 2. AND contains a span (<span>) with the exact publish date string.
-                #
-                # We must find the link this way, as the link's visible text is truncated.
+                self.wait.until(EC.staleness_of(search_button_edizione))# Wait for page reaction
 
                 # First, try to find by the link's *title attribute* (what you see when you hover)
                 try:
@@ -704,18 +677,18 @@ class OracleAutomator:
             )
             allievi_tab.click()
             print("Clicked on 'Allievi' tab")
-            self._pause_for_visual_check(2)  # একটু লম্বা বিরতি দিন
+            self._pause_for_visual_check()
 
             # Press button "Aggiungi allievi"
             self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[normalize-space()='Aggiungi allievi']"))).click()
             print("Clicked on 'Aggiungi allievi' button")
-            self._pause_for_visual_check(2)
+            self._pause_for_visual_check()
 
             # Click on 'Assegnazione volontaria'
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, '//td[contains(@class, "xo2") and normalize-space()="Assegnazione volontaria"]'))).click()
             print("Clicked on 'Assegnazione volontaria' option")
-            self._pause_for_visual_check(2)
+            self._pause_for_visual_check()
 
             # Choose 'assegna come--Team Organizzazione and Sviluppo'
             list_assegna_come = "Team Organizzazione & Sviluppo"
@@ -861,48 +834,6 @@ class OracleAutomator:
                 print(f"Could not save screenshot: {ss_e}")
             return False  # Indicate failure
 
-    # Public method called by the presenter
-    def add_students_to_edition(self, student_details):
-            try:
-                course_name = student_details['course_name'].title()
-                edition_name = student_details['edition_name']
-                # edition_publish_date = student_details['edition_publish_date']
-                student_list = student_details['students']
-                conv_online = student_details['convocazione_online']
-                conv_presenza = student_details['convocazione_presenza']
-
-                print(
-                    f"Model (STUDENTS): Starting addition for {len(student_list)} students to {course_name} / {edition_name}")
-
-
-                # 1. Go to Edizioni Tab and Find the Specific Edition
-                edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
-                try:
-                    edizioni_tab_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath)))
-                    self.driver.execute_script("arguments[0].click();", edizioni_tab_element)
-                    print("Clicked 'Edizioni' tab using JavaScript.")
-                    # Wait for the search box on the editions page to confirm load
-                    self.wait.until(EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
-                except Exception as e:
-                    return f"‼️ Errore: Impossibile fare clic sulla scheda 'Edizioni'. Error: {e}"
-
-                # self._search_and_open_edition(edition_name, edition_publish_date)
-                # print("Edizione '{edition_name}' (pubbl. {edition_publish_date.strftime('%d/%m/%Y')}) non trovata.")
-
-                # if not self._search_and_open_edition(edition_name, edition_publish_date):
-                #     return f"‼️ Errore: Edizione '{edition_name}' (pubbl. {edition_publish_date.strftime('%d/%m/%Y')}) trovata."
-
-                # 2. Perform the Student Addition Steps
-                success = self._perform_student_addition_steps(student_list, conv_online, conv_presenza)
-
-                if success:
-                    return f"✅🤩 Successo! {len(student_list)} allievi aggiunti all'edizione '{edition_name}'."
-                else:
-                    return f"‼️👩🏻‍✈️ Errore durante l'aggiunta degli allievi all'edizione '{edition_name}'. Controllare la console."
-
-            except Exception as e:
-                print(f"ERROR in add_students_to_edition: {e}")
-                return f"‼️👩🏻‍✈️ Errore generale durante l'aggiunta degli allievi: {e}"
 
     def close_driver(self):
         print("Model: Closing driver.")
