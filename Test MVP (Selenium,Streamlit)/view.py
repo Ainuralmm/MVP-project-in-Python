@@ -339,28 +339,28 @@ class CourseView:
             st.text_input("Data Pubblicazione Edizione (GG/MM/AAAA)",
                           placeholder="La 'Publish Start Date' dell'edizione", key="student_edition_publish_date_key")
 
-        st.divider()
-        st.subheader("2. Dettagli Allievi")
-        # Dynamically create input fields for each student name
-        student_names_inputs = []
-        for i in range(num_students):
-            student_name = st.text_input(f"Nome e Cognome Allievo {i + 1}", key=f"student_name_{i}")
-            student_names_inputs.append(student_name)
-            # Future placeholder:
-            # st.text_input(f"Codice Fiscale Allievo {i+1} (Opzionale)", key=f"student_cf_{i}")
+            st.divider()
+            st.subheader("2. Dettagli Allievi")
+            # Dynamically create input fields for each student name
+            student_names_inputs = []
+            for i in range(num_students):
+                student_name = st.text_input(f"Nome e Cognome Allievo {i + 1}", key=f"student_name_{i}")
+                student_names_inputs.append(student_name)
+                # Future placeholder:
+                # st.text_input(f"Codice Fiscale Allievo {i+1} (Opzionale)", key=f"student_cf_{i}")
 
-        st.divider()
-        st.subheader("3. Opzioni Convocazione")
-        st.checkbox("Invia Convocazione Online", key="student_convocazione_online", value=True)
-        st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza", value=True)
+            st.divider()
+            st.subheader("3. Opzioni Convocazione")
+            st.checkbox("Invia Convocazione Online", key="student_convocazione_online", value=True)
+            st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza", value=True)
 
-        # --- Buttons ---
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            submitted = st.form_submit_button("Aggiungi Allievi", type="primary", disabled=is_disabled,
+            # --- Buttons ---
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                submitted = st.form_submit_button("Aggiungi Allievi", type="primary", disabled=is_disabled,
                                               use_container_width=True)
-        with col2:
-            st.form_submit_button("Pulisci 🧹", use_container_width=True, on_click=self._clear_student_form_callback)
+            with col2:
+                st.form_submit_button("Pulisci 🧹", use_container_width=True, on_click=self._clear_student_form_callback)
 
     # --- Submission Logic ---
         if submitted:
