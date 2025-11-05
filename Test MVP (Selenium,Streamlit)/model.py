@@ -602,8 +602,19 @@ class OracleAutomator:
 
         # Helper to find and open the specific edition using search
 
-    def _search_and_open_edition(self, edition_name, edition_publish_date_obj, search_button):
+    def search_and_open_edition(self, student_details ):
             try:
+                edition_name = student_details['edition_name']
+                edition_publish_date_obj= student_details['edition_publish_date']
+                # 1. Go to Edizioni Tab and Find the Specific Edition
+                edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
+                edizioni_tab_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath)))
+                self.driver.execute_script("arguments[0].click();", edizioni_tab_element)
+                print("Clicked 'Edizioni' tab using JavaScript.")
+                # Wait for the search box on the editions page to confirm load
+                self.wait.until(
+                        EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
+
                 date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
 
                 print(
@@ -611,7 +622,7 @@ class OracleAutomator:
 
                 title_input_edizione = self.wait.until(
                     EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
-                title_input_edizione.clear()
+                # title_input_edizione.clear()
                 title_input_edizione.send_keys(edition_name)
 
                 date_input_edizione = self.wait.until(
@@ -623,7 +634,7 @@ class OracleAutomator:
                 search_button_edizione = self.wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
                 search_button_edizione.click()
-                self.wait.until(EC.staleness_of(search_button))  # Wait for page reaction
+                # self.wait.until(EC.staleness_of(search_button_edizione))  # Wait for page reaction
 
                 ### HASHTAG: NEW STRATEGY - DO NOT USE THE SEARCH FORM ✅ ###
                 # The search form on the page is unreliable.
@@ -839,7 +850,7 @@ class OracleAutomator:
             try:
                 course_name = student_details['course_name'].title()
                 edition_name = student_details['edition_name']
-                edition_publish_date = student_details['edition_publish_date']
+                # edition_publish_date = student_details['edition_publish_date']
                 student_list = student_details['students']
                 conv_online = student_details['convocazione_online']
                 conv_presenza = student_details['convocazione_presenza']
@@ -859,8 +870,11 @@ class OracleAutomator:
                 except Exception as e:
                     return f"‼️ Errore: Impossibile fare clic sulla scheda 'Edizioni'. Error: {e}"
 
-                if not self._search_and_open_edition(edition_name, edition_publish_date):
-                    return f"‼️ Errore: Edizione '{edition_name}' (pubbl. {edition_publish_date.strftime('%d/%m/%Y')}) non trovata."
+                # self._search_and_open_edition(edition_name, edition_publish_date)
+                # print("Edizione '{edition_name}' (pubbl. {edition_publish_date.strftime('%d/%m/%Y')}) non trovata.")
+
+                # if not self._search_and_open_edition(edition_name, edition_publish_date):
+                #     return f"‼️ Errore: Edizione '{edition_name}' (pubbl. {edition_publish_date.strftime('%d/%m/%Y')}) trovata."
 
                 # 2. Perform the Student Addition Steps
                 success = self._perform_student_addition_steps(student_list, conv_online, conv_presenza)
