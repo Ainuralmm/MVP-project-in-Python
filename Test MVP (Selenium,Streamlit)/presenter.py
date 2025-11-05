@@ -88,16 +88,29 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.secrets['ORACLE_USER']
             oracle_pass = st.secrets['ORACLE_PASS']
+            course_name = student_details['course_name']
 
             num_students = len(student_details.get('students', []))
             # Use "student" placeholder for UI updates
             self.view.update_progress("student", "Accesso a Oracle...", 10)
+            if not self.model.login(oracle_url, oracle_user, oracle_pass):
+                raise Exception("Login fallito.")
 
             # Login happens inside the model's add_students method now
             # as it's a separate flow needing its own navigation.
             # self.model.login(...) # No login needed here
 
             self.view.update_progress("student", f"Ricerca edizione e aggiunta di {num_students} allievi...", 30)
+            if not self.model.navigate_to_courses_page():
+                raise Exception("Navigazione fallita.")
+
+            self.view.update_progress("student", f"Ricerca del corso '{course_name}'...", 40)
+            if not self.model.search_course(course_name):
+                raise Exception(f"Corso '{course_name}' non trovato. Crealo prima.")
+
+            self.view.update_progress("student", f"Apertura del corso '{course_name}'...", 55)
+            if not self.model.open_course_from_list(course_name):
+                raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
 
             # Call the new model method
             result_message = self.model.add_students_to_edition(student_details)
