@@ -269,9 +269,6 @@ class OracleAutomator:
                 print("Could not click Cancel button after error.")  # Ignore if cancel fails too
             return False
 
-
-
-
     # CREATE EDITION flow (assumes caller opened the course detail page)
     def create_edition_and_activities(self, edition_details):
         """
@@ -604,6 +601,7 @@ class OracleAutomator:
         ### --- START: NEW METHODS FOR STUDENT INSERTION --- ###
 
         # Helper to find and open the specific edition using search
+
     def _search_and_open_edition(self, edition_name, edition_publish_date_obj, search_button):
             try:
                 date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
@@ -851,7 +849,7 @@ class OracleAutomator:
 
 
                 # 1. Go to Edizioni Tab and Find the Specific Edition
-                edizioni_tab_xpath = "//div[normalize-space(.)='Edizioni' and contains(@class, 'Tile')]"
+                edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
                 try:
                     edizioni_tab_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath)))
                     self.driver.execute_script("arguments[0].click();", edizioni_tab_element)
