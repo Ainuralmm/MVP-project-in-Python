@@ -88,21 +88,22 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.secrets['ORACLE_USER']
             oracle_pass = st.secrets['ORACLE_PASS']
+
+            # Unpack details for function calls
             course_name = student_details['course_name']
             edition_name = student_details['edition_name']
             edition_publish_date = student_details['edition_publish_date']
+            student_list = student_details['students']
+            conv_online = student_details['convocazione_online']
+            conv_presenza = student_details['convocazione_presenza']
+            num_students = len(student_list)
 
-            num_students = len(student_details.get('students', []))
             # Use "student" placeholder for UI updates
             self.view.update_progress("student", "Accesso a Oracle...", 10)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
 
-            # Login happens inside the model's add_students method now
-            # as it's a separate flow needing its own navigation.
-            # self.model.login(...) # No login needed here
-
-            self.view.update_progress("student", f"Ricerca edizione e aggiunta di {num_students} allievi...", 20)
+            self.view.update_progress("student", f"Navigazione alla pagina dei corsi...", 20)
             if not self.model.navigate_to_courses_page():
                 raise Exception("Navigazione fallita.")
 
@@ -114,16 +115,27 @@ class CoursePresenter:
             if not self.model.open_course_from_list(course_name):
                 raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
 
-            self.view.update_progress("student", f"Ricerca dell'edizione '{edition_name}'...", 50)
-            if not self.model.search_and_open_edition(edition_name, edition_publish_date):
-                return f"‼️ Errore: Edizione '{edition_name}' (pubbl. {edition_publish_date.strftime('%d/%m/%Y')}) trovata."
+            self.view.update_progress("student", "Apertura scheda 'Edizioni'...", 50)
+            # This new helper function just clicks the tab
+            if not self.model.open_edizioni_tab():
+                raise Exception("Impossibile fare clic sulla scheda 'Edizioni'.")
 
-            # Call the new model method
-            result_message = self.model.add_students_to_edition(student_details)
-            time.sleep(1)  # Small pause
-            self.view.update_progress("student", f"Aggiunta di {num_students} allievi...", 60)
+            self.view.update_progress("student", f"Ricerca dell'edizione '{edition_name}'...", 60)
+            ### HASHTAG: THIS IS THE FIX FOR YOUR TypeError ✅ ###
+            # Now calling the *correct* model function with the *correct* arguments
+            if not self.model._search_and_open_edition(edition_name, edition_publish_date):
+                raise Exception(
+                    f"Edizione '{edition_name}' (pubbl. {edition_publish_date.strftime('%d/%m/%Y')}) non trovata.")
+
+            self.view.update_progress("student", f"Aggiunta di {num_students} allievi...", 75)
+            # Call the model method that *only* adds students
+            success = self.model._perform_student_addition_steps(student_list, conv_online, conv_presenza)
+
+            if not success:
+                raise Exception("Errore durante l'aggiunta degli allievi.")
 
             self.view.update_progress("student", "Processo completato!", 100)
+            result_message = f"✅🤩 Successo! {len(student_list)} allievi aggiunti all'edizione '{edition_name}'."
             self.view.show_message("student", result_message)
 
         except Exception as e:
