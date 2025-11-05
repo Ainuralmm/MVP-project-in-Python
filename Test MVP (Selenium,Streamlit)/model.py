@@ -643,29 +643,18 @@ class OracleAutomator:
                     EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
                 search_button_edizione.click()
                 self.wait.until(EC.staleness_of(search_button_edizione))# Wait for page reaction
+                print("Model: Search submitted. Waiting for results.")
 
                 time.sleep(2)  # remove it after bugging solved
 
-                # First, try to find by the link's *title attribute* (what you see when you hover)
-                try:
-                    link_xpath = (
-                        f'//tr[.//span[text()="{date_str}"]]'  # Find rows with the correct date
-                        f'//a[@title="{edition_name}"]'  # Then find the link with the matching *hover title*
-                    )
-                    link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
-                    print(f"Model: Found link by exact title attribute and date: '{edition_name}'.")
-
-                except TimeoutException:
-                # Fallback: If title attribute fails, find by row index based on date
-                # This is less safe if dates are duplicated, but a good fallback.
-                    print("Model: Could not find by title attribute. Falling back to first row matching date...")
-                    link_xpath = (
-                        f'//tr[.//span[text()="{date_str}"]]'  # Find the *row* with the correct date
-                        f'//a[1]'  # Get the first link in that row
-                    )
-                    link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
-                    print(f"Model: Found first link in row with matching date '{date_str}'.")
-
+                # search (Name + Date) filters the list.
+                #             # We trust the filter and click the link in the *first row* of the results.
+                #             # This XPath finds the first link (the "Numero edizione") in the first row
+                #             # of the table's body.
+                link_xpath = '(//table[contains(@summary, "Edizioni")]//tbody//tr[1]//a)[1]'
+                #
+                link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
+                print("Model: Found first result link. Clicking it...")
                 link.click()
                 self._pause_for_visual_check()
                 print(f"Model: Clicked on edition link.")
@@ -673,6 +662,14 @@ class OracleAutomator:
 
             except Exception as e:
                 print(f"Model: Could not find/click edition '{edition_name}' with date {date_str}. Error: {e}")
+                # Try to save a screenshot to help debug
+                try:
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    ss_path = f"error_search_edition_{timestamp}.png"
+                    self.driver.save_screenshot(ss_path)
+                    print(f"Saved screenshot on search error: {ss_path}")
+                except Exception as ss_e:
+                    print(f"Could not save screenshot: {ss_e}")
                 return False
 
     def _perform_student_addition_steps(self, student_list, conv_online, conv_presenza):
