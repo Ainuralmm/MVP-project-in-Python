@@ -9,7 +9,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.options import Options
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
-from streamlit import date_input
 
 
 class OracleAutomator:
@@ -608,11 +607,13 @@ class OracleAutomator:
             try:
                 edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
                 edizioni_tab_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath)))
-                self.driver.execute_script("arguments[0].click();", edizioni_tab_element)
-                print("Clicked 'Edizioni' tab using JavaScript.")
+                #self.driver.execute_script("arguments[0].click();", edizioni_tab_element)
+                edizioni_tab_element.click()
+                print("Model:Clicked 'Edizioni' tab ")
                 # Wait for the search box on the editions page to confirm load
                 self.wait.until(
                     EC.presence_of_element_located((By.XPATH, "//input[contains(@aria-label, 'Titolo edizione')]")))
+                print("Model:Search box on the editions page is loaded")
                 return True
             except Exception as e:
                 print(f"Errore: Impossibile fare clic sulla scheda 'Edizioni'. Error: {e}")
@@ -622,7 +623,8 @@ class OracleAutomator:
             try:
                 date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
                 print(
-                    f"Searching for edition '{edition_name}' with publish date {edition_publish_date_obj.strftime('%d/%m/%Y')}")
+                    f"Model: Searching for edition '{edition_name}' with publish date {edition_publish_date_obj.strftime('%d/%m/%Y')}")
+                time.sleep(2) #remove it after bugging solved
 
                 title_input_edizione = self.wait.until(
                     EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
@@ -633,12 +635,16 @@ class OracleAutomator:
                     EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Data inizio pubblicazione']")))
                 date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
                 self.driver.execute_script("arguments[0].value=arguments[1];", date_input_edizione, date_str)
-                date_input.send_keys(Keys.TAB)
+                date_input_edizione.send_keys(Keys.TAB)
+
+                time.sleep(2)  # remove it after bugging solved
 
                 search_button_edizione = self.wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
                 search_button_edizione.click()
                 self.wait.until(EC.staleness_of(search_button_edizione))# Wait for page reaction
+
+                time.sleep(2)  # remove it after bugging solved
 
                 # First, try to find by the link's *title attribute* (what you see when you hover)
                 try:
