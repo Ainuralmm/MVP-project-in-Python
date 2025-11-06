@@ -341,10 +341,16 @@ class CourseView:
 
             st.divider()
             st.subheader("2. Dettagli Allievi")
+            st.info(
+                "**Importante:** Per trovare l'allievo corretto, il metodo più sicuro è "
+                "inserire **Numero di matricola** (es. **2413**). "
+                "Inserire solo il nome o l'email può causare errori se esistono duplicati.",
+                icon="💡"
+            )
             # Dynamically create input fields for each student name
             student_names_inputs = []
             for i in range(num_students):
-                student_name = st.text_input(f"Nome e Cognome Allievo {i + 1}", key=f"student_name_{i}")
+                student_name = st.text_input(f"Numero di matricola {i + 1}", key=f"student_name_{i}")
                 student_names_inputs.append(student_name)
                 # Future placeholder:
                 # st.text_input(f"Codice Fiscale Allievo {i+1} (Opzionale)", key=f"student_cf_{i}")
