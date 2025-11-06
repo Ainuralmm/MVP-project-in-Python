@@ -650,8 +650,7 @@ class OracleAutomator:
                 #             # We trust the filter and click the link in the *first row* of the results.
                 #             # This XPath finds the first link (the "Numero edizione") in the first row
                 #             # of the table's body.
-                link_xpath = '(//table[contains(@summary, "Edizioni")]//tbody//tr[1]//a)[1]'
-                #
+                link_xpath = "//table[contains(@summary, 'Edizioni')]//a[contains(@id, ':clnmLnk')]"   #
                 link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
                 print("Model: Found first result link. Clicking it...")
                 link.click()
