@@ -735,7 +735,7 @@ class OracleAutomator:
                     # Optional: Add a wait here to confirm the person was added visually if needed
                     # self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[contains(text(),'{persona}')]"))) # Example wait
                     self._pause_for_visual_check()
-                    time.sleep(3)# Pause after adding
+                    time.sleep(5)# Pause after adding
                 except Exception as e:
                     print(f"Could not add '{persona}'. Maybe not found or error: {e}")
                     # Decide if you want to stop or continue if one person fails
