@@ -642,15 +642,14 @@ class OracleAutomator:
                 search_button_edizione = self.wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
                 search_button_edizione.click()
-                self.wait.until(EC.staleness_of(search_button_edizione))# Wait for page reaction
                 print("Model: Search submitted. Waiting for results.")
-                time.sleep(2)  # remove it after bugging solved
+                #time.sleep(2)  # remove it after bugging solved
 
                 # search (Name + Date) filters the list.
                 #             # We trust the filter and click the link in the *first row* of the results.
                 #             # This XPath finds the first link (the "Numero edizione") in the first row
                 #             # of the table's body.
-                link_xpath = "//table[contains(@summary, 'Edizioni')]//a[contains(@id, ':clnmLnk')]"   #
+                link_xpath = '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r2:1:srAtbl:_ATp:srTbl::db"]/table/tbody/tr[1]/td[2]'   #
                 link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
                 print("Model: Found first result link. Clicking it...")
                 link.click()
