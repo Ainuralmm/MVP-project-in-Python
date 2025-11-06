@@ -626,6 +626,7 @@ class OracleAutomator:
                     f"Model: Searching for edition '{edition_name}' with publish date {edition_publish_date_obj.strftime('%d/%m/%Y')}")
                 time.sleep(2) #remove it after bugging solved
 
+                # --- Fill Search Form (This part is correct) ---
                 title_input_edizione = self.wait.until(
                     EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
                 # title_input_edizione.clear()
@@ -636,7 +637,6 @@ class OracleAutomator:
                 date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
                 self.driver.execute_script("arguments[0].value=arguments[1];", date_input_edizione, date_str)
                 date_input_edizione.send_keys(Keys.TAB)
-
                 time.sleep(2)  # remove it after bugging solved
 
                 search_button_edizione = self.wait.until(
@@ -644,7 +644,6 @@ class OracleAutomator:
                 search_button_edizione.click()
                 self.wait.until(EC.staleness_of(search_button_edizione))# Wait for page reaction
                 print("Model: Search submitted. Waiting for results.")
-
                 time.sleep(2)  # remove it after bugging solved
 
                 # search (Name + Date) filters the list.
@@ -827,14 +826,14 @@ class OracleAutomator:
 
         except Exception as e:
             print(f"An error occurred during student addition steps: {e}")
-            # Add screenshot on error
-            try:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                ss_path = f"error_add_students_{timestamp}.png"
-                self.driver.save_screenshot(ss_path)
-                print(f"Saved screenshot on student add error: {ss_path}")
-            except Exception as ss_e:
-                print(f"Could not save screenshot: {ss_e}")
+            # # Add screenshot on error
+            # try:
+            #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            #     ss_path = f"error_add_students_{timestamp}.png"
+            #     self.driver.save_screenshot(ss_path)
+            #     print(f"Saved screenshot on student add error: {ss_path}")
+            # except Exception as ss_e:
+            #     print(f"Could not save screenshot: {ss_e}")
             return False  # Indicate failure
 
 
