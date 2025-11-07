@@ -817,6 +817,14 @@ class OracleAutomator:
                 print("Failed to find search results after maximum attempts. Skipping notifications.")
                 return False  # Failed to verify, so stop
             else:
+                # You MUST wait for the "BlockingGlassPane" to disappear
+                # *after* the search results load and *before* clicking the next button.
+                print("Results are visible. Waiting for blocking pane to disappear...")
+                self.wait.until(EC.invisibility_of_element_located(
+                    (By.CLASS_NAME, "AFBlockingGlassPane")
+                ))
+                print("Blocking pane has disappeared. Proceeding to notifications.")
+
                 print("--- Starting notification process ---")
                 # Click 'Azione di massa'
                 azione_di_massa_button_allievi = self.wait.until(
