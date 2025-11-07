@@ -645,11 +645,8 @@ class OracleAutomator:
                 print("Model: Search submitted. Waiting for results.")
                 #time.sleep(2)  # remove it after bugging solved
 
-                # search (Name + Date) filters the list.
-                #             # We trust the filter and click the link in the *first row* of the results.
-                #             # This XPath finds the first link (the "Numero edizione") in the first row
-                #             # of the table's body.
-                link_xpath = '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r2:1:srAtbl:_ATp:srTbl::db"]/table/tbody/tr[1]/td[2]'   #
+                #checing for appeared results and choosing it
+                link_xpath = link_xpath = "//*[contains(@id, ':srAtbl:_ATp:srTbl:1:clnmLnk')]"  #
                 link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
                 print("Model: Found first result link. Clicking it...")
                 link.click()
@@ -669,7 +666,7 @@ class OracleAutomator:
                     print(f"Could not save screenshot: {ss_e}")
                 return False
 
-            # model.py (Corrected function)
+
 
     def _perform_student_addition_steps(self, student_list, conv_online, conv_presenza):
         try:
