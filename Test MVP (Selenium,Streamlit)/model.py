@@ -669,8 +669,12 @@ class OracleAutomator:
                     print(f"Could not save screenshot: {ss_e}")
                 return False
 
+            # model.py (Corrected function)
+
     def _perform_student_addition_steps(self, student_list, conv_online, conv_presenza):
         try:
+            # --- PART 1: ADD STUDENTS ---
+
             # Click on the 'Allievi' tab
             allievi_tab = self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, "//div[contains(@id, ':clDtSp1:UPsp1:learnerTile::text')]"))
@@ -694,9 +698,7 @@ class OracleAutomator:
             list_assegna_come = "Team Organizzazione & Sviluppo"
             print(f"Attempting to select '{list_assegna_come}' from dropdown.")
             try:
-                # Use a specific, stable selector if possible, otherwise rely on text/position
-                # This XPath assumes it's an input acting like a dropdown trigger
-                assegna_come_input_xpath = '//input[contains(@id, ":clDtSp1:UPsp1:r11:1:r5:0:SP2:r1:0:soc2::content")]'  # Adjust if needed
+                assegna_come_input_xpath = '//input[contains(@id, ":clDtSp1:UPsp1:r11:1:r5:0:SP2:r1:0:soc2::content")]'
                 assegna_come_trigger = self.wait.until(EC.element_to_be_clickable((By.XPATH, assegna_come_input_xpath)))
                 assegna_come_trigger.click()
                 print("Clicked the dropdown trigger.")
@@ -707,8 +709,8 @@ class OracleAutomator:
                 self.driver.execute_script("arguments[0].click();", assegna_come_trigger)
             self._pause_for_visual_check()
 
-            # Click the option from the list (ensure it's visible)
-            option_xpath = f"//li[contains(text(), '{list_assegna_come}')]"  # Adjust if it's not an <li>
+            # Click the option from the list
+            option_xpath = f"//li[contains(text(), '{list_assegna_come}')]"
             self.wait.until(EC.element_to_be_clickable((By.XPATH, option_xpath))).click()
             print(f"Selected '{list_assegna_come}'.")
             self._pause_for_visual_check()
@@ -717,28 +719,24 @@ class OracleAutomator:
             self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
             print("Clicked first 'Successivo' button")
             self._pause_for_visual_check()
-            time.sleep(2)# Longer pause for next page
+            time.sleep(2)  # Wait for next page
 
             # Add multiple people using a loop
             print(f"--- Adding {len(student_list)} students ---")
             person_input_xpath = '//input[@aria-label="Aggiungi una persona"]'
             for i, persona in enumerate(student_list):
                 try:
-                    # Wait for input field to be ready each time
                     aggiungi_una_persona = self.wait.until(EC.element_to_be_clickable((By.XPATH, person_input_xpath)))
                     aggiungi_una_persona.clear()
                     aggiungi_una_persona.send_keys(persona)
                     self._pause_for_visual_check()
-                    time.sleep(1)# Short pause before Enter
+                    time.sleep(1)
                     aggiungi_una_persona.send_keys(Keys.ENTER)
                     print(f"({i + 1}/{len(student_list)}) Added '{persona}'.")
-                    # Optional: Add a wait here to confirm the person was added visually if needed
-                    # self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[contains(text(),'{persona}')]"))) # Example wait
                     self._pause_for_visual_check()
-                    time.sleep(5)# Pause after adding
+                    time.sleep(5)  # Pause after adding
                 except Exception as e:
                     print(f"Could not add '{persona}'. Maybe not found or error: {e}")
-                    # Decide if you want to stop or continue if one person fails
 
             # Press button NEXT
             self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
@@ -760,80 +758,155 @@ class OracleAutomator:
             self._pause_for_visual_check()
             time.sleep(2)
 
-            # --- Send Notifications ---
-            print("--- Starting notification process ---")
-            # Click 'Azione di massa'
-            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[text()='Azione di massa']"))).click()
-            print("Clicked 'Azione di massa'")
-            self._pause_for_visual_check()
+            # --- PART 2: Visualise all added people before sending notifications ---
+            found_results = False
+            attempts = 0
+            max_attempts = 5
 
-            # Click 'Invia avviso' using JavaScript for robustness
-            invia_avviso_xpath = "//td[normalize-space()='Invia avviso']"  # Simpler XPath
+            # Perform the initial setup (filter) ONCE
             try:
-                invia_avviso_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, invia_avviso_xpath)))
-                self.driver.execute_script("arguments[0].click();", invia_avviso_element)
-                print("Clicked 'Invia avviso'")
-            except Exception as e:
-                print(f"Failed to click 'Invia avviso'. Error: {e}")
-                return False  # Critical step failed
-            self._pause_for_visual_check()
-            time.sleep(2)
-
-            # Click 'Utilizzare tutti i # risultati...'
-            try:
-                utilizzare_label_xpath = "//label[contains(normalize-space(),'Utilizzare tutti i') and contains(normalize-space(),'risultati dei criteri di ricerca')]"
-                self.wait.until(EC.element_to_be_clickable((By.XPATH, utilizzare_label_xpath))).click()
-                print("Selected 'Utilizzare tutti i risultati...'")
-            except Exception as e:
-                print(f"Failed to click 'Utilizzare tutti...' label. Error: {e}")
-                # Maybe try clicking the radio input directly as a fallback if needed
-                return False  # Critical step failed
-            self._pause_for_visual_check()
-
-            # Click 'Successivo'
-            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
-            print("Clicked 'Successivo' for notifications")
-            self._pause_for_visual_check()
-            time.sleep(2)
-
-            # Flag Convocazione options based on input
-            if conv_online:
-                self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//label[contains(@id,':itt1:5:sbc1::Label1')]"))).click()
-                print("Flagged 'CONVOCAZIONE PARTECIPANTE - ONLINE'")
-                self._pause_for_visual_check()
-            if conv_presenza:
-                self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//label[contains(@id,':itt1:6:sbc1::Label1')]"))).click()
-                print("Flagged 'CONVOCAZIONE PARTECIPANTE - PRESENZA'")  # Typo corrected
+                print("Clicking on 'Stato_assegnazione' dropdown")
+                stato_assegnazione_allievi = WebDriverWait(self.driver, 15).until(
+                    EC.element_to_be_clickable((
+                        By.XPATH, "//span[contains(@class, 'x1kn')]/a[contains(@id, ':lrasQry:value20::drop')]")))
+                stato_assegnazione_allievi.click()
                 self._pause_for_visual_check()
 
-            # Click 'Sottometti'
-            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Sottometti']"))).click()
-            print("Clicked 'Sottometti' for notifications")
-            self._pause_for_visual_check()
+                print("Clicking on 'Tutto' option")
+                stato_assegnazione_allievi_tutto = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '//*[contains(text(),"Tutto")]')))
+                stato_assegnazione_allievi_tutto.click()
+                print("Successfully clicked 'Tutto'.")
+                self._pause_for_visual_check()
 
-            # Click final 'OK'
-            self.wait.until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(@id,'masUpdt:dc_d11::ok')]"))).click()
-            print("Clicked final 'OK'")
-            self._pause_for_visual_check()
-            time.sleep(2)
+            except Exception as e:
+                print(f"Initial setup (filter) failed. Cannot continue. Error: {e}")
+                return False  # Exit if setup fails
+
+            # Loop to perform the search and wait for results
+            while not found_results and attempts < max_attempts:
+                attempts += 1
+                print(f"Attempt {attempts} to find search results...")
+                try:
+                    # Step 1: Click on 'Cerca' button
+                    print("Clicking on 'Cerca' button")
+                    cerca_button_allievi = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
+                    cerca_button_allievi.click()
+                    print("Clicked on 'Cerca' button")
+                    self._pause_for_visual_check()
+                    time.sleep(3)  # Give search time to process
+
+                    # Step 2: Check if the names have appeared.
+                    print("Waiting for search results to load...")
+
+                    ### HASHTAG: FIXED VARIABLE NAME ✅ ###
+                    # Changed `lista_persone` to the function parameter `student_list`
+                    xpath_wait_for_names = " or ".join([f"normalize-space()='{name.upper()}'" for name in student_list])
+                    dynamic_xpath = f"//span[{xpath_wait_for_names}]"
+
+                    WebDriverWait(self.driver, 20).until(
+                        EC.visibility_of_element_located((By.XPATH, dynamic_xpath))
+                    )
+                    print("Search results are now visible. Breaking the loop.")
+                    found_results = True
+
+                except Exception as e:
+                    print(f"Search results not found on attempt {attempts}. Retrying... Error: {e}")
+                    time.sleep(2)  # Wait a bit before retrying
+
+            # --- PART 3: Send Notifications ---
+            if not found_results:
+                print("Failed to find search results after maximum attempts. Skipping notifications.")
+                return False  # Failed to verify, so stop
+            else:
+                print("--- Starting notification process ---")
+                # Click 'Azione di massa'
+                azione_di_massa_button_allievi = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[text()='Azione di massa']")))
+                azione_di_massa_button_allievi.click()
+                print("Clicked on 'Azione di massa' button")
+                self._pause_for_visual_check()
+
+                # Choose 'Invia avviso'
+                print("Attempting to click on 'Invia avviso' option.")
+                invia_avviso_xpath = "//td[normalize-space()='Invia avviso']"
+                found = False
+                try:
+                    invia_avviso_allievi = self.wait.until(EC.element_to_be_clickable((By.XPATH, invia_avviso_xpath)))
+                    print(f"Found 'Invia avviso'. Now attempting a JavaScript click.")
+                    self.driver.execute_script("arguments[0].click();", invia_avviso_allievi)
+                    print("Clicked on 'Invia avviso' option using JavaScript.")
+                    found = True
+                except Exception as e:
+                    print(f"Failed to find or click 'Invia avviso' option. Error: {e}")
+                if not found:
+                    return False  # Failed to click 'Invia avviso'
+                self._pause_for_visual_check()
+                time.sleep(2)
+
+                # in opened window choose 'Utilizzare tutti i # risultati dei criteri di ricerca'
+                print("Attempting to click 'Utilizzare tutti i # risultati...'.")
+                try:
+                    utilizzare_tutti = self.wait.until(
+                        EC.element_to_be_clickable((By.XPATH,
+                                                    "//label[contains(normalize-space(),'Utilizzare tutti i') and contains(normalize-space(),'risultati dei criteri di ricerca')]"))
+                    )
+                    utilizzare_tutti.click()
+                    print("Successfully clicked on 'Utilizzare tutti i ...' label.")
+
+                except Exception as e:
+                    print(f"Failed to click the label. Error: {e}")
+                    return False  # Critical step failed
+                self._pause_for_visual_check()
+                time.sleep(2)
+
+                # press on button 'Successivo'
+                invia_avviso_successivo = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
+                print("Clicked on 'Successivo' button")
+                self._pause_for_visual_check()
+                time.sleep(2)
+
+                # Flag Convocazione options based on input
+                if conv_online:
+                    self.wait.until(
+                        EC.element_to_be_clickable((By.XPATH, "//label[contains(@id,':itt1:5:sbc1::Label1')]"))).click()
+                    print("Flagged 'CONVOCAZIONE PARTECIPANTE - ONLINE' option.")
+                    self._pause_for_visual_check()
+                if conv_presenza:
+                    self.wait.until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, "//label[contains(@id,':itt1:6:sbc1::Label1')]"))).click()
+                    print("Flagged 'CONVOCAZIONE PARTECIPANTE - PRESENTE' option.")
+                    self._pause_for_visual_check()
+
+                # press sottometti button
+                convacazione_sottometti_button = self.wait.until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//button[text()='Sottometti']"))).click()
+                print("Clicked on 'Sottometti' button")
+                self._pause_for_visual_check()
+
+                # press Ok button
+                covacazione_ok_button = self.wait.until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//button[contains(@id,'masUpdt:dc_d11::ok')]"))).click()
+                print("Clicked on 'OK' button")
+                self._pause_for_visual_check()
+                time.sleep(2)
 
             return True  # Indicate success
 
         except Exception as e:
             print(f"An error occurred during student addition steps: {e}")
-            # # Add screenshot on error
-            # try:
-            #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            #     ss_path = f"error_add_students_{timestamp}.png"
-            #     self.driver.save_screenshot(ss_path)
-            #     print(f"Saved screenshot on student add error: {ss_path}")
-            # except Exception as ss_e:
-            #     print(f"Could not save screenshot: {ss_e}")
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                ss_path = f"error_add_students_{timestamp}.png"
+                self.driver.save_screenshot(ss_path)
+                print(f"Saved screenshot on student add error: {ss_path}")
+            except Exception as ss_e:
+                print(f"Could not save screenshot: {ss_e}")
             return False  # Indicate failure
-
 
     def close_driver(self):
         print("Model: Closing driver.")
