@@ -797,10 +797,10 @@ class OracleAutomator:
                     # Step 2: Check if the names have appeared.
                     print("Waiting for search results to load...")
 
-                    ### HASHTAG: FIXED VARIABLE NAME ✅ ###
-                    # Changed `lista_persone` to the function parameter `student_list`
-                    xpath_wait_for_names = " or ".join([f"normalize-space()='{name.upper()}'" for name in student_list])
-                    dynamic_xpath = f"//span[{xpath_wait_for_names}]"
+                    # Instead of looking for the name (which we don't know),
+                    # we just wait for the first data cell (with class 'xen') to appear.
+                    # This confirms the table has loaded.
+                    dynamic_xpath = "//td[@class='xen'][1]"
 
                     WebDriverWait(self.driver, 20).until(
                         EC.visibility_of_element_located((By.XPATH, dynamic_xpath))
