@@ -202,6 +202,9 @@ class CourseView:
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
+        # CRITICAL: Also preserve the count itself
+        st.session_state.preserved_activity_data["_count"] = num_activities
+
         for i in range(num_activities):
             key_prefix = f"activity_{i}"
             st.session_state.preserved_activity_data[f"{key_prefix}_title"] = \
@@ -219,7 +222,16 @@ class CourseView:
 
     def _restore_activity_data(self, num_activities):
         """Restore preserved activity data to form fields"""
-        for i in range(num_activities):
+        # CRITICAL: Restore the count to show correct number of fields
+        if "_count" in st.session_state.preserved_activity_data:
+            restored_count = st.session_state.preserved_activity_data["_count"]
+            # Update num_activities to match what was preserved
+            if st.session_state.num_activities != restored_count:
+                st.session_state.num_activities = restored_count
+
+        # Use the restored count for the loop
+        count_to_restore = st.session_state.num_activities
+        for i in range(count_to_restore):
             key_prefix = f"activity_{i}"
             if f"{key_prefix}_title" in st.session_state.preserved_activity_data:
                 st.session_state[f"activity_title_{i}"] = \
@@ -370,13 +382,25 @@ class CourseView:
 
     def _preserve_student_data(self, num_students):
         """Preserve current student data before form submission"""
+        # CRITICAL: Also preserve the count itself
+        st.session_state.preserved_student_data["_count"] = num_students
+
         for i in range(num_students):
             st.session_state.preserved_student_data[f"student_{i}_name"] = \
                 st.session_state.get(f"student_name_{i}", "")
 
     def _restore_student_data(self, num_students):
         """Restore preserved student data to form fields"""
-        for i in range(num_students):
+        # CRITICAL: Restore the count to show correct number of fields
+        if "_count" in st.session_state.preserved_student_data:
+            restored_count = st.session_state.preserved_student_data["_count"]
+            # Update num_students to match what was preserved
+            if st.session_state.num_students != restored_count:
+                st.session_state.num_students = restored_count
+
+        # Use the restored count for the loop
+        count_to_restore = st.session_state.num_students
+        for i in range(count_to_restore):
             if f"student_{i}_name" in st.session_state.preserved_student_data:
                 st.session_state[f"student_name_{i}"] = \
                     st.session_state.preserved_student_data[f"student_{i}_name"]
