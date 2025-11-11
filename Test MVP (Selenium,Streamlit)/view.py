@@ -25,20 +25,27 @@ class CourseView:
         # This becomes the single source of truth.
         if "course_date_str_key" not in st.session_state:
             st.session_state.course_date_str_key = "01/01/2023"
-        # (You can do this for all your other inputs too)
-        # if "edition_start_date_str_key" not in st.session_state:
-        #     st.session_state.edition_start_date_str_key = ""
-        # if "edition_end_date_str_key" not in st.session_state:
-        #     st.session_state.edition_end_date_str_key = ""
-        # if "activity_start_date_key" not in st.session_state:
-        #     st.session_state.activity_start_date_key = ""
 
         # Initialize activity time defaults (important for consistency)
         for i in range(30):  # Loop up to your max
+            if f"activity_title_{i}" not in st.session_state: st.session_state[f"activity_title_{i}"] = ""
+            if f"activity_desc_{i}" not in st.session_state: st.session_state[f"activity_desc_{i}"] = ""
+            if f"activity_date_{i}" not in st.session_state: st.session_state[f"activity_date_{i}"] = ""
             if f"activity_start_time_{i}" not in st.session_state:
                 st.session_state[f"activity_start_time_{i}"] = "09.00"
             if f"activity_end_time_{i}" not in st.session_state:
                 st.session_state[f"activity_end_time_{i}"] = "11.00"
+            if f"impegno_previsto_in_ore_{i}" not in st.session_state:  # Your new field
+                st.session_state[f"impegno_previsto_in_ore_{i}"] = ""
+
+            # This loop to initialize the student name keys
+            for i in range(30):  # Max 50 students
+                if f"student_name_{i}" not in st.session_state:
+                    st.session_state[f"student_name_{i}"] = ""
+                    # Add future student keys here if needed (e.g., codice fiscale)
+                    # if f"student_cf_{i}" not in st.session_state:
+                    #    st.session_state[f"student_cf_{i}"] = ""
+
         # Dates and others can start empty implicitly
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
@@ -111,7 +118,7 @@ class CourseView:
             if f"activity_date_{i}" in st.session_state: st.session_state[f"activity_date_{i}"] = ""
             if f"activity_start_time_{i}" in st.session_state: st.session_state[f"activity_start_time_{i}"] = "00.00"
             if f"activity_end_time_{i}" in st.session_state: st.session_state[f"activity_end_time_{i}"] = "00.00"
-            if f"activity_future_field_{i}" in st.session_state: st.session_state[f"activity_future_field_{i}"] = ""
+            if f"impegno_previsto_in_ore_{i}" in st.session_state: st.session_state[f"impegno_previsto_in_or_{i}"] = ""
 
         ### HASHTAG: ADDED STUDENT FORM CLEAR CALLBACK ###
     def _clear_student_form_callback(self):
@@ -220,9 +227,9 @@ class CourseView:
                         st.text_input(f"Data (GG/MM/AAAA)", key=f"activity_date_{i}",
                                       placeholder=f"Data giorno {i + 1}")
                     with cols[2]:
-                        st.text_input(f"Ora Inizio (HH:MM)", key=f"activity_start_time_{i}")
+                        st.text_input(f"Ora Inizio (HH.MM)", key=f"activity_start_time_{i}")
                     with cols[3]:
-                        st.text_input(f"Ora Fine (HH:MM)", key=f"activity_end_time_{i}")
+                        st.text_input(f"Ora Fine (HH.MM)", key=f"activity_end_time_{i}")
 
                     st.text_area(f"Descrizione Attività", key=f"activity_desc_{i}", height=100)
 
