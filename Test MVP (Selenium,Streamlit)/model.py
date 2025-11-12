@@ -646,7 +646,8 @@ class OracleAutomator:
                 #time.sleep(2)  # remove it after bugging solved
 
                 #checing for appeared results and choosing it
-                link_xpath = link_xpath = "//*[contains(@id, ':srAtbl:_ATp:srTbl:1:clnmLnk')]"  #
+                # It waits for the search to finish AND for that specific link to become clickable.
+                link_xpath = "//a[contains(@id, ':srAtbl:_ATp:srTbl:') and contains(@id, ':clnmLnk')]"
                 link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
                 print("Model: Found first result link. Clicking it...")
                 link.click()
