@@ -23,7 +23,7 @@ class CourseView:
         if "num_students" not in st.session_state:
             st.session_state.num_students = 1
 
-        # --- NEW: Preserved form data storage ---
+        # --- Preserved form data storage ---
         if "preserved_activity_data" not in st.session_state:
             st.session_state.preserved_activity_data = {}
         if "preserved_student_data" not in st.session_state:
@@ -52,6 +52,11 @@ class CourseView:
         for i in range(50):
             if f"student_name_{i}" not in st.session_state:
                 st.session_state[f"student_name_{i}"] = ""
+
+        if "student_convocazione_online" not in st.session_state:
+            st.session_state.student_convocazione_online = True
+        if "student_convocazione_presenza" not in st.session_state:
+            st.session_state.student_convocazione_presenza = True
 
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
@@ -443,8 +448,8 @@ class CourseView:
 
             st.divider()
             st.subheader("3. Opzioni Convocazione")
-            st.checkbox("Invia Convocazione Online", key="student_convocazione_online", value=True)
-            st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza", value=True)
+            st.checkbox("Invia Convocazione Online", key="student_convocazione_online")
+            st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza")
 
             col1, col2 = st.columns([3, 1])
             with col1:
