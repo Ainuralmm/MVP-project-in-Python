@@ -1,5 +1,5 @@
 import time
-from datetime import timedelta
+from datetime import timedelta, datetime
 from dateutil.relativedelta import relativedelta
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
@@ -56,19 +56,28 @@ class OracleAutomator:
 
     def search_course(self, course_name):
         try:
-            capitalised_course_name = course_name.title()
-            search_box = self.wait.until(EC.presence_of_element_located(
-                (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
+            # Remove any leading/trailing whitespace before converting case
+            cleaned_course_name = course_name.strip()
+            capitalised_course_name = cleaned_course_name.title()
+            ### HASHTAG: ADDED EXPLICIT WAIT BEFORE SEARCH BOX INTERACTION ✅ ###
+            search_box_locator = (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')
+            search_box = self.wait.until(EC.element_to_be_clickable(search_box_locator))  # Wait for clickable
             search_box.clear()
             search_box.send_keys(capitalised_course_name)
+            self._pause_for_visual_check()# Pause after sending keys
             date_input = self.wait.until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
             date_input.clear()
             date_input.send_keys("01/01/2000")
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'))).click()
+            self._pause_for_visual_check()
+            search_button_locator = (By.XPATH,
+                                     '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]')
+            search_button = self.wait.until(EC.element_to_be_clickable(search_button_locator))  # Wait for clickable
+            search_button.click()
+            print("Clicked Search button.")
 
-            short_wait = WebDriverWait(self.driver, 5)
+            # --- Wait for results or 'No Data' ---
+            short_wait = WebDriverWait(self.driver, 7)
             try:
                 # First, check for the "no data" message. If it appears, the course definitely doesn't exist.
                 short_wait.until(
@@ -76,16 +85,30 @@ class OracleAutomator:
                 return False  # Course does not exist
             except TimeoutException:
                 # If there's no "no data" message, we now look for an EXACT match.
-                course_name_lower = course_name.lower()
+                course_name_lower = cleaned_course_name.lower()
                 # Switched from `contains()` to an exact match `normalize-space(.)=` for precision.
                 # This XPath converts the link text to lowercase and compares it to our lowercase variable.
                 case_insensitive_xpath = f"//table[@summary='Corsi']//a[translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{course_name_lower}']"
                 self.wait.until(EC.presence_of_element_located((By.XPATH, case_insensitive_xpath)))
-                print(f"Course '{course_name}' found in search results.")
-                return True
+                try:
+                    # Check if an element matching the case-insensitive XPath exists
+                    short_wait.until(EC.presence_of_element_located((By.XPATH, case_insensitive_xpath)))
+                    print(f"Search successful: Found exact match for '{course_name}'.")
+                    return True  # Exact match found
+                except TimeoutException:
+                    print(f"Search failed: 'Nessun dato' not found, but exact match for '{course_name}' also not found.")
+                    return False  # Exact match not found
         except Exception as e:
             # If any other error occurs, safely assume it was not found.
             print(f"An error occurred during search_course: {e}")
+            # Add screenshot on error
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                ss_path = f"error_search_course_{timestamp}.png"
+                self.driver.save_screenshot(ss_path)
+                print(f"Saved screenshot on search error: {ss_path}")
+            except Exception as ss_e:
+                print(f"Could not save screenshot: {ss_e}")
             return False
 
     def open_course_from_list(self, course_name):
@@ -101,7 +124,17 @@ class OracleAutomator:
             link.click()
             self._pause_for_visual_check()
             print(f"Model: Clicked on existing course '{course_name}' in list.")
+            ### HASHTAG: THE FIX - WAIT FOR THE NEXT PAGE TO LOAD ✅ ###
+            # Add a wait here for an element that ONLY exists on the course details page.
+            # Waiting for the "Edizioni" tab itself to be clickable is a robust choice.
+            edizioni_tab_xpath_on_details_page = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath_on_details_page)))
+            print(f"Model: Course details page loaded successfully (found Edizioni tab).")
+            # You can keep or remove the _pause_for_visual_check here, this explicit wait is better.
+            # self._pause_for_visual_check()
+            # Only return True AFTER the next page is confirmed loaded.
             return True
+
         except Exception as e:
             print(f"Model: Could not find or click the link for '{course_name}'. Error: {e}")
             return False
@@ -163,8 +196,82 @@ class OracleAutomator:
         except Exception as e:
             return f"‼️👩🏻‍✈️ Errore durante la creazione del corso. Controlla la console."
 
+    ### HASHTAG: UPDATED HELPER FOR ACTIVITY CREATION
+    def _create_single_activity(self, unique_title, full_description, activity_date_obj, start_time_str, end_time_str, future_input_value):
+        try:
+            activity_date_str = activity_date_obj.strftime('%d/%m/%Y')
+            button_aggiungi_attivita = self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']"))
+            )
+            button_aggiungi_attivita.click()
+            print(f"Clicked 'Aggiungi' button for activity on {activity_date_str}")
+            self._pause_for_visual_check()
+
+            # --- Fill Activity Details ---
+            box_attivita_titolo = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Titolo"]')))
+            box_attivita_titolo.send_keys(unique_title)
+
+            desc_per_elenco_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Descrizione per elenco"]')))
+            desc_per_elenco_attivita.send_keys(f"{unique_title}-{activity_date_str}")
+
+            desc_dettagliata_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//div[@aria-label="Editor editing area: main"]')))
+            desc_dettagliata_attivita.send_keys(full_description)
+
+            data_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Data attività"]')))
+            self.driver.execute_script("arguments[0].value=arguments[1];", data_attivita, activity_date_str)
+            data_attivita.send_keys(Keys.TAB)  # Trigger potential validation
+
+            ora_inizio_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Ora inizio"]')))
+            ora_inizio_attivita.clear()
+            ora_inizio_attivita.send_keys(start_time_str)
+
+            ora_fine_attivita = self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Ora fine"]')))
+            ora_fine_attivita.clear()
+            ora_fine_attivita.send_keys(end_time_str)
+
+            ### HASHTAG: PLACEHOLDER FOR FUTURE INPUT FIELD ###
+            # Replace 'YOUR_FUTURE_FIELD_XPATH_SELECTOR' with the actual XPATH
+            # Replace 'future_input_value' with the data from the view
+            # If future_input_value: # Check if user provided input
+            #     future_field = self.wait.until(EC.presence_of_element_located((By.XPATH, 'YOUR_FUTURE_FIELD_XPATH_SELECTOR')))
+            #     future_field.clear()
+            #     future_field.send_keys(future_input_value)
+            #     print(f"Entered future field value: {future_input_value}")
+            #     self._pause_for_visual_check()
+
+            # Save and press OK button
+            ok_button_attivita = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, '//a[./span[text()="OK"]]')))
+            ok_button_attivita.click()
+            print(f"Clicked OK for activity '{unique_title}' on {activity_date_str}")
+            # Wait for the OK button popup to disappear before proceeding
+            self.wait.until(EC.invisibility_of_element_located((By.XPATH, '//a[./span[text()="OK"]]')))
+            self._pause_for_visual_check()  # Short pause after popup closes
+            return True
+
+        except Exception as e:
+            print(f"Error creating activity '{unique_title}' on {activity_date_str}: {e}")
+            # Try to click Cancel if OK fails, to avoid getting stuck
+            try:
+                cancel_button = self.driver.find_element(By.XPATH, '//a[./span[text()="Annulla"]]')
+                cancel_button.click()
+                self.wait.until(EC.invisibility_of_element_located((By.XPATH, '//a[./span[text()="Annulla"]]')))
+                print("Clicked Cancel button after error.")
+            except:
+                print("Could not click Cancel button after error.")  # Ignore if cancel fails too
+            return False
+
+
+
+
     # CREATE EDITION flow (assumes caller opened the course detail page)
-    def create_edition(self, edition_details):
+    def create_edition_and_activities(self, edition_details):
         """
         ADDED: CREATE EDITION METHOD
         edition_details keys:
@@ -193,7 +300,7 @@ class OracleAutomator:
             #language = edition_details.get('language', "")
             #moderator_type = edition_details.get('moderator_type', "")
             #duration_days = int(edition_details.get('duration_days', 1))
-
+            activities = edition_details.get('activities', [])  # Get the list of activities
 
             print(
                 f"Model (EDITION): Creating edition for {course_name} start {edition_start_date.strftime('%d/%m/%Y')}")
@@ -243,7 +350,7 @@ class OracleAutomator:
                         (By.XPATH, '//div[contains(@aria-label, "main") and @role="textbox"]')))
 
                 # Combine everything into a single f-string before sending
-                full_description_text = f"{course_name}-{edition_start_date.strftime('%d/%m/%Y')}-{description}"
+                full_description_text = f"{course_name}-{edition_start_date.strftime('%d/%m/%Y')}-/n{description}"
                 descirione_edizione.send_keys(full_description_text)
 
                 # Removed the extra dot at the end of this line
@@ -335,7 +442,7 @@ class OracleAutomator:
 
             # language
             language = ("Italiana")
-
+            self.wait.until(EC.presence_of_element_located((By.XPATH,"//a[contains(@id, ':lsVwCls:lngSel::drop')]")))
             choose_lingua = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:lngSel::drop')]")))
             choose_lingua.click()
@@ -459,20 +566,38 @@ class OracleAutomator:
             button_salva_e_chiudi_info_di_edizioni.click()
             self._pause_for_visual_check()
 
-
+            # --- PART 2: Create Activities (Loop after saving edition) ---
+            # Wait for the activity 'Aggiungi' button to appear, confirming the edition save was successful
+            # and we are on the correct page to add activities.
             confirmation_xpath = "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']"
-            self.wait.until(EC.presence_of_element_located((By.XPATH, confirmation_xpath)))
-            # This checks if a custom title was provided and formats the message accordingly.
-            if edition_title_optional and edition_title_optional.strip():
-                # Case 1: The user provided a custom title.
-                final_message = f"✅🤩 Successo! L'edizione '{edition_title_optional}' per il corso '{course_name}' è stata creata con data iniziale: {edition_start_date.strftime('%d/%m/%Y')}."
-            else:
-                # Case 2: The title field was empty, so use a generic message.
-                final_message = f"✅🤩 Successo! Una nuova edizione per il corso '{course_name}' è stata creata con data iniziale: {edition_start_date.strftime('%d/%m/%Y')}."
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, confirmation_xpath)))
+            print("Model: Edition saved successfully. Starting activity creation.")
+            self._pause_for_visual_check()
 
-            return final_message
+            total_activities = len(activities)
+            created_count = 0
+            for i, activity in enumerate(activities):
+                print(f"--- Creating activity {i + 1} of {total_activities} ---")
+                success = self._create_single_activity(
+                    unique_title=activity['title'],
+                    full_description=activity['description'],
+                    activity_date_obj=activity['date'],
+                    start_time_str=activity['start_time'],
+                    end_time_str=activity['end_time'],
+                    future_input_value=activity.get('future_field', '')  # Safely get future value
+                )
+                if not success:
+                    # If one activity fails, report the error and stop
+                    return f"‼️👩🏻‍✈️ Errore durante la creazione dell'attività {i + 1} ('{activity['title']}'). Le attività precedenti potrebbero essere state create."
+                created_count += 1
+
+            # --- Final Success Message ---
+            edition_display_name = edition_title_optional if edition_title_optional and edition_title_optional.strip() else f"Edizione del {edition_start_date.strftime('%d/%m/%Y')}"
+            return f"✅🤩 Successo! Edizione '{edition_display_name}' per '{course_name}' creata con {created_count} attività."
+
         except Exception as e:
-            return f"‼️👩🏻‍✈️ Errore durante la creazione dell'edizione: {e}"
+            print(f"ERROR in create_edition_and_activities: {e}")
+            return f"‼️👩🏻‍✈️ Errore generale durante la creazione dell'edizione o delle attività: {e}"
 
     def close_driver(self):
         print("Model: Closing driver.")

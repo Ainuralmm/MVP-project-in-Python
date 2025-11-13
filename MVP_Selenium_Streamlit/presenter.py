@@ -39,13 +39,15 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
-    def run_create_edition(self, edition_details):
+    def run_create_edition_and_activities(self, edition_details):
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.secrets['ORACLE_USER']
             oracle_pass = st.secrets['ORACLE_PASS']
             course_name = edition_details['course_name']
 
+            num_activities = len(edition_details.get('activities', []))
+            # Use "edition" for UI updates, as it's one combined form
             self.view.update_progress("edition", "Accesso a Oracle...", 10)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
@@ -66,7 +68,7 @@ class CoursePresenter:
                 raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
 
             self.view.update_progress("edition", "Creazione della nuova edizione...", 70)
-            result_message = self.model.create_edition(edition_details)
+            result_message = self.model.create_edition_and_activities(edition_details)
             time.sleep(1)
 
             self.view.update_progress("edition", "Processo completato!", 100)
@@ -78,7 +80,7 @@ class CoursePresenter:
             self.view.show_message("edition", error_message)
 
         finally:
-            print("Presenter: Automation finished. Cleaning up.")
+            print("Presenter (Edition+Activity): Automation finished. Cleaning up.")
             self.model.close_driver()
             st.session_state.app_state = "IDLE"
             st.rerun()

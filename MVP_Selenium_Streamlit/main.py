@@ -30,4 +30,4 @@ if __name__ == "__main__":
         if st.session_state.app_state == "RUNNING_COURSE":
             presenter.run_create_course(st.session_state.get("course_details"))
         elif st.session_state.app_state == "RUNNING_EDITION":
-            presenter.run_create_edition(st.session_state.get("edition_details"))
+            presenter.run_create_edition_and_activities(st.session_state.get("edition_details"))
