@@ -440,7 +440,7 @@ class OracleAutomator:
 
             # language
             language = ("Italiana")
-
+            self.wait.until(EC.presence_of_element_located((By.XPATH,"//a[contains(@id, ':lsVwCls:lngSel::drop')]")))
             choose_lingua = self.wait.until(
                 EC.presence_of_element_located((By.XPATH, "//a[contains(@id, ':lsVwCls:lngSel::drop')]")))
             choose_lingua.click()
