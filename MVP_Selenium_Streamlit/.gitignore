@@ -1,16 +1,13 @@
-# Python cache files
+# Mac OS junk
+.DS_Store
+
+# PyCharm / IntelliJ settings
+.idea/
+*.xml
+
+# Python cache (compiled python)
 __pycache__/
 *.pyc
 
-# macOS files
-.DS_Store
-
-# Virtual environment folder
-.venv/
-
-# Streamlit secrets file (important for security)
-.streamlit/secrets.toml
-
-# IDE and Editor Files
-.idea/
-.vscode/
+# Streamlit
+.streamlit/

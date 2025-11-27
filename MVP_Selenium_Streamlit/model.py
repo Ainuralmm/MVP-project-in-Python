@@ -8,7 +8,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.options import Options
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
+
 
 class OracleAutomator:
     def __init__(self, driver_path, debug_mode=False, debug_pause=1, headless=False):
@@ -197,7 +198,7 @@ class OracleAutomator:
             return f"‼️👩🏻‍✈️ Errore durante la creazione del corso. Controlla la console."
 
     ### HASHTAG: UPDATED HELPER FOR ACTIVITY CREATION
-    def _create_single_activity(self, unique_title, full_description, activity_date_obj, start_time_str, end_time_str, future_input_value):
+    def _create_single_activity(self, unique_title, full_description, activity_date_obj, start_time_str, end_time_str,impegno_previsto_in_ore):
         try:
             activity_date_str = activity_date_obj.strftime('%d/%m/%Y')
             button_aggiungi_attivita = self.wait.until(EC.element_to_be_clickable(
@@ -238,12 +239,12 @@ class OracleAutomator:
             ### HASHTAG: PLACEHOLDER FOR FUTURE INPUT FIELD ###
             # Replace 'YOUR_FUTURE_FIELD_XPATH_SELECTOR' with the actual XPATH
             # Replace 'future_input_value' with the data from the view
-            # If future_input_value: # Check if user provided input
-            #     future_field = self.wait.until(EC.presence_of_element_located((By.XPATH, 'YOUR_FUTURE_FIELD_XPATH_SELECTOR')))
-            #     future_field.clear()
-            #     future_field.send_keys(future_input_value)
-            #     print(f"Entered future field value: {future_input_value}")
-            #     self._pause_for_visual_check()
+            if impegno_previsto_in_ore: # Check if user provided input
+                 impeg_pre_in_ore = self.wait.until(EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Impegno previsto in ore"]')))
+                 impeg_pre_in_ore.clear()
+                 impeg_pre_in_ore.send_keys(impegno_previsto_in_ore)
+                 print(f"Entered future field value: {impegno_previsto_in_ore}")
+                 self._pause_for_visual_check()
 
             # Save and press OK button
             ok_button_attivita = self.wait.until(
@@ -266,9 +267,6 @@ class OracleAutomator:
             except:
                 print("Could not click Cancel button after error.")  # Ignore if cancel fails too
             return False
-
-
-
 
     # CREATE EDITION flow (assumes caller opened the course detail page)
     def create_edition_and_activities(self, edition_details):
@@ -584,7 +582,7 @@ class OracleAutomator:
                     activity_date_obj=activity['date'],
                     start_time_str=activity['start_time'],
                     end_time_str=activity['end_time'],
-                    future_input_value=activity.get('future_field', '')  # Safely get future value
+                    impegno_previsto_in_ore=activity.get('impegno_previsto_in_ore', '')  # Safely get future value
                 )
                 if not success:
                     # If one activity fails, report the error and stop
@@ -598,6 +596,311 @@ class OracleAutomator:
         except Exception as e:
             print(f"ERROR in create_edition_and_activities: {e}")
             return f"‼️👩🏻‍✈️ Errore generale durante la creazione dell'edizione o delle attività: {e}"
+
+        ### --- START: NEW METHODS FOR STUDENT INSERTION --- ###
+
+        # Helper to find and open the specific edition using search
+
+    ### HASHTAG: NEW HELPER FUNCTION FOR PRESENTER ✅ ###
+    # This simple function is called by the presenter after opening the course.
+    def open_edizioni_tab(self):
+            try:
+                edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
+                edizioni_tab_element = self.wait.until(EC.element_to_be_clickable((By.XPATH, edizioni_tab_xpath)))
+                #self.driver.execute_script("arguments[0].click();", edizioni_tab_element)
+                edizioni_tab_element.click()
+                print("Model:Clicked 'Edizioni' tab ")
+                # Wait for the search box on the editions page to confirm load
+                self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, "//input[contains(@aria-label, 'Titolo edizione')]")))
+                print("Model:Search box on the editions page is loaded")
+                return True
+            except Exception as e:
+                print(f"Errore: Impossibile fare clic sulla scheda 'Edizioni'. Error: {e}")
+                return False
+
+    def _search_and_open_edition(self, edition_name, edition_publish_date_obj):
+            try:
+                date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
+                print(
+                    f"Model: Searching for edition '{edition_name}' with publish date {edition_publish_date_obj.strftime('%d/%m/%Y')}")
+                time.sleep(2) #remove it after bugging solved
+
+                # --- Fill Search Form (This part is correct) ---
+                title_input_edizione = self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
+                # title_input_edizione.clear()
+                title_input_edizione.send_keys(edition_name)
+
+                date_input_edizione = self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Data inizio pubblicazione']")))
+                date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
+                self.driver.execute_script("arguments[0].value=arguments[1];", date_input_edizione, date_str)
+                date_input_edizione.send_keys(Keys.TAB)
+                time.sleep(2)  # remove it after bugging solved
+
+                search_button_edizione = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
+                search_button_edizione.click()
+                print("Model: Search submitted. Waiting for results.")
+                #time.sleep(2)  # remove it after bugging solved
+
+                #checing for appeared results and choosing it
+                # It waits for the search to finish AND for that specific link to become clickable.
+                link_xpath = "//a[contains(@id, ':_ATp:srTbl:') and contains(@id, ':clnmLnk')]"
+                link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
+                print("Model: Found first result link. Clicking it...")
+                link.click()
+                self._pause_for_visual_check()
+                print(f"Model: Clicked on edition link.")
+                return True
+
+            except Exception as e:
+                print(f"Model: Could not find/click edition '{edition_name}' with date {date_str}. Error: {e}")
+                # Try to save a screenshot to help debug
+                try:
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    ss_path = f"error_search_edition_{timestamp}.png"
+                    self.driver.save_screenshot(ss_path)
+                    print(f"Saved screenshot on search error: {ss_path}")
+                except Exception as ss_e:
+                    print(f"Could not save screenshot: {ss_e}")
+                return False
+
+            # model.py (Corrected function)
+
+    def _perform_student_addition_steps(self, student_list, conv_online, conv_presenza):
+        try:
+            # --- PART 1: ADD STUDENTS ---
+            # (This part for adding students and clicking 'OK' is working)
+
+            allievi_tab = self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, "//div[contains(@id, ':clDtSp1:UPsp1:learnerTile::text')]"))
+            )
+            allievi_tab.click()
+            print("Clicked on 'Allievi' tab")
+            self._pause_for_visual_check()
+
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[normalize-space()='Aggiungi allievi']"))).click()
+            print("Clicked on 'Aggiungi allievi' button")
+            self._pause_for_visual_check()
+
+            self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, '//td[contains(@class, "xo2") and normalize-space()="Assegnazione volontaria"]'))).click()
+            print("Clicked on 'Assegnazione volontaria' option")
+            self._pause_for_visual_check()
+
+            list_assegna_come = "Team Organizzazione & Sviluppo"
+            print(f"Attempting to select '{list_assegna_come}' from dropdown.")
+            try:
+                assegna_come_input_xpath = '//input[contains(@id, ":clDtSp1:UPsp1:r11:1:r5:0:SP2:r1:0:soc2::content")]'
+                assegna_come_trigger = self.wait.until(EC.element_to_be_clickable((By.XPATH, assegna_come_input_xpath)))
+                assegna_come_trigger.click()
+            except ElementClickInterceptedException:
+                print("Click intercepted. Trying JavaScript click.")
+                assegna_come_trigger = self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, assegna_come_input_xpath)))
+                self.driver.execute_script("arguments[0].click();", assegna_come_trigger)
+            self._pause_for_visual_check()
+
+            option_xpath = f"//li[contains(text(), '{list_assegna_come}')]"
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, option_xpath))).click()
+            print(f"Selected '{list_assegna_come}'.")
+            self._pause_for_visual_check()
+
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
+            print("Clicked first 'Successivo' button")
+            time.sleep(2)  # Wait for next page
+
+            print(f"--- Adding {len(student_list)} students ---")
+            person_input_xpath = '//input[@aria-label="Aggiungi una persona"]'
+            for i, persona in enumerate(student_list):
+                try:
+                    aggiungi_una_persona = self.wait.until(EC.element_to_be_clickable((By.XPATH, person_input_xpath)))
+                    aggiungi_una_persona.clear()
+                    aggiungi_una_persona.send_keys(persona)
+                    time.sleep(1)
+                    aggiungi_una_persona.send_keys(Keys.ENTER)
+                    self.wait.until(
+                        EC.visibility_of_element_located((By.XPATH, f"//span[contains(text(), '{persona}')]")))
+                    print(f"({i + 1}/{len(student_list)}) Added and verified '{persona}'.")
+                except Exception as e:
+                    print(f"Could not add '{persona}'. Maybe not found or error: {e}")
+                    return False  # Stop if one student fails
+
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
+            print("Clicked second 'Successivo' button")
+            time.sleep(2)
+
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Sottometti']"))).click()
+            print("Clicked 'Sottometti' button")
+            time.sleep(2)
+
+            print("Waiting for overlay...")
+            self.wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
+            self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(@id,':1:cfmDlg::ok')]"))).click()
+            print("Clicked 'OK' after submission")
+            time.sleep(2)
+
+            # --- PART 2: Visualise all added people ---
+            # (This part is also working, waiting for the table to load)
+            found_results = False
+            attempts = 0
+            max_attempts = 10
+            try:
+                print("Clicking on 'Stato_assegnazione' dropdown")
+                stato_assegnazione_allievi = WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//span[contains(@class, 'x1kn')]/a[contains(@id, ':lrasQry:value20::drop')]")))
+                stato_assegnazione_allievi.click()
+                print("Clicking on 'Tutto' option")
+                stato_assegnazione_allievi_tutto = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '//*[contains(text(),"Tutto")]')))
+                stato_assegnazione_allievi_tutto.click()
+                print("Successfully clicked 'Tutto'.")
+            except Exception as e:
+                print(f"Initial setup (filter) failed. Cannot continue. Error: {e}")
+                return False
+
+            while not found_results and attempts < max_attempts:
+                attempts += 1
+                print(f"Attempt {attempts} to find search results...")
+                try:
+                    print("Clicking on 'Cerca' button")
+                    cerca_button_allievi = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
+                    cerca_button_allievi.click()
+                    print("Clicked on 'Cerca' button")
+                    time.sleep(3)
+                    print("Waiting for search results to load...")
+                    dynamic_xpath = "//td[@class='xen'][1]"  # Wait for first data cell
+                    WebDriverWait(self.driver, 20).until(EC.presence_of_element_located((By.XPATH, dynamic_xpath)))
+                    print("Search results table has reloaded. Breaking the loop.")
+                    found_results = True
+                except Exception as e:
+                    print(f"Search results not found on attempt {attempts}. Retrying... Error: {e}")
+                    time.sleep(2)
+
+            # --- PART 3: Send Notifications ---
+            if not found_results:
+                print("Failed to find search results after maximum attempts. Skipping notifications.")
+                return False
+            else:
+                ### HASHTAG: REPLACED FAULTY LOGIC WITH YOUR WORKING SCRIPT ✅ ###
+
+                # Wait for the blocking pane to disappear before clicking
+                print("Results are visible. Waiting for blocking pane to disappear...")
+                self.wait.until(EC.invisibility_of_element_located(
+                    (By.CLASS_NAME, "AFBlockingGlassPane")
+                ))
+                print("Blocking pane has disappeared. Proceeding to notifications.")
+                time.sleep(2)
+
+                print("--- Starting notification process ---")
+                # Click 'Azione di massa'
+                azione_di_massa_button_allievi = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[text()='Azione di massa']")))
+                azione_di_massa_button_allievi.click()
+                print("Clicked on 'Azione di massa' button")
+                self._pause_for_visual_check()
+
+                # Choose 'Invia avviso'
+                print("Attempting to click on 'Invia avviso' option.")
+                # Your working list of XPaths
+                invia_avviso_xpaths = [
+                    "//tr[contains(@id,':masUpdt:itr9:1:cmi1') and .//td[normalize-space()='Invia avviso']]",
+                    "//td[normalize-space()='Invia avviso']",
+                    "//*[text()='Invia avviso']"
+                ]
+                found = False
+                # Your working loop
+                for xpath in invia_avviso_xpaths:
+                    try:
+                        invia_avviso_allievi = self.wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
+                        print(f"Found 'Invia avviso' using XPath: {xpath}. Now attempting a JavaScript click.")
+                        self.driver.execute_script("arguments[0].click();", invia_avviso_allievi)
+                        print("Clicked on 'Invia avviso' option using JavaScript.")
+                        found = True
+                        break  # Success! Exit the loop
+                    except Exception as e:
+                        print(f"Failed to click with XPath: {xpath}. Trying next one. Error: {e}")
+
+                if not found:
+                    print("Failed to find or click 'Invia avviso' option with all methods.")
+                    return False  # Fail the function
+
+                self._pause_for_visual_check()
+                time.sleep(2)  # pause_long()
+
+                # in opened window choose 'Utilizzare tutti i # risultati dei criteri di ricerca'
+                print("Attempting to click 'Utilizzare tutti i # risultati dei criteri di ricerca'.")
+                try:
+                    utilizzare_tutti = self.wait.until(
+                        EC.element_to_be_clickable((By.XPATH,
+                                                    "//label[contains(normalize-space(),'Utilizzare tutti i') and contains(normalize-space(),'risultati dei criteri di ricerca')]"))
+                    )
+                    utilizzare_tutti.click()
+                    print("Successfully clicked on 'Utilizzare tutti i ...' label.")
+
+                except Exception as e:
+                    print(f"Failed to click the label. Trying to click the radio button directly. Error: {e}")
+                    try:
+                        utilizzare_tutti_fallback = self.wait.until(
+                            EC.element_to_be_clickable((By.XPATH, "//*[contains(@id,':masUpdt:dc_r1:0:SP2:sor1:_1')]"))
+                        )
+                        utilizzare_tutti_fallback.click()
+                        print("Clicked on radio button via fallback method.")
+                    except Exception as e_fallback:
+                        print(f"Failed to click 'Utilizzare tutti...' even with fallback. Error: {e_fallback}")
+                        return False  # Fail the function
+
+                self._pause_for_visual_check()
+                time.sleep(2)  # pause_long()
+
+                # press on button 'Successivo'
+                self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Successivo']"))).click()
+                print("Clicked on 'Successivo' button")
+                self._pause_for_visual_check()
+                time.sleep(2)  # pause_long()
+
+                ### HASHTAG: REPLACED HARDCODED CLICKS WITH VARIABLES ✅ ###
+                # This now uses the boolean variables passed from the Streamlit form
+                if conv_online:
+                    self.wait.until(
+                        EC.element_to_be_clickable((By.XPATH, "//label[contains(@id,':itt1:5:sbc1::Label1')]"))).click()
+                    print("Successfully flagged on 'CONVOCAZIONE PARTECIPANTE - ONLINE' option.")
+                    self._pause_for_visual_check()
+
+                if conv_presenza:
+                    self.wait.until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, "//label[contains(@id,':itt1:6:sbc1::Label1')]"))).click()
+                    print("Successfully flagged on 'CONVOCAZIONE PARTECIPANTE - PRESENTE' option.")
+                    self._pause_for_visual_check()
+
+                # press sottometti button
+                self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[text()='Sottometti']"))).click()
+                print("Clicked on 'Sottometti' button")
+                self._pause_for_visual_check()
+
+                # press Ok button
+                self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(@id,'masUpdt:dc_d11::ok')]"))).click()
+                print("Clicked on 'OK' button")
+                self._pause_for_visual_check()
+                time.sleep(2)  # pause_long()
+
+            return True  # Indicate success
+
+        except Exception as e:
+            print(f"An error occurred during student addition steps: {e}")
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                ss_path = f"error_add_students_{timestamp}.png"
+                self.driver.save_screenshot(ss_path)
+                print(f"Saved screenshot on student add error: {ss_path}")
+            except Exception as ss_e:
+                print(f"Could not save screenshot: {ss_e}")
+            return False  # Indicate failure
 
     def close_driver(self):
         print("Model: Closing driver.")
