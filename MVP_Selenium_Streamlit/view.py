@@ -75,9 +75,16 @@ class CourseView:
     def render_ui(self):
         is_running = st.session_state.app_state != "IDLE"
 
-        # --- Course Form Container ---
-        with st.container(border=True):
-            st.header("1. Creazione Nuovo Corso")
+        # Create three tabs
+        tab1, tab2, tab3 = st.tabs([
+            "1. Creazione Corso",
+            "2. Creazione Edizione + Attività",
+            "3. Aggiungi Allievi"
+        ])
+
+        # --- Tab1:Course Form Container ---
+        with tab1:
+            st.header("Creazione Nuovo Corso")
             if st.session_state.app_state == "RUNNING_COURSE":
                 self.course_output_placeholder = st.empty()
             else:
@@ -86,9 +93,9 @@ class CourseView:
                 if st.session_state.course_message:
                     self.show_message("course", st.session_state.course_message, show_clear_button=True)
 
-        # --- Combined Edition + Activity Form Container ---
-        with st.container(border=True):
-            st.header("2. Creazione Nuova Edizione + Attività")
+        # --- Tab2: Combined Edition + Activity Form Container ---
+        with tab2:
+            st.header("Creazione Nuova Edizione + Attività")
             if st.session_state.app_state == "RUNNING_EDITION":
                 self.edition_output_placeholder = st.empty()
             else:
@@ -97,9 +104,9 @@ class CourseView:
                 if st.session_state.edition_message:
                     self.show_message("edition", st.session_state.edition_message, show_clear_button=True)
 
-        # --- Student Form Container ---
-        with st.container(border=True):
-            st.header("3. Aggiungi Allievi (a Edizione Esistente)")
+        # --- Tab3:Student Form Container ---
+        with tab3:
+            st.header("Aggiungi Allievi (a Edizione Esistente)")
             if st.session_state.app_state == "RUNNING_STUDENTS":
                 self.student_output_placeholder = st.empty()
             else:
