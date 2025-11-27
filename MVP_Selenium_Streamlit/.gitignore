@@ -1,0 +1,13 @@
+# Mac OS junk
+.DS_Store
+
+# PyCharm / IntelliJ settings
+.idea/
+*.xml
+
+# Python cache (compiled python)
+__pycache__/
+*.pyc
+
+# Streamlit
+.streamlit/
