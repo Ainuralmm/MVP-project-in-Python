@@ -1,16 +1,9 @@
 import streamlit as st
-from datetime import datetime, timedelta
-import pandas as pd
-import spacy
-from dateutil import parser as date_parser
-import re
-
-
-### HASHTAG: NEW IMPORTS FOR EXCEL AND NLP PROCESSING ###
-# pandas: To read Excel files
-# spacy: For NLP sentence parsing
-# dateutil.parser: For flexible date parsing from text
-# re: For regex pattern matching in sentences
+from datetime import datetime
+import pandas as pd # pandas: To read Excel files
+import spacy # spacy: For NLP sentence parsing
+from dateutil import parser as date_parser # dateutil.parser: For flexible date parsing from text
+import re # re: For regex pattern matching in sentences
 
 
 class CourseView:
