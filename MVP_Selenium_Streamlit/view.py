@@ -291,7 +291,7 @@ class CourseView:
             return None
 
     # ### HASHTAG: ADD CALLBACK TO UPDATE STATE WHEN TEXT CHANGES ###
-    def _update_nlp_text():
+    def _update_nlp_text(self):
         """Callback to ensure text is captured in session state"""
         pass  # The key parameter automatically updates session state
 
@@ -549,35 +549,48 @@ class CourseView:
             st.info("""
             **Scrivi una frase che descriva il corso**, ad esempio:
 
-            - "Crea un corso titolo Analisi dei Dati con descrizione Informatica avanzata data inizio 01/01/2023"
-            - "Nuovo corso Excel Base, descrizione breve: Gestione fogli di calcolo, pubblicazione 01/01/2023"
+            - "Crea un corso titolo Analisi dei Dati con descrizione Informatica avanzata data inizio 15/03/2024"
+            - "Nuovo corso Excel Base, descrizione breve: Gestione fogli di calcolo, pubblicazione 01/04/2024"
 
             Il sistema estrarrà automaticamente le informazioni rilevanti.
             """, icon="💡")
+
+            # ### HASHTAG: DEBUG - SHOW CURRENT TEXT LENGTH ###
+            if "course_nlp_input" in st.session_state:
+                current_text = st.session_state.course_nlp_input
+                st.write(f"Debug - Lunghezza testo: {len(current_text)} caratteri")
+                st.write(f"Debug - Testo vuoto? {not current_text.strip()}")
 
             nlp_text = st.text_area(
                 "Descrivi il corso in linguaggio naturale:",
                 height=150,
                 placeholder="Esempio: Crea un corso dal titolo 'Python Avanzato' con descrizione 'Programmazione orientata agli oggetti' che inizia il 20/05/2024",
-                key="course_nlp_input",
-                on_change=self._update_nlp_text
+                key="course_nlp_input"
             )
+
+            # ### HASHTAG: DEBUG - SHOW nlp_text VARIABLE VALUE ###
+            st.write(f"Debug - nlp_text value: '{nlp_text}'")
+            st.write(f"Debug - nlp_text.strip(): '{nlp_text.strip()}'")
+            st.write(f"Debug - Button should be disabled: {not nlp_text.strip()}")
 
             col1, col2 = st.columns([1, 1])
 
             with col1:
-                if st.button("🤖 Analizza Testo (NLP)", type="primary", use_container_width=True,
-                             disabled=not nlp_text.strip()):
-                    # ### HASHTAG: PARSE NLP INPUT AND SHOW SUMMARY ###
-                    parsed_data = self._parse_nlp_input(nlp_text)
-
-                    if parsed_data:
-                        st.session_state.course_parsed_data = parsed_data
-                        st.session_state.course_show_summary = True
-                        st.rerun()
+                # ### HASHTAG: SIMPLIFIED BUTTON LOGIC - REMOVE disabled PARAMETER FIRST ###
+                if st.button("🤖 Analizza Testo (NLP)", type="primary", use_container_width=True):
+                    if not nlp_text.strip():
+                        st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
                     else:
-                        st.error(
-                            "❌ Impossibile estrarre abbastanza informazioni dal testo. Assicurati di includere: titolo, descrizione e data.")
+                        # ### HASHTAG: PARSE NLP INPUT AND SHOW SUMMARY ###
+                        parsed_data = self._parse_nlp_input(nlp_text)
+
+                        if parsed_data:
+                            st.session_state.course_parsed_data = parsed_data
+                            st.session_state.course_show_summary = True
+                            st.rerun()
+                        else:
+                            st.error(
+                                "❌ Impossibile estrarre abbastanza informazioni dal testo. Assicurati di includere: titolo, descrizione e data.")
 
             with col2:
                 if st.button("🧹 Cancella Testo", use_container_width=True):
