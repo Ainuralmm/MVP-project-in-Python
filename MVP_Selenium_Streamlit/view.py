@@ -290,6 +290,11 @@ class CourseView:
             st.error(f"Errore durante l'analisi NLP: {str(e)}")
             return None
 
+    # ### HASHTAG: ADD CALLBACK TO UPDATE STATE WHEN TEXT CHANGES ###
+    def _update_nlp_text():
+        """Callback to ensure text is captured in session state"""
+        pass  # The key parameter automatically updates session state
+
     def _clear_edition_activity_form_callback(self):
         st.session_state.edition_course_name_key = ""
         st.session_state.edition_title_key = ""
@@ -554,7 +559,8 @@ class CourseView:
                 "Descrivi il corso in linguaggio naturale:",
                 height=150,
                 placeholder="Esempio: Crea un corso dal titolo 'Python Avanzato' con descrizione 'Programmazione orientata agli oggetti' che inizia il 20/05/2024",
-                key="course_nlp_input"
+                key="course_nlp_input",
+                on_change=self._update_nlp_text
             )
 
             col1, col2 = st.columns([1, 1])
