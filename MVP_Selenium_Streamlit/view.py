@@ -145,7 +145,7 @@ class CourseView:
         st.session_state.course_short_desc_key = ""
         st.session_state.course_date_str_key = "01/01/2023"
 
-    # ### NEW HELPER METHOD - PARSE EXCEL FILE ###
+    # NEW HELPER METHOD - PARSE EXCEL FILE ###
     def _parse_excel_file(self, uploaded_file) -> Optional[Dict[str, Any]]:
         """
         Parse uploaded Excel file and extract course information.
@@ -208,6 +208,86 @@ class CourseView:
 
         except Exception as e:
             st.error(f"Errore durante la lettura del file Excel: {str(e)}")
+            return None
+
+    # HASHTAG: NEW HELPER METHOD - PARSE NLP INPUT
+    def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse natural language input to extract course information.
+        Expected format: "Create a course titled [X] with description [Y] starting on [date]"
+
+        Returns: Dictionary with parsed data or None if parsing fails
+        """
+        if not st.session_state.nlp_model:
+            st.error("Modello NLP non caricato. Installa spacy con: python -m spacy download it_core_news_sm")
+            return None
+
+        try:
+            doc = st.session_state.nlp_model(text)
+
+            parsed_data = {
+                'title': "",
+                'short_description': "",
+                'start_date': "",
+                'programme': ""
+            }
+
+            # ### HASHTAG: EXTRACT TITLE - LOOK FOR QUOTED TEXT OR PROPER NOUNS ###
+            # Simple pattern: text between "titolo" and keywords like "con", "e", "che"
+            text_lower = text.lower()
+
+            # Pattern 1: Look for "titolo [X]"
+            if "titolo" in text_lower:
+                start_idx = text_lower.find("titolo") + 6
+                # Find end markers
+                end_markers = [" con ", " e ", " che ", " descrizione", " data"]
+                end_idx = len(text)
+                for marker in end_markers:
+                    marker_idx = text_lower.find(marker, start_idx)
+                    if marker_idx != -1 and marker_idx < end_idx:
+                        end_idx = marker_idx
+
+                parsed_data['title'] = text[start_idx:end_idx].strip().strip('"').strip("'")
+
+            # EXTRACT DESCRIPTION
+            if "descrizione" in text_lower:
+                start_idx = text_lower.find("descrizione") + 11
+                end_markers = [" data", " inizio", " dal ", " a partire"]
+                end_idx = len(text)
+                for marker in end_markers:
+                    marker_idx = text_lower.find(marker, start_idx)
+                    if marker_idx != -1 and marker_idx < end_idx:
+                        end_idx = marker_idx
+
+                parsed_data['short_description'] = text[start_idx:end_idx].strip().strip('"').strip("'")
+
+            # EXTRACT DATE - LOOK FOR DATE PATTERNS ###
+            # Look for dates in format DD/MM/YYYY or DD/MM/YY
+            import re
+            date_pattern = r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b'
+            date_matches = re.findall(date_pattern, text)
+
+            if date_matches:
+                date_str = date_matches[0].replace('-', '/')
+                # Normalize to DD/MM/YYYY format
+                try:
+                    parsed_date = datetime.strptime(date_str, "%d/%m/%y")
+                    parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
+                except ValueError:
+                    try:
+                        parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
+                        parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
+                    except ValueError:
+                        pass
+
+            # Validate that required fields are present
+            if not all([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
+                return None
+
+            return parsed_data
+
+        except Exception as e:
+            st.error(f"Errore durante l'analisi NLP: {str(e)}")
             return None
 
     def _clear_edition_activity_form_callback(self):
