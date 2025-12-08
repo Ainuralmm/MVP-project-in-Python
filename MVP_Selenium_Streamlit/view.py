@@ -85,6 +85,14 @@ class CourseView:
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
 
+    def _update_nlp_text(self):
+        """
+        Callback function for NLP text area.
+        Streamlit automatically updates session_state when key is used.
+        """
+        # ### HASHTAG: CALLBACK TO ENSURE TEXT AREA UPDATES ARE CAPTURED ###
+        pass  # No action needed, key parameter handles state update
+
     def get_user_options(self):
         st.sidebar.header("Impostazioni")
         headless = st.sidebar.toggle("Esegui in background", value=True)
@@ -214,16 +222,14 @@ class CourseView:
     def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
         """
         Parse natural language input to extract course information.
-        Expected format: "Create a course titled [X] with description [Y] starting on [date]"
-
-        Returns: Dictionary with parsed data or None if parsing fails
+        Improved version with better pattern matching for Italian text.
         """
         if not st.session_state.nlp_model:
             st.error("Modello NLP non caricato. Installa spacy con: python -m spacy download it_core_news_sm")
             return None
 
         try:
-            doc = st.session_state.nlp_model(text)
+            import re
 
             parsed_data = {
                 'title': "",
@@ -232,68 +238,117 @@ class CourseView:
                 'programme': ""
             }
 
-            # ### HASHTAG: EXTRACT TITLE - LOOK FOR QUOTED TEXT OR PROPER NOUNS ###
-            # Simple pattern: text between "titolo" and keywords like "con", "e", "che"
+            # ### HASHTAG: NORMALIZE TEXT - REMOVE EXTRA SPACES ###
+            text = ' '.join(text.split())  # Normalize whitespace
             text_lower = text.lower()
 
-            # Pattern 1: Look for "titolo [X]"
-            if "titolo" in text_lower:
-                start_idx = text_lower.find("titolo") + 6
-                # Find end markers
-                end_markers = [" con ", " e ", " che ", " descrizione", " data"]
-                end_idx = len(text)
-                for marker in end_markers:
-                    marker_idx = text_lower.find(marker, start_idx)
-                    if marker_idx != -1 and marker_idx < end_idx:
-                        end_idx = marker_idx
+            # ### HASHTAG: IMPROVED TITLE EXTRACTION - MORE FLEXIBLE PATTERNS ###
+            title_patterns = [
+                # Pattern 1: "titolo [X]" with comma or end
+                r'titolo\s+([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 2: "titolo: [X]"
+                r'titolo:\s*([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 3: "corso [X]"
+                r'corso\s+([^,]+?)(?:\s*,|\s*con\s+descrizione|\s*descrizione|\s*$)',
+                # Pattern 4: More flexible - anything after "titolo" until comma or keywords
+                r'titolo\s+(.+?)(?=\s*,|\s+descrizione|\s+con|\s+data|\s+pubblicazione|$)',
+            ]
 
-                parsed_data['title'] = text[start_idx:end_idx].strip().strip('"').strip("'")
+            for pattern in title_patterns:
+                match = re.search(pattern, text_lower, re.IGNORECASE)
+                if match:
+                    # Extract from original text to preserve case
+                    start_pos = match.start(1)
+                    end_pos = match.end(1)
+                    parsed_data['title'] = text[start_pos:end_pos].strip()
+                    if parsed_data['title']:  # Only break if we got something
+                        break
 
-            # EXTRACT DESCRIPTION
-            if "descrizione" in text_lower:
-                start_idx = text_lower.find("descrizione") + 11
-                end_markers = [" data", " inizio", " dal ", " a partire"]
-                end_idx = len(text)
-                for marker in end_markers:
-                    marker_idx = text_lower.find(marker, start_idx)
-                    if marker_idx != -1 and marker_idx < end_idx:
-                        end_idx = marker_idx
+            # ### HASHTAG: IMPROVED DESCRIPTION EXTRACTION ###
+            desc_patterns = [
+                # Pattern 1: "descrizione [X]" with comma or end
+                r'descrizione\s+([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 2: "descrizione: [X]"
+                r'descrizione:\s*([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 3: "descrizione breve [X]"
+                r'descrizione\s+breve\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 4: More flexible
+                r'descrizione\s+(.+?)(?=\s*,|\s+data|\s+pubblicazione|\s+inizio|$)',
+            ]
 
-                parsed_data['short_description'] = text[start_idx:end_idx].strip().strip('"').strip("'")
+            for pattern in desc_patterns:
+                match = re.search(pattern, text_lower, re.IGNORECASE)
+                if match:
+                    start_pos = match.start(1)
+                    end_pos = match.end(1)
+                    parsed_data['short_description'] = text[start_pos:end_pos].strip()
+                    if parsed_data['short_description']:  # Only break if we got something
+                        break
 
-            # EXTRACT DATE - LOOK FOR DATE PATTERNS ###
-            # Look for dates in format DD/MM/YYYY or DD/MM/YY
-            import re
-            date_pattern = r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b'
-            date_matches = re.findall(date_pattern, text)
+            # ### HASHTAG: IMPROVED DATE EXTRACTION - MULTIPLE FORMATS ###
+            date_patterns = [
+                # Pattern 1: DD/MM/YYYY or DD-MM-YYYY
+                r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b',
+                # Pattern 2: DD/MM/YY or DD-MM-YY
+                r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2})\b',
+                # Pattern 3: Italian month names
+                r'(\d{1,2})\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})',
+            ]
 
-            if date_matches:
-                date_str = date_matches[0].replace('-', '/')
+            date_str = None
+            for pattern in date_patterns:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    date_str = match.group(0).replace('-', '/')
+                    break
+
+            if date_str:
                 # Normalize to DD/MM/YYYY format
                 try:
-                    parsed_date = datetime.strptime(date_str, "%d/%m/%y")
+                    # Try DD/MM/YYYY first
+                    parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
                     parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
                 except ValueError:
                     try:
-                        parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
+                        # Try DD/MM/YY
+                        parsed_date = datetime.strptime(date_str, "%d/%m/%y")
                         parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
                     except ValueError:
                         pass
 
-            # Validate that required fields are present
-            if not all([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
+            # ### HASHTAG: VALIDATION WITH DETAILED FEEDBACK ###
+            missing_fields = []
+            if not parsed_data.get('title') or not parsed_data['title'].strip():
+                missing_fields.append("Titolo")
+            if not parsed_data.get('short_description') or not parsed_data['short_description'].strip():
+                missing_fields.append("Descrizione")
+            if not parsed_data.get('start_date') or not parsed_data['start_date'].strip():
+                missing_fields.append("Data")
+
+            if missing_fields:
+                st.warning(f"⚠️ Campi mancanti: {', '.join(missing_fields)}")
+                st.info("**Dati estratti finora:**")
+                if parsed_data.get('title') and parsed_data['title'].strip():
+                    st.write(f"- ✅ Titolo: `{parsed_data['title']}`")
+                else:
+                    st.write(f"- ❌ Titolo: non trovato")
+                if parsed_data.get('short_description') and parsed_data['short_description'].strip():
+                    st.write(f"- ✅ Descrizione: `{parsed_data['short_description']}`")
+                else:
+                    st.write(f"- ❌ Descrizione: non trovata")
+                if parsed_data.get('start_date') and parsed_data['start_date'].strip():
+                    st.write(f"- ✅ Data: `{parsed_data['start_date']}`")
+                else:
+                    st.write(f"- ❌ Data: non trovata")
                 return None
 
             return parsed_data
 
         except Exception as e:
             st.error(f"Errore durante l'analisi NLP: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
             return None
-
-    # ### HASHTAG: ADD CALLBACK TO UPDATE STATE WHEN TEXT CHANGES ###
-    def _update_nlp_text(self):
-        """Callback to ensure text is captured in session state"""
-        pass  # The key parameter automatically updates session state
 
     def _clear_edition_activity_form_callback(self):
         st.session_state.edition_course_name_key = ""
