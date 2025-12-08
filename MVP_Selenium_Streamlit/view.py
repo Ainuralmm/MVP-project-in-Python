@@ -560,32 +560,38 @@ class CourseView:
                 height=150,
                 placeholder="Esempio: Crea un corso dal titolo 'Python Avanzato' con descrizione 'Programmazione orientata agli oggetti' che inizia il 20/05/2024",
                 key="course_nlp_input",
-                on_change=self._update_nlp_text  # Add this callback
+                help="Scrivi una frase completa con titolo, descrizione e data del corso"
             )
 
-            # ### HASHTAG: CHECK TEXT LENGTH TO ENABLE/DISABLE BUTTON ###
+            # ### HASHTAG: SHOW CHARACTER COUNT TO USER ###
             text_length = len(nlp_text.strip()) if nlp_text else 0
-            button_disabled = text_length == 0
+            if text_length > 0:
+                st.caption(f"✏️ {text_length} caratteri inseriti")
+            else:
+                st.warning("⚠️ Inserisci del testo per abilitare l'analisi", icon="⚠️")
 
             col1, col2 = st.columns([1, 1])
 
             with col1:
-                analyze_button = st.button(
+                # ### HASHTAG: BUTTON ALWAYS ENABLED, BUT CHECK INSIDE ###
+                analyze_clicked = st.button(
                     "🤖 Analizza Testo (NLP)",
                     type="primary",
-                    use_container_width=True,
-                    disabled=button_disabled,  # Now properly controlled
-                    help="Inserisci del testo per abilitare questo pulsante" if button_disabled else "Clicca per analizzare il testo"
+                    use_container_width=True
                 )
 
-                if analyze_button:
-                    # ### HASHTAG: DOUBLE-CHECK TEXT IS NOT EMPTY ###
-                    if not nlp_text.strip():
+                if analyze_clicked:
+                    # ### HASHTAG: VALIDATE TEXT FIRST ###
+                    if not nlp_text or not nlp_text.strip():
                         st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
                         st.stop()
 
-                    # ### HASHTAG: PARSE NLP INPUT AND SHOW SUMMARY ###
-                    with st.spinner("🤖 Analisi in corso..."):
+                    if text_length < 20:
+                        st.error("⚠️ Il testo è troppo corto. Scrivi una frase più completa.")
+                        st.stop()
+
+                    # ### HASHTAG: PARSE NLP INPUT WITH LOADING INDICATOR ###
+                    with st.spinner("🤖 Analisi del testo in corso..."):
                         parsed_data = self._parse_nlp_input(nlp_text)
 
                     if parsed_data:
@@ -593,8 +599,14 @@ class CourseView:
                         st.session_state.course_show_summary = True
                         st.rerun()
                     else:
-                        st.error(
-                            "❌ Impossibile estrarre abbastanza informazioni dal testo. Assicurati di includere: titolo, descrizione e data.")
+                        st.error("""
+                            ❌ Impossibile estrarre le informazioni necessarie.
+
+                            Assicurati di includere:
+                            - **Titolo** del corso (es: "titolo Excel Base")
+                            - **Descrizione** breve (es: "descrizione Gestione fogli di calcolo")
+                            - **Data** di inizio (es: "data inizio 01/01/2023" o "pubblicazione 01/01/2023")
+                            """)
 
             with col2:
                 if st.button("🧹 Cancella Testo", use_container_width=True):
