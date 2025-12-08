@@ -210,7 +210,7 @@ class CourseView:
             st.error(f"Errore durante la lettura del file Excel: {str(e)}")
             return None
 
-    # HASHTAG: NEW HELPER METHOD - PARSE NLP INPUT
+    # NEW HELPER METHOD - PARSE NLP INPUT
     def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
         """
         Parse natural language input to extract course information.
@@ -421,54 +421,162 @@ class CourseView:
             st.rerun()
 
     def _render_course_form(self, is_disabled):
-        with st.form(key='course_form'):
-            course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati",
-                                         key="course_title_key")
-            programme = st.text_area("Dettagli del Programma", placeholder="Campo opzionale...",
-                                     key="course_programme_key")
-            short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati Informatica",
-                                       key="course_short_desc_key")
-            date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", key="course_date_str_key")
+        """
+        Enhanced course form with three input methods:
+        1. Structured input (original)
+        2. Excel file upload
+        3. Natural language processing
+        """
 
-            col1, col2 = st.columns([3, 1])
+        # ### HASHTAG: SHOW SUMMARY IF DATA IS PARSED ###
+        if st.session_state.course_show_summary and st.session_state.course_parsed_data:
+            self._render_course_summary()
+            return  # Don't show input selection while summary is displayed
+
+        # ### HASHTAG: INPUT METHOD SELECTION ###
+        st.subheader("Scegli il Metodo di Inserimento")
+
+        input_method = st.radio(
+            "Come vuoi inserire i dati del corso?",
+            options=["structured", "excel", "nlp"],
+            format_func=lambda x: {
+                "structured": "📝 Input Strutturato (Form)",
+                "excel": "📊 Caricamento File Excel",
+                "nlp": "💬 Descrizione Testuale (NLP)"
+            }[x],
+            key="course_input_method",
+            horizontal=True
+        )
+
+        st.divider()
+
+        # RENDER APPROPRIATE INPUT INTERFACE BASED ON SELECTION ###
+
+        # ========== METHOD 1: STRUCTURED INPUT (ORIGINAL) ==========
+        if input_method == "structured":
+            with st.form(key='course_form'):
+                course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati",
+                                             key="course_title_key")
+                programme = st.text_area("Dettagli del Programma", placeholder="Campo opzionale...",
+                                         key="course_programme_key")
+                short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati - Informatica",
+                                           key="course_short_desc_key")
+                date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", key="course_date_str_key")
+
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled,
+                                                      use_container_width=True)
+                with col2:
+                    st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                                          on_click=self._clear_course_form_callback)
+
+            if submitted:
+                missing = False
+                if not course_title.strip():
+                    st.markdown("<span style='color:red'>⚠️ Il campo 'Titolo corso' è obbligatorio...</span>",
+                                unsafe_allow_html=True)
+                    missing = True
+                if not short_desc.strip():
+                    st.markdown("<span style='color:red'>⚠️ Il campo 'Breve Descrizione' è obbligatorio...</span>",
+                                unsafe_allow_html=True)
+                    missing = True
+                if not date_str.strip():
+                    st.markdown("<span style='color:red'>⚠️ Il campo 'Data di Pubblicazione' è obbligatorio...</span>",
+                                unsafe_allow_html=True)
+                    missing = True
+                if missing:
+                    st.stop()
+
+                try:
+                    start_date_obj = datetime.strptime(date_str, "%d/%m/%Y").date()
+                    st.session_state.course_details = {
+                        "title": course_title,
+                        "programme": programme,
+                        "short_description": short_desc,
+                        "start_date": start_date_obj
+                    }
+                    st.session_state.app_state = "RUNNING_COURSE"
+                    st.session_state.course_message = ""
+                    st.rerun()
+                except ValueError:
+                    st.error("Formato data non valido. Usa GG/MM/AAAA.")
+                    st.stop()
+
+        # ========== METHOD 2: EXCEL FILE UPLOAD ==========
+        elif input_method == "excel":
+            st.info("""
+            **Formato Excel Richiesto:**
+            - **Riga 1:** TITOLO | [Nome del Corso]
+            - **Riga 2:** DESCRIZIONE | [Breve Descrizione]
+            - **Riga 3:** DATA INIZIO | [GG/MM/AAAA]
+
+            Le etichette devono essere nella Colonna A, i valori nella Colonna B.
+            """, icon="ℹ️")
+
+            uploaded_file = st.file_uploader(
+                "Carica File Excel (.xlsx, .xls)",
+                type=['xlsx', 'xls'],
+                help="Il file deve seguire il formato specificato sopra"
+            )
+
+            if uploaded_file is not None:
+                col1, col2 = st.columns([1, 1])
+
+                with col1:
+                    if st.button("📊 Analizza File Excel", type="primary", use_container_width=True):
+                        # ### HASHTAG: PARSE EXCEL AND SHOW SUMMARY ###
+                        parsed_data = self._parse_excel_file(uploaded_file)
+
+                        if parsed_data:
+                            st.session_state.course_parsed_data = parsed_data
+                            st.session_state.course_show_summary = True
+                            st.rerun()
+                        else:
+                            st.error("❌ Impossibile estrarre i dati dal file. Verifica il formato.")
+
+                with col2:
+                    if st.button("🧹 Cancella File", use_container_width=True):
+                        st.rerun()
+
+        # ========== METHOD 3: NATURAL LANGUAGE PROCESSING ==========
+        elif input_method == "nlp":
+            st.info("""
+            **Scrivi una frase che descriva il corso**, ad esempio:
+
+            - "Crea un corso titolo Analisi dei Dati con descrizione Informatica avanzata data inizio 01/01/2023"
+            - "Nuovo corso Excel Base, descrizione breve: Gestione fogli di calcolo, pubblicazione 01/01/2023"
+
+            Il sistema estrarrà automaticamente le informazioni rilevanti.
+            """, icon="💡")
+
+            nlp_text = st.text_area(
+                "Descrivi il corso in linguaggio naturale:",
+                height=150,
+                placeholder="Esempio: Crea un corso dal titolo 'Python Avanzato' con descrizione 'Programmazione orientata agli oggetti' che inizia il 20/05/2024",
+                key="course_nlp_input"
+            )
+
+            col1, col2 = st.columns([1, 1])
+
             with col1:
-                submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled,
-                                                  use_container_width=True)
+                if st.button("🤖 Analizza Testo (NLP)", type="primary", use_container_width=True,
+                             disabled=not nlp_text.strip()):
+                    # ### HASHTAG: PARSE NLP INPUT AND SHOW SUMMARY ###
+                    parsed_data = self._parse_nlp_input(nlp_text)
+
+                    if parsed_data:
+                        st.session_state.course_parsed_data = parsed_data
+                        st.session_state.course_show_summary = True
+                        st.rerun()
+                    else:
+                        st.error(
+                            "❌ Impossibile estrarre abbastanza informazioni dal testo. Assicurati di includere: titolo, descrizione e data.")
+
             with col2:
-                st.form_submit_button("Pulisci 🧹", use_container_width=True,
-                                      on_click=self._clear_course_form_callback)
-
-        if submitted:
-            missing = False
-            if not course_title.strip():
-                st.markdown("<span style='color:red'>⚠️ Il campo 'Titolo corso' è obbligatorio...</span>",
-                            unsafe_allow_html=True)
-                missing = True
-            if not short_desc.strip():
-                st.markdown("<span style='color:red'>⚠️ Il campo 'Breve Descrizione' è obbligatorio...</span>",
-                            unsafe_allow_html=True)
-                missing = True
-            if not date_str.strip():
-                st.markdown("<span style='color:red'>⚠️ Il campo 'Data di Pubblicazione' è obbligatorio...</span>",
-                            unsafe_allow_html=True)
-                missing = True
-            if missing:
-                st.stop()
-
-            try:
-                start_date_obj = datetime.strptime(date_str, "%d/%m/%Y").date()
-                st.session_state.course_details = {
-                    "title": course_title,
-                    "programme": programme,
-                    "short_description": short_desc,
-                    "start_date": start_date_obj
-                }
-                st.session_state.app_state = "RUNNING_COURSE"
-                st.session_state.course_message = ""
-                st.rerun()
-            except ValueError:
-                st.error("Formato data non valido. Usa GG/MM/AAAA.")
-                st.stop()
+                if st.button("🧹 Cancella Testo", use_container_width=True):
+                    st.session_state.course_nlp_input = ""
+                    st.rerun()
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
