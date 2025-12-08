@@ -331,6 +331,95 @@ class CourseView:
             if f"student_name_{i}" in st.session_state:
                 st.session_state[f"student_name_{i}"] = ""
 
+    # NEW HELPER METHOD - DISPLAY SUMMARY WITH EDIT/CONFIRM
+    def _render_course_summary(self):
+        """
+        Display parsed course data in a summary format with Edit/Confirm buttons.
+        """
+        if not st.session_state.course_parsed_data:
+            return
+
+        st.success("✅ Dati estratti con successo!")
+
+        st.subheader("Riepilogo Corso")
+
+        # ### HASHTAG: DISPLAY PARSED DATA IN EDITABLE FORMAT ###
+        with st.form(key='course_summary_form'):
+            title = st.text_input(
+                "Titolo del Corso",
+                value=st.session_state.course_parsed_data.get('title', ''),
+                key="summary_title"
+            )
+
+            short_desc = st.text_input(
+                "Breve Descrizione",
+                value=st.session_state.course_parsed_data.get('short_description', ''),
+                key="summary_short_desc"
+            )
+
+            date_str = st.text_input(
+                "Data di Pubblicazione (GG/MM/AAAA)",
+                value=st.session_state.course_parsed_data.get('start_date', ''),
+                key="summary_date"
+            )
+
+            programme = st.text_area(
+                "Dettagli del Programma (opzionale)",
+                value=st.session_state.course_parsed_data.get('programme', ''),
+                key="summary_programme"
+            )
+
+            col1, col2, col3 = st.columns([2, 1, 1])
+
+            with col1:
+                confirm = st.form_submit_button("✅ Conferma e Crea Corso", type="primary", use_container_width=True)
+
+            with col2:
+                edit = st.form_submit_button("✏️ Modifica", use_container_width=True)
+
+            with col3:
+                cancel = st.form_submit_button("❌ Annulla", use_container_width=True)
+
+        # ### HASHTAG: HANDLE FORM ACTIONS ###
+        if confirm:
+            # Validate and submit
+            if not all([title.strip(), short_desc.strip(), date_str.strip()]):
+                st.error("I campi 'Titolo', 'Breve Descrizione' e 'Data' sono obbligatori.")
+                st.stop()
+
+            try:
+                start_date_obj = datetime.strptime(date_str, "%d/%m/%Y").date()
+
+                # Update parsed data with edited values
+                st.session_state.course_details = {
+                    "title": title,
+                    "programme": programme,
+                    "short_description": short_desc,
+                    "start_date": start_date_obj
+                }
+
+                # Start automation
+                st.session_state.app_state = "RUNNING_COURSE"
+                st.session_state.course_message = ""
+                st.session_state.course_show_summary = False
+                st.session_state.course_parsed_data = None
+                st.rerun()
+
+            except ValueError:
+                st.error("Formato data non valido. Usa GG/MM/AAAA.")
+                st.stop()
+
+        elif edit:
+            # Stay on summary page, allow editing
+            st.info("Modifica i campi sopra e clicca 'Conferma' quando pronto.")
+
+        elif cancel:
+            # Reset to input selection
+            st.session_state.course_show_summary = False
+            st.session_state.course_parsed_data = None
+            st.session_state.course_input_method = "structured"
+            st.rerun()
+
     def _render_course_form(self, is_disabled):
         with st.form(key='course_form'):
             course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati",
