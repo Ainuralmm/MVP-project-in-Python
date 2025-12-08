@@ -1,5 +1,8 @@
 import streamlit as st
 from datetime import datetime, timedelta
+import pandas as pd
+import spacy
+from typing import Optional, Dict, Any
 
 
 class CourseView:
@@ -9,9 +12,30 @@ class CourseView:
         if "app_state" not in st.session_state:
             st.session_state.app_state = "IDLE"
 
-        # --- Message States ---
+        # --- Message States: COURSE ---
         if "course_message" not in st.session_state:
             st.session_state.course_message = ""
+        # NEW STATE VARIABLES FOR COURSE INPUT METHOD
+        if "course_input_method" not in st.session_state:
+            st.session_state.course_input_method = "structured"  # Options: "structured", "excel", "nlp"
+
+        if "course_parsed_data" not in st.session_state:
+            st.session_state.course_parsed_data = None  # Stores parsed data from Excel/NLP
+
+        if "course_show_summary" not in st.session_state:
+            st.session_state.course_show_summary = False  # Controls summary display
+
+        if "course_nlp_input" not in st.session_state:
+            st.session_state.course_nlp_input = ""  # Stores NLP text input
+
+        # INITIALIZE SPACY MODEL #
+        if "nlp_model" not in st.session_state:
+            try:
+                st.session_state.nlp_model = spacy.load("it_core_news_sm")  # Italian model
+            except OSError:
+                st.session_state.nlp_model = None  # Will show error in UI if not loaded
+
+        # --- Message States: EDITION and STUDENTS ---
         if "edition_message" not in st.session_state:
             st.session_state.edition_message = ""
         if "student_message" not in st.session_state:
@@ -120,6 +144,71 @@ class CourseView:
         st.session_state.course_programme_key = ""
         st.session_state.course_short_desc_key = ""
         st.session_state.course_date_str_key = "01/01/2023"
+
+    # ### NEW HELPER METHOD - PARSE EXCEL FILE ###
+    def _parse_excel_file(self, uploaded_file) -> Optional[Dict[str, Any]]:
+        """
+        Parse uploaded Excel file and extract course information.
+        Expected Excel format:
+        - Row 1: TITOLO | [Course Title]
+        - Row 2: DESCRIZIONE | [Short Description]
+        - Row 3: DATA INIZIO | [DD/MM/YYYY]
+
+        Returns: Dictionary with parsed data or None if parsing fails
+        """
+        try:
+            # Read Excel file
+            df = pd.read_excel(uploaded_file, header=None)
+
+            # Extract data from specific cells (assuming structure shown in excel image)
+            # Column A contains labels (TITOLO, DESCRIZIONE, DATA INIZIO)
+            # Column B contains values (EXCEL, INFORMATICA, 01/01/23)
+
+            parsed_data = {}
+
+            # EXTRACT TITLE (Row 1, Column B) ###
+            if len(df) > 0 and len(df.columns) > 1:
+                parsed_data['title'] = str(df.iloc[0, 1]).strip() if pd.notna(df.iloc[0, 1]) else ""
+
+            # EXTRACT SHORT DESCRIPTION (Row 2, Column B) ###
+            if len(df) > 1 and len(df.columns) > 1:
+                parsed_data['short_description'] = str(df.iloc[1, 1]).strip() if pd.notna(df.iloc[1, 1]) else ""
+
+            # EXTRACT DATE (Row 3, Column B) ###
+            if len(df) > 2 and len(df.columns) > 1:
+                date_value = df.iloc[2, 1]
+
+                # Handle different date formats
+                if pd.notna(date_value):
+                    if isinstance(date_value, datetime):
+                        parsed_data['start_date'] = date_value.strftime("%d/%m/%Y")
+                    else:
+                        # Try to parse as string
+                        date_str = str(date_value).strip()
+                        # Handle both DD/MM/YY and DD/MM/YYYY formats
+                        try:
+                            parsed_date = datetime.strptime(date_str, "%d/%m/%y")
+                        except ValueError:
+                            try:
+                                parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
+                            except ValueError:
+                                parsed_date = None
+
+                        if parsed_date:
+                            parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
+
+            # PROGRAMME FIELD IS OPTIONAL - SET EMPTY ###
+            parsed_data['programme'] = ""
+
+            # Validate that required fields are present
+            if not all([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
+                return None
+
+            return parsed_data
+
+        except Exception as e:
+            st.error(f"Errore durante la lettura del file Excel: {str(e)}")
+            return None
 
     def _clear_edition_activity_form_callback(self):
         st.session_state.edition_course_name_key = ""
