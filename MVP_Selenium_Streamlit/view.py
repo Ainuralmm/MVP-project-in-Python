@@ -442,7 +442,7 @@ class CourseView:
             format_func=lambda x: {
                 "structured": "📝 Input Strutturato (Form)",
                 "excel": "📊 Caricamento File Excel",
-                "nlp": "💬 Descrizione Testuale (NLP)"
+                "nlp": "💬 Compilazione con AI"
             }[x],
             key="course_input_method",
             horizontal=True
