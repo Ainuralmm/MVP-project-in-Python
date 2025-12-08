@@ -2,3 +2,6 @@ streamlit
 selenium
 python-dateutil
 webdriver-manager
+pandas>=1.5.0
+openpyxl>=3.0.0  # For Excel file reading
+spacy>=3.0.0
