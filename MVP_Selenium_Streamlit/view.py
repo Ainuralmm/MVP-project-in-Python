@@ -555,42 +555,46 @@ class CourseView:
             Il sistema estrarrà automaticamente le informazioni rilevanti.
             """, icon="💡")
 
-            # ### HASHTAG: DEBUG - SHOW CURRENT TEXT LENGTH ###
-            if "course_nlp_input" in st.session_state:
-                current_text = st.session_state.course_nlp_input
-                st.write(f"Debug - Lunghezza testo: {len(current_text)} caratteri")
-                st.write(f"Debug - Testo vuoto? {not current_text.strip()}")
-
             nlp_text = st.text_area(
                 "Descrivi il corso in linguaggio naturale:",
                 height=150,
                 placeholder="Esempio: Crea un corso dal titolo 'Python Avanzato' con descrizione 'Programmazione orientata agli oggetti' che inizia il 20/05/2024",
-                key="course_nlp_input"
+                key="course_nlp_input",
+                on_change=self._update_nlp_text  # Add this callback
             )
 
-            # ### HASHTAG: DEBUG - SHOW nlp_text VARIABLE VALUE ###
-            st.write(f"Debug - nlp_text value: '{nlp_text}'")
-            st.write(f"Debug - nlp_text.strip(): '{nlp_text.strip()}'")
-            st.write(f"Debug - Button should be disabled: {not nlp_text.strip()}")
+            # ### HASHTAG: CHECK TEXT LENGTH TO ENABLE/DISABLE BUTTON ###
+            text_length = len(nlp_text.strip()) if nlp_text else 0
+            button_disabled = text_length == 0
 
             col1, col2 = st.columns([1, 1])
 
             with col1:
-                # ### HASHTAG: SIMPLIFIED BUTTON LOGIC - REMOVE disabled PARAMETER FIRST ###
-                if st.button("🤖 Analizza Testo (NLP)", type="primary", use_container_width=True):
+                analyze_button = st.button(
+                    "🤖 Analizza Testo (NLP)",
+                    type="primary",
+                    use_container_width=True,
+                    disabled=button_disabled,  # Now properly controlled
+                    help="Inserisci del testo per abilitare questo pulsante" if button_disabled else "Clicca per analizzare il testo"
+                )
+
+                if analyze_button:
+                    # ### HASHTAG: DOUBLE-CHECK TEXT IS NOT EMPTY ###
                     if not nlp_text.strip():
                         st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
-                    else:
-                        # ### HASHTAG: PARSE NLP INPUT AND SHOW SUMMARY ###
+                        st.stop()
+
+                    # ### HASHTAG: PARSE NLP INPUT AND SHOW SUMMARY ###
+                    with st.spinner("🤖 Analisi in corso..."):
                         parsed_data = self._parse_nlp_input(nlp_text)
 
-                        if parsed_data:
-                            st.session_state.course_parsed_data = parsed_data
-                            st.session_state.course_show_summary = True
-                            st.rerun()
-                        else:
-                            st.error(
-                                "❌ Impossibile estrarre abbastanza informazioni dal testo. Assicurati di includere: titolo, descrizione e data.")
+                    if parsed_data:
+                        st.session_state.course_parsed_data = parsed_data
+                        st.session_state.course_show_summary = True
+                        st.rerun()
+                    else:
+                        st.error(
+                            "❌ Impossibile estrarre abbastanza informazioni dal testo. Assicurati di includere: titolo, descrizione e data.")
 
             with col2:
                 if st.button("🧹 Cancella Testo", use_container_width=True):
