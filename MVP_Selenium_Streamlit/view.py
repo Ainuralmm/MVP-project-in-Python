@@ -1,8 +1,8 @@
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime
 import pandas as pd
 import spacy
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple, List
 
 
 class CourseView:
@@ -84,6 +84,41 @@ class CourseView:
 
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
+
+    #new utility funtions for enhanced NLP parsing
+
+    #=== UTILITY 1: Safe text extraction ===
+    def safe_extract_text(original_text:str,normalised_text:str,match_start:int,match_end:int)->str:
+        ''' Safely extract text from original while using matvh positions from normalized text.
+        WHY: When we normalize text(remove accents, lowercase), the character positions might shift.
+        This function ensures we always from the correct positions.
+        Args:
+            original_text: The original user input(with proper case, accents)
+            normalised_text: The text used for pattern matching(lowercase, no accents)
+            match_start:Start position from the regex match on normalized_text
+            match_end:End position from the regex match on normalized_text
+        Returns:
+            Extracted text from original, properly aligned
+        '''
+        if len(original_text)!=len(normalised_text):
+            #if lengths differ (due to accent removal), fall back to normalized extraction
+            return normalised_text[match_start:match_end].strip()
+
+        #safe extraction with bounds check
+        safe_start =max(0,match_start)
+        safe_end =min(len(original_text),match_end)
+        return original_text[safe_start:safe_end].strip()
+
+    #===UTILITY 2: ITALIAN MONTH NAME EPARSER ====
+    ITALIAN_MONTHS = {
+        'gennaio':'01','febbraio':'02', 'marzo':'03', 'aprile':'04',
+        'maggio':'05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
+        'settembre': '09', 'ottobre': '10', 'novembre': '11', 'dicembre': '12',
+        # Short forms
+        'gen': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+        'mag': '05', 'giu': '06', 'lug': '07', 'ago': '08',
+        'set': '09', 'ott': '10', 'nov': '11', 'dic': '12'
+    }
 
     def _update_nlp_text(self):
         """
