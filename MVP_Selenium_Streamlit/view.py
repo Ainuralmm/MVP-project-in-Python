@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 import spacy
+import re
 from typing import Optional, Dict, Any, Tuple, List
 
 
@@ -111,14 +112,74 @@ class CourseView:
 
     #===UTILITY 2: ITALIAN MONTH NAME EPARSER ====
     ITALIAN_MONTHS = {
-        'gennaio':'01','febbraio':'02', 'marzo':'03', 'aprile':'04',
-        'maggio':'05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
+        'gennaio': '01', 'febbraio': '02', 'marzo': '03', 'aprile': '04',
+        'maggio': '05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
         'settembre': '09', 'ottobre': '10', 'novembre': '11', 'dicembre': '12',
         # Short forms
         'gen': '01', 'feb': '02', 'mar': '03', 'apr': '04',
         'mag': '05', 'giu': '06', 'lug': '07', 'ago': '08',
         'set': '09', 'ott': '10', 'nov': '11', 'dic': '12'
     }
+
+    def parse_italian_date(date_str: str, ITALIAN_MONTHS=None) -> Optional[str]:
+        """
+        Parse Italian date format like "12 gennaio 2024" into "12/01/2024".
+
+        WHY: Users might write dates in natural language. This converts them to
+        the standard DD/MM/YYYY format our system expects.
+
+        Args:
+            date_str: Date string that might contain Italian month names
+
+        Returns:
+            Standardized date string in DD/MM/YYYY format, or None if parsing fails
+        """
+        # ### HASHTAG: PATTERN FOR "12 gennaio 2024" FORMAT ###
+        month_name_pattern = r'(\d{1,2})\s+(\w+)\s+(\d{4})'
+        match = re.search(month_name_pattern, date_str.lower())
+
+        if match:
+            day = match.group(1).zfill(2)  # Pad with zero: 5 → 05
+            month_name = match.group(2)
+            year = match.group(3)
+
+            if month_name in ITALIAN_MONTHS:
+                month = ITALIAN_MONTHS[month_name]
+                return f"{day}/{month}/{year}"
+
+        return None
+
+    # ========== UTILITY 3: TWO-DIGIT YEAR NORMALIZATION ==========
+    def normalize_two_digit_year(year_str: str) -> str:
+        """
+        Convert two-digit year to four-digit year using a pivot rule.
+
+        WHY: "23" could mean 1923 or 2023. We need a consistent rule.
+
+        RULE:
+        - 00-69 → 2000-2069 (future dates, likely course start dates)
+        - 70-99 → 1970-1999 (historical dates, unlikely for courses)
+
+        Args:
+            year_str: Two or four digit year as string
+
+        Returns:
+            Four-digit year as string
+        """
+        if len(year_str) == 4:
+            return year_str
+
+        if len(year_str) == 2:
+            year_int = int(year_str)
+            # ### HASHTAG: PIVOT RULE FOR CENTURY DETERMINATION ###
+            if year_int <= 69:
+                return f"20{year_str}"
+            else:
+                return f"19{year_str}"
+
+        return year_str
+
+
 
     def _update_nlp_text(self):
         """
