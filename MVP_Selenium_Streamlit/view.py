@@ -483,7 +483,7 @@ class CourseView:
         """
         try:
             # Read Excel file
-            df = pd.read_excel(uploaded_file, header=None)
+            df = pd.read_excel(uploaded_file, header=None, engine='openpyxl')
 
             # Extract data from specific cells (assuming structure shown in excel image)
             # Column A contains labels (TITOLO, DESCRIZIONE, DATA INIZIO)
@@ -491,7 +491,7 @@ class CourseView:
 
             parsed_data = {}
 
-            # EXTRACT TITLE (Row 1, Column B) ###
+            # EXTRACT TITLE (Row 1, Column B)
             if len(df) > 0 and len(df.columns) > 1:
                 parsed_data['title'] = str(df.iloc[0, 1]).strip() if pd.notna(df.iloc[0, 1]) else ""
 
@@ -499,36 +499,38 @@ class CourseView:
             if len(df) > 1 and len(df.columns) > 1:
                 parsed_data['short_description'] = str(df.iloc[1, 1]).strip() if pd.notna(df.iloc[1, 1]) else ""
 
-            # EXTRACT DATE (Row 3, Column B) ###
+            # ENHANCED DATE EXTRACTION WITH CENTRALIZED NORMALIZE (Row 3, Column B) ###
             if len(df) > 2 and len(df.columns) > 1:
                 date_value = df.iloc[2, 1]
 
                 # Handle different date formats
                 if pd.notna(date_value):
-                    if isinstance(date_value, datetime):
-                        parsed_data['start_date'] = date_value.strftime("%d/%m/%Y")
+                    #using centralized normolizer for all date types
+                    normalized_date=normalize_date(date_value)
+                    if normalized_date:
+                        parsed_data['start_date'] = normalized_date
                     else:
-                        # Try to parse as string
-                        date_str = str(date_value).strip()
-                        # Handle both DD/MM/YY and DD/MM/YYYY formats
-                        try:
-                            parsed_date = datetime.strptime(date_str, "%d/%m/%y")
-                        except ValueError:
-                            try:
-                                parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
-                            except ValueError:
-                                parsed_date = None
-
-                        if parsed_date:
-                            parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
+                        st.warning(f"⚠️Formato data non riconosciuto: {date_value}")
 
             # PROGRAMME FIELD IS OPTIONAL - SET EMPTY ###
             parsed_data['programme'] = ""
 
-            # Validate that required fields are present
-            if not all([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
-                return None
+            # Partial extraction support for excel too
+            missing_fields = []
+            if not parsed_data.get('title'):
+                missing_fields.append("Titolo")
+            if not parsed_data.get('short_description'):
+                missing_fields.append("Descrizione")
+            if not parsed_data.get('start_date'):
+                missing_fields.append("Data inizio")
 
+            if missing_fields:
+                st.warning(f"⚠️Campi mancanti nel file Excel: {', '.join(missing_fields)}")
+                #still return partial data
+                if any ([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
+                    st.info(f"💡Alcuni dati sono stati estratti. Potrebbe completare i campi mancanti nel riepilogo")
+                    return parsed_data
+                return None
             return parsed_data
 
         except Exception as e:
