@@ -2,8 +2,323 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 import spacy
-import re
 from typing import Optional, Dict, Any, Tuple, List
+
+# NEW UTILITY FUNCTIONS FOR ENHANCED NLP PARSING
+#========== UTILITY 1: SAFE TEXT EXTRACTION ==========
+def safe_extract_text(original_text: str, normalized_text: str, match_start: int, match_end: int) -> str:
+    """
+    Safely extract text from original while using match positions from normalized text.
+
+    WHY: When we normalize text (remove accents, lowercase), the character positions
+    might shift. This function ensures we always extract from the correct positions.
+
+    Args:
+        original_text: The original user input (with proper case, accents)
+        normalized_text: The text used for pattern matching (lowercase, no accents)
+        match_start: Start position from the regex match on normalized_text
+        match_end: End position from the regex match on normalized_text
+
+    Returns:
+        Extracted text from original, properly aligned
+    """
+    # ### HASHTAG: VERIFY LENGTHS MATCH ###
+    if len(original_text) != len(normalized_text):
+        # If lengths differ (due to accent removal), fall back to normalized extraction
+        return normalized_text[match_start:match_end].strip()
+
+    # ### HASHTAG: SAFE EXTRACTION WITH BOUNDS CHECK ###
+    safe_start = max(0, match_start)
+    safe_end = min(len(original_text), match_end)
+
+    return original_text[safe_start:safe_end].strip()
+
+# ========== UTILITY 2: ITALIAN MONTH NAME PARSER ==========
+ITALIAN_MONTHS = {
+    'gennaio': '01', 'febbraio': '02', 'marzo': '03', 'aprile': '04',
+    'maggio': '05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
+    'settembre': '09', 'ottobre': '10', 'novembre': '11', 'dicembre': '12',
+    # Short forms
+    'gen': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+    'mag': '05', 'giu': '06', 'lug': '07', 'ago': '08',
+    'set': '09', 'ott': '10', 'nov': '11', 'dic': '12'
+}
+
+def parse_italian_date(date_str: str) -> Optional[str]:
+    """
+    Parse Italian date format like "12 gennaio 2024" into "12/01/2024".
+
+    WHY: Users might write dates in natural language. This converts them to
+    the standard DD/MM/YYYY format our system expects.
+
+    Args:
+        date_str: Date string that might contain Italian month names
+
+    Returns:
+        Standardized date string in DD/MM/YYYY format, or None if parsing fails
+    """
+    import re
+
+    # ### HASHTAG: PATTERN FOR "12 gennaio 2024" FORMAT ###
+    month_name_pattern = r'(\d{1,2})\s+(\w+)\s+(\d{4})'
+    match = re.search(month_name_pattern, date_str.lower())
+
+    if match:
+        day = match.group(1).zfill(2)  # Pad with zero: 5 → 05
+        month_name = match.group(2)
+        year = match.group(3)
+
+        if month_name in ITALIAN_MONTHS:
+            month = ITALIAN_MONTHS[month_name]
+            return f"{day}/{month}/{year}"
+
+    return None
+
+# ========== UTILITY 3: TWO-DIGIT YEAR NORMALIZATION ==========
+def normalize_two_digit_year(year_str: str) -> str:
+    """
+    Convert two-digit year to four-digit year using a pivot rule.
+
+    WHY: "23" could mean 1923 or 2023. We need a consistent rule.
+
+    RULE:
+    - 00-69 → 2000-2069 (future dates, likely course start dates)
+    - 70-99 → 1970-1999 (historical dates, unlikely for courses)
+
+    Args:
+        year_str: Two or four digit year as string
+
+    Returns:
+        Four-digit year as string
+    """
+    if len(year_str) == 4:
+        return year_str
+
+    if len(year_str) == 2:
+        year_int = int(year_str)
+        # ### HASHTAG: PIVOT RULE FOR CENTURY DETERMINATION ###
+        if year_int <= 69:
+            return f"20{year_str}"
+        else:
+            return f"19{year_str}"
+
+    return year_str
+
+# ========== UTILITY 4: CENTRALIZED DATE NORMALIZATION ==========
+def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optional[str]:
+    """
+    Universal date normalizer - handles ANY date format and converts to DD/MM/YYYY.
+
+    WHY: Dates come in many forms (datetime objects, strings, Excel dates).
+    This single function handles all cases consistently.
+
+    Args:
+        date_value: Can be datetime object, string, int (Excel date), etc.
+        default_format: Output format (default: DD/MM/YYYY)
+
+    Returns:
+        Normalized date string or None if parsing fails
+    """
+    # ### HASHTAG: CASE 1 - ALREADY A DATETIME OBJECT ###
+    if isinstance(date_value, datetime):
+        return date_value.strftime(default_format)
+
+    # ### HASHTAG: CASE 2 - PANDAS TIMESTAMP ###
+    if hasattr(date_value, 'strftime'):  # Pandas Timestamp
+        return date_value.strftime(default_format)
+
+    # ### HASHTAG: CASE 3 - STRING WITH VARIOUS FORMATS ###
+    if isinstance(date_value, str):
+        date_str = date_value.strip()
+
+        # Try Italian month names first
+        italian_date = parse_italian_date(date_str)
+        if italian_date:
+            return italian_date
+
+        # ### HASHTAG: TRY COMMON FORMATS IN ORDER ###
+        formats_to_try = [
+            "%d/%m/%Y",  # 15/03/2024
+            "%d-%m-%Y",  # 15-03-2024
+            "%d/%m/%y",  # 15/03/24
+            "%d-%m-%y",  # 15-03-24
+            "%Y-%m-%d",  # 2024-03-15 (ISO format)
+            "%d.%m.%Y",  # 15.03.2024
+            "%d %m %Y",  # 15 03 2024
+        ]
+
+        for fmt in formats_to_try:
+            try:
+                parsed = datetime.strptime(date_str, fmt)
+                # ### HASHTAG: HANDLE TWO-DIGIT YEARS ###
+                if fmt.endswith("%y"):
+                    year_normalized = normalize_two_digit_year(str(parsed.year)[-2:])
+                    parsed = parsed.replace(year=int(year_normalized))
+                return parsed.strftime(default_format)
+            except ValueError:
+                continue
+
+        # ### HASHTAG: FALLBACK - PANDAS TO_DATETIME (VERY FLEXIBLE) ###
+        try:
+            parsed = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
+            if pd.notna(parsed):
+                return parsed.strftime(default_format)
+        except:
+            pass
+
+    # ### HASHTAG: CASE 4 - NUMERIC (EXCEL SERIAL DATE) ###
+    if isinstance(date_value, (int, float)):
+        try:
+            # Excel dates are days since 1899-12-30
+            parsed = pd.to_datetime('1899-12-30') + pd.Timedelta(days=date_value)
+            return parsed.strftime(default_format)
+        except:
+            pass
+
+    return None
+
+# ========== UTILITY 4: CENTRALIZED DATE NORMALIZATION ==========
+def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optional[str]:
+    """
+    Universal date normalizer - handles ANY date format and converts to DD/MM/YYYY.
+
+    WHY: Dates come in many forms (datetime objects, strings, Excel dates).
+    This single function handles all cases consistently.
+
+    Args:
+        date_value: Can be datetime object, string, int (Excel date), etc.
+        default_format: Output format (default: DD/MM/YYYY)
+
+    Returns:
+        Normalized date string or None if parsing fails
+    """
+    # ### HASHTAG: CASE 1 - ALREADY A DATETIME OBJECT ###
+    if isinstance(date_value, datetime):
+        return date_value.strftime(default_format)
+
+    # ### HASHTAG: CASE 2 - PANDAS TIMESTAMP ###
+    if hasattr(date_value, 'strftime'):  # Pandas Timestamp
+        return date_value.strftime(default_format)
+
+    # ### HASHTAG: CASE 3 - STRING WITH VARIOUS FORMATS ###
+    if isinstance(date_value, str):
+        date_str = date_value.strip()
+
+        # Try Italian month names first
+        italian_date = parse_italian_date(date_str)
+        if italian_date:
+            return italian_date
+
+        # ### HASHTAG: TRY COMMON FORMATS IN ORDER ###
+        formats_to_try = [
+            "%d/%m/%Y",  # 15/03/2024
+            "%d-%m-%Y",  # 15-03-2024
+            "%d/%m/%y",  # 15/03/24
+            "%d-%m-%y",  # 15-03-24
+            "%Y-%m-%d",  # 2024-03-15 (ISO format)
+            "%d.%m.%Y",  # 15.03.2024
+            "%d %m %Y",  # 15 03 2024
+        ]
+
+        for fmt in formats_to_try:
+            try:
+                parsed = datetime.strptime(date_str, fmt)
+                # ### HASHTAG: HANDLE TWO-DIGIT YEARS ###
+                if fmt.endswith("%y"):
+                    year_normalized = normalize_two_digit_year(str(parsed.year)[-2:])
+                    parsed = parsed.replace(year=int(year_normalized))
+                return parsed.strftime(default_format)
+            except ValueError:
+                continue
+
+        # ### HASHTAG: FALLBACK - PANDAS TO_DATETIME (VERY FLEXIBLE) ###
+        try:
+            parsed = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
+            if pd.notna(parsed):
+                return parsed.strftime(default_format)
+        except:
+            pass
+
+    # ### HASHTAG: CASE 4 - NUMERIC (EXCEL SERIAL DATE) ###
+    if isinstance(date_value, (int, float)):
+        try:
+            # Excel dates are days since 1899-12-30
+            parsed = pd.to_datetime('1899-12-30') + pd.Timedelta(days=date_value)
+            return parsed.strftime(default_format)
+        except:
+            pass
+
+    return None
+
+# ========== UTILITY 5: EXTRACT WITH SPACY MATCHER ==========
+def extract_with_spacy_matcher(text: str, nlp_model) -> Dict[str, str]:
+    """
+    Use spaCy's Matcher for robust keyword-based extraction.
+
+    WHY: Regex assumes fixed word order. spaCy Matcher handles variations like:
+    - "titolo: Excel" vs "Excel è il titolo"
+    - "corso di Python" vs "Python corso"
+
+    This is more robust for natural language input.
+
+    Args:
+        text: User input text
+        nlp_model: Loaded spaCy model
+
+    Returns:
+        Dictionary with extracted 'title', 'description', 'date'
+    """
+    from spacy.matcher import Matcher
+
+    doc = nlp_model(text)
+    matcher = Matcher(nlp_model.vocab)
+
+    results = {
+        'title': "",
+        'description': "",
+        'date': ""
+    }
+
+    # ### HASHTAG: DEFINE PATTERNS FOR TITLE ###
+    # Pattern: "titolo" + optional ":" + text until comma or end
+    title_patterns = [
+        [{"LOWER": "titolo"}, {"IS_PUNCT": True, "OP": "?"}, {"IS_ALPHA": True, "OP": "+"}],
+        [{"LOWER": "corso"}, {"IS_ALPHA": True, "OP": "+"}],
+    ]
+
+    matcher.add("TITLE", title_patterns)
+
+    # ### HASHTAG: DEFINE PATTERNS FOR DESCRIPTION ###
+    desc_patterns = [
+        [{"LOWER": "descrizione"}, {"IS_PUNCT": True, "OP": "?"}, {"IS_ALPHA": True, "OP": "+"}],
+    ]
+
+    matcher.add("DESCRIPTION", desc_patterns)
+
+    # ### HASHTAG: RUN MATCHER ###
+    matches = matcher(doc)
+
+    for match_id, start, end in matches:
+        match_label = nlp_model.vocab.strings[match_id]
+        span = doc[start:end]
+
+        if match_label == "TITLE" and not results['title']:
+            # Extract tokens after "titolo" keyword
+            title_tokens = [token.text for token in span if token.lower_ not in ['titolo', 'corso', ':']]
+            results['title'] = ' '.join(title_tokens)
+
+        elif match_label == "DESCRIPTION" and not results['description']:
+            desc_tokens = [token.text for token in span if token.lower_ not in ['descrizione', ':']]
+            results['description'] = ' '.join(desc_tokens)
+
+    # ### HASHTAG: DATE EXTRACTION WITH REGEX (SPACY DOESN'T HANDLE THIS WELL) ###
+    import re
+    date_pattern = r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b'
+    date_match = re.search(date_pattern, text)
+    if date_match:
+        results['date'] = date_match.group(1)
+
+    return results
 
 
 class CourseView:
@@ -86,179 +401,6 @@ class CourseView:
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
 
-    #new utility funtions for enhanced NLP parsing
-
-    # ========== UTILITY 1: SAFE TEXT EXTRACTION ==========
-    def safe_extract_text(original_text: str, normalized_text: str, match_start: int, match_end: int) -> str:
-        """
-        Safely extract text from original while using match positions from normalized text.
-
-        WHY: When we normalize text (remove accents, lowercase), the character positions
-        might shift. This function ensures we always extract from the correct positions.
-
-        Args:
-            original_text: The original user input (with proper case, accents)
-            normalized_text: The text used for pattern matching (lowercase, no accents)
-            match_start: Start position from the regex match on normalized_text
-            match_end: End position from the regex match on normalized_text
-
-        Returns:
-            Extracted text from original, properly aligned
-        """
-        # ### HASHTAG: VERIFY LENGTHS MATCH ###
-        if len(original_text) != len(normalized_text):
-            # If lengths differ (due to accent removal), fall back to normalized extraction
-            return normalized_text[match_start:match_end].strip()
-
-        # ### HASHTAG: SAFE EXTRACTION WITH BOUNDS CHECK ###
-        safe_start = max(0, match_start)
-        safe_end = min(len(original_text), match_end)
-
-        return original_text[safe_start:safe_end].strip()
-
-    # ========== UTILITY 2: ITALIAN MONTH NAME PARSER ==========
-    ITALIAN_MONTHS = {
-        'gennaio': '01', 'febbraio': '02', 'marzo': '03', 'aprile': '04',
-        'maggio': '05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
-        'settembre': '09', 'ottobre': '10', 'novembre': '11', 'dicembre': '12',
-        # Short forms
-        'gen': '01', 'feb': '02', 'mar': '03', 'apr': '04',
-        'mag': '05', 'giu': '06', 'lug': '07', 'ago': '08',
-        'set': '09', 'ott': '10', 'nov': '11', 'dic': '12'
-    }
-
-    def parse_italian_date(date_str: str) -> Optional[str]:
-        """
-        Parse Italian date format like "12 gennaio 2024" into "12/01/2024".
-
-        WHY: Users might write dates in natural language. This converts them to
-        the standard DD/MM/YYYY format our system expects.
-
-        Args:
-            date_str: Date string that might contain Italian month names
-
-        Returns:
-            Standardized date string in DD/MM/YYYY format, or None if parsing fails
-        """
-        import re
-
-        # ### HASHTAG: PATTERN FOR "12 gennaio 2024" FORMAT ###
-        month_name_pattern = r'(\d{1,2})\s+(\w+)\s+(\d{4})'
-        match = re.search(month_name_pattern, date_str.lower())
-
-        if match:
-            day = match.group(1).zfill(2)  # Pad with zero: 5 → 05
-            month_name = match.group(2)
-            year = match.group(3)
-
-            if month_name in ITALIAN_MONTHS:
-                month = ITALIAN_MONTHS[month_name]
-                return f"{day}/{month}/{year}"
-
-        return None
-
-    # ========== UTILITY 3: TWO-DIGIT YEAR NORMALIZATION ==========
-    def normalize_two_digit_year(year_str: str) -> str:
-        """
-        Convert two-digit year to four-digit year using a pivot rule.
-
-        WHY: "23" could mean 1923 or 2023. We need a consistent rule.
-
-        RULE:
-        - 00-69 → 2000-2069 (future dates, likely course start dates)
-        - 70-99 → 1970-1999 (historical dates, unlikely for courses)
-
-        Args:
-            year_str: Two or four digit year as string
-
-        Returns:
-            Four-digit year as string
-        """
-        if len(year_str) == 4:
-            return year_str
-
-        if len(year_str) == 2:
-            year_int = int(year_str)
-            # ### HASHTAG: PIVOT RULE FOR CENTURY DETERMINATION ###
-            if year_int <= 69:
-                return f"20{year_str}"
-            else:
-                return f"19{year_str}"
-
-        return year_str
-
-    # ========== UTILITY 4: CENTRALIZED DATE NORMALIZATION ==========
-    def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optional[str]:
-        """
-        Universal date normalizer - handles ANY date format and converts to DD/MM/YYYY.
-
-        WHY: Dates come in many forms (datetime objects, strings, Excel dates).
-        This single function handles all cases consistently.
-
-        Args:
-            date_value: Can be datetime object, string, int (Excel date), etc.
-            default_format: Output format (default: DD/MM/YYYY)
-
-        Returns:
-            Normalized date string or None if parsing fails
-        """
-        # ### HASHTAG: CASE 1 - ALREADY A DATETIME OBJECT ###
-        if isinstance(date_value, datetime):
-            return date_value.strftime(default_format)
-
-        # ### HASHTAG: CASE 2 - PANDAS TIMESTAMP ###
-        if hasattr(date_value, 'strftime'):  # Pandas Timestamp
-            return date_value.strftime(default_format)
-
-        # ### HASHTAG: CASE 3 - STRING WITH VARIOUS FORMATS ###
-        if isinstance(date_value, str):
-            date_str = date_value.strip()
-
-            # Try Italian month names first
-            italian_date = parse_italian_date(date_str)
-            if italian_date:
-                return italian_date
-
-            # ### HASHTAG: TRY COMMON FORMATS IN ORDER ###
-            formats_to_try = [
-                "%d/%m/%Y",  # 15/03/2024
-                "%d-%m-%Y",  # 15-03-2024
-                "%d/%m/%y",  # 15/03/24
-                "%d-%m-%y",  # 15-03-24
-                "%Y-%m-%d",  # 2024-03-15 (ISO format)
-                "%d.%m.%Y",  # 15.03.2024
-                "%d %m %Y",  # 15 03 2024
-            ]
-
-            for fmt in formats_to_try:
-                try:
-                    parsed = datetime.strptime(date_str, fmt)
-                    # ### HASHTAG: HANDLE TWO-DIGIT YEARS ###
-                    if fmt.endswith("%y"):
-                        year_normalized = normalize_two_digit_year(str(parsed.year)[-2:])
-                        parsed = parsed.replace(year=int(year_normalized))
-                    return parsed.strftime(default_format)
-                except ValueError:
-                    continue
-
-            # ### HASHTAG: FALLBACK - PANDAS TO_DATETIME (VERY FLEXIBLE) ###
-            try:
-                parsed = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
-                if pd.notna(parsed):
-                    return parsed.strftime(default_format)
-            except:
-                pass
-
-        # ### HASHTAG: CASE 4 - NUMERIC (EXCEL SERIAL DATE) ###
-        if isinstance(date_value, (int, float)):
-            try:
-                # Excel dates are days since 1899-12-30
-                parsed = pd.to_datetime('1899-12-30') + pd.Timedelta(days=date_value)
-                return parsed.strftime(default_format)
-            except:
-                pass
-
-        return None
 
     def _update_nlp_text(self):
         """
