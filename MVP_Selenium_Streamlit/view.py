@@ -981,15 +981,23 @@ class CourseView:
             Il sistema estrarrà automaticamente le informazioni rilevanti.
             """, icon="💡")
 
+            #Handle clear request
+            if st.sesion_state.get("nlp_clear_requested",False):
+                #reset the input to empty string
+                st.session_state.course_nlp_input=""
+                st.session_state.nlp_clear_requested = False
+                st.rerun()
+
             nlp_text = st.text_area(
                 "Descrivi il corso in linguaggio naturale:",
-                height=150,
-                placeholder="Esempio: Crea un corso dal titolo 'Python Avanzato' con descrizione 'Programmazione orientata agli oggetti' che inizia il 20/05/2024",
-                key="course_nlp_input",
+                height=150, value=st.session_state.course_nlp_input,#use value instead of key for manual holder
+                placeholder="",
                 help="Scrivi una frase completa con titolo, descrizione e data del corso"
             )
+            #update session state manually
+            st.session_state.course_nlp_input = nlp_text
 
-            # ### HASHTAG: SHOW CHARACTER COUNT TO USER ###
+            # SHOW CHARACTER COUNT TO USER ###
             text_length = len(nlp_text.strip()) if nlp_text else 0
             if text_length > 0:
                 st.caption(f"✏️ {text_length} caratteri inseriti")
@@ -999,7 +1007,7 @@ class CourseView:
             col1, col2 = st.columns([1, 1])
 
             with col1:
-                # ### HASHTAG: BUTTON ALWAYS ENABLED, BUT CHECK INSIDE ###
+                # BUTTON ALWAYS ENABLED
                 analyze_clicked = st.button(
                     "🤖 Analizza Testo (NLP)",
                     type="primary",
@@ -1035,9 +1043,9 @@ class CourseView:
                             """)
 
             with col2:
-                if st.button("🧹 Cancella Testo", use_container_width=True):
-                    st.session_state.course_nlp_input = ""
-                    st.rerun()
+                if st.button("🧹 Cancella Testo", use_container_width=True,on_click=self._clear_nlp_input_callback()):
+                    pass #callback handles the clearing
+
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
