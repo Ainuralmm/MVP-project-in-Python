@@ -982,7 +982,7 @@ class CourseView:
             """, icon="💡")
 
             #Handle clear request
-            if st.sesion_state.get("nlp_clear_requested",False):
+            if st.session_state.get("nlp_clear_requested",False):
                 #reset the input to empty string
                 st.session_state.course_nlp_input=""
                 st.session_state.nlp_clear_requested = False
