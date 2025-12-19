@@ -344,6 +344,10 @@ class CourseView:
         if "course_nlp_input" not in st.session_state:
             st.session_state.course_nlp_input = ""  # Stores NLP text input
 
+        #add clear flag
+        if "nlp_clear_requested" not in st.session_state:
+            st.session_state.nlp_clear_requested = False
+
         # INITIALIZE SPACY MODEL #
         if "nlp_model" not in st.session_state:
             try:
