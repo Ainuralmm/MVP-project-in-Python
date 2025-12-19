@@ -416,11 +416,24 @@ class CourseView:
     # NEW METHOD - CLEAR NLP INPUT SAFELY
     def _clear_nlp_input_callback(self):
         """
-        Safely clear NLP input by using session state flag.
-        WHY: Can't directly modify widget state, so we use a flag instead.
+        Safely clear NLP input and ALL related states.
+
+        WHY: When user clicks "clear", we must reset:
+        - The text input itself
+        - Any parsed data from previous analysis
+        - The summary display flag
+        - The clear request flag
+
+        This ensures a clean slate for the next analysis.
         """
-        # Set a flag that tells us to reset the text area
+        #COMPREHENSIVE STATE RESET
         st.session_state.nlp_clear_requested = True
+        st.session_state.course_parsed_data = None
+        st.session_state.course_show_summary = False
+
+        # OPTIONAL - ADD DEBUG LOG
+        # Uncomment this to debug state issues:
+        print("DEBUG: NLP cleared - all states reset")
 
     def get_user_options(self):
         st.sidebar.header("Impostazioni")
@@ -482,7 +495,7 @@ class CourseView:
         st.session_state.course_short_desc_key = ""
         st.session_state.course_date_str_key = "01/01/2023"
 
-    # NEW HELPER METHOD - PARSE EXCEL FILE ###
+    # NEW HELPER METHOD - PARSE EXCEL FILE
     def _parse_excel_file(self, uploaded_file) -> Optional[Dict[str, Any]]:
         """
         Parse uploaded Excel file and extract course information.
@@ -982,10 +995,19 @@ class CourseView:
             """, icon="💡")
 
             #Handle clear request
-            if st.session_state.get("nlp_clear_requested",False):
-                #reset the input to empty string
-                st.session_state.course_nlp_input=""
+            if st.session_state.get('nlp_clear_requested', False):
+                # Reset the input to empty string
+                st.session_state.course_nlp_input = ""
                 st.session_state.nlp_clear_requested = False
+
+                # DOUBLE-CHECK OTHER STATES ARE CLEARED ###
+                # (Callback should have done this, but ensure it)
+                if st.session_state.course_parsed_data is not None:
+                    st.session_state.course_parsed_data = None
+                if st.session_state.course_show_summary:
+                    st.session_state.course_show_summary = False
+
+                # ### HASHTAG: FORCE CLEAN RERUN ###
                 st.rerun()
 
             nlp_text = st.text_area(
@@ -1045,7 +1067,6 @@ class CourseView:
             with col2:
                 if st.button("🧹 Cancella Testo", use_container_width=True,on_click=self._clear_nlp_input_callback()):
                     pass #callback handles the clearing
-
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
