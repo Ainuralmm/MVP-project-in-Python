@@ -401,7 +401,6 @@ class CourseView:
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
 
-
     def _update_nlp_text(self):
         """
         Callback function for NLP text area.
@@ -409,6 +408,15 @@ class CourseView:
         """
         # ### HASHTAG: CALLBACK TO ENSURE TEXT AREA UPDATES ARE CAPTURED ###
         pass  # No action needed, key parameter handles state update
+
+    # NEW METHOD - CLEAR NLP INPUT SAFELY
+    def _clear_nlp_input_callback(self):
+        """
+        Safely clear NLP input by using session state flag.
+        WHY: Can't directly modify widget state, so we use a flag instead.
+        """
+        # Set a flag that tells us to reset the text area
+        st.session_state.nlp_clear_requested = True
 
     def get_user_options(self):
         st.sidebar.header("Impostazioni")
@@ -485,7 +493,7 @@ class CourseView:
             # Read Excel file
             df = pd.read_excel(uploaded_file, header=None, engine='openpyxl')
 
-            # Extract data from specific cells (assuming structure shown in excel image)
+            # Extract data from specific cells (assuming structure shown in Excel image)
             # Column A contains labels (TITOLO, DESCRIZIONE, DATA INIZIO)
             # Column B contains values (EXCEL, INFORMATICA, 01/01/23)
 
@@ -515,7 +523,7 @@ class CourseView:
             # PROGRAMME FIELD IS OPTIONAL - SET EMPTY ###
             parsed_data['programme'] = ""
 
-            # Partial extraction support for excel too
+            # Partial extraction support for Excel too
             missing_fields = []
             if not parsed_data.get('title'):
                 missing_fields.append("Titolo")
@@ -847,7 +855,7 @@ class CourseView:
         3. Natural language processing
         """
 
-        # ### HASHTAG: SHOW SUMMARY IF DATA IS PARSED ###
+        # SHOW SUMMARY IF DATA IS PARSED
         if st.session_state.course_show_summary and st.session_state.course_parsed_data:
             self._render_course_summary()
             return  # Don't show input selection while summary is displayed
