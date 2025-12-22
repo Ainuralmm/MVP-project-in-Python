@@ -1,8 +1,12 @@
+import sys
 import streamlit as st
+
+
 from model import OracleAutomator
 from view import CourseView
 from presenter import CoursePresenter
 
+st.write("PYTHON EXECUTABLE:", sys.executable)
 ### HASHTAG: SIMPLIFIED AND CORRECTED LOGIC
 # The main script now initializes the view and lets it handle all rendering.
 # The controller logic only runs when the app is busy, creating the model

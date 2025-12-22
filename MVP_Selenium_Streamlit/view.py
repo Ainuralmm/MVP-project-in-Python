@@ -36,6 +36,27 @@ class CourseView:
         # --- Message States ---
         if "course_message" not in st.session_state:
             st.session_state.course_message = ""
+        # NEW STATE VARIABLES FOR COURSE INPUT METHOD
+        if "course_input_method" not in st.session_state:
+            st.session_state.course_input_method = "structured"  # Options: "structured", "excel", "nlp"
+
+        if "course_parsed_data" not in st.session_state:
+            st.session_state.course_parsed_data = None  # Stores parsed data from Excel/NLP
+
+        if "course_show_summary" not in st.session_state:
+            st.session_state.course_show_summary = False  # Controls summary display
+
+        if "course_nlp_input" not in st.session_state:
+            st.session_state.course_nlp_input = ""  # Stores NLP text input
+
+        # INITIALIZE SPACY MODEL #
+        if "nlp_model" not in st.session_state:
+            try:
+                st.session_state.nlp_model = spacy.load("it_core_news_sm")  # Italian model
+            except OSError:
+                st.session_state.nlp_model = None  # Will show error in UI if not loaded
+
+        # --- Message States: EDITION and STUDENTS ---
         if "edition_message" not in st.session_state:
             st.session_state.edition_message = ""
         if "student_message" not in st.session_state:
@@ -84,6 +105,14 @@ class CourseView:
 
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
+
+    def _update_nlp_text(self):
+        """
+        Callback function for NLP text area.
+        Streamlit automatically updates session_state when key is used.
+        """
+        # ### HASHTAG: CALLBACK TO ENSURE TEXT AREA UPDATES ARE CAPTURED ###
+        pass  # No action needed, key parameter handles state update
 
     def get_user_options(self):
         st.sidebar.header("Impostazioni")
@@ -471,6 +500,203 @@ class CourseView:
         st.session_state.course_short_desc_key = ""
         st.session_state.course_date_str_key = "01/01/2023"
 
+    # NEW HELPER METHOD - PARSE EXCEL FILE ###
+    def _parse_excel_file(self, uploaded_file) -> Optional[Dict[str, Any]]:
+        """
+        Parse uploaded Excel file and extract course information.
+        Expected Excel format:
+        - Row 1: TITOLO | [Course Title]
+        - Row 2: DESCRIZIONE | [Short Description]
+        - Row 3: DATA INIZIO | [DD/MM/YYYY]
+
+        Returns: Dictionary with parsed data or None if parsing fails
+        """
+        try:
+            # Read Excel file
+            df = pd.read_excel(uploaded_file, header=None)
+
+            # Extract data from specific cells (assuming structure shown in excel image)
+            # Column A contains labels (TITOLO, DESCRIZIONE, DATA INIZIO)
+            # Column B contains values (EXCEL, INFORMATICA, 01/01/23)
+
+            parsed_data = {}
+
+            # EXTRACT TITLE (Row 1, Column B) ###
+            if len(df) > 0 and len(df.columns) > 1:
+                parsed_data['title'] = str(df.iloc[0, 1]).strip() if pd.notna(df.iloc[0, 1]) else ""
+
+            # EXTRACT SHORT DESCRIPTION (Row 2, Column B) ###
+            if len(df) > 1 and len(df.columns) > 1:
+                parsed_data['short_description'] = str(df.iloc[1, 1]).strip() if pd.notna(df.iloc[1, 1]) else ""
+
+            # EXTRACT DATE (Row 3, Column B) ###
+            if len(df) > 2 and len(df.columns) > 1:
+                date_value = df.iloc[2, 1]
+
+                # Handle different date formats
+                if pd.notna(date_value):
+                    if isinstance(date_value, datetime):
+                        parsed_data['start_date'] = date_value.strftime("%d/%m/%Y")
+                    else:
+                        # Try to parse as string
+                        date_str = str(date_value).strip()
+                        # Handle both DD/MM/YY and DD/MM/YYYY formats
+                        try:
+                            parsed_date = datetime.strptime(date_str, "%d/%m/%y")
+                        except ValueError:
+                            try:
+                                parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
+                            except ValueError:
+                                parsed_date = None
+
+                        if parsed_date:
+                            parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
+
+            # PROGRAMME FIELD IS OPTIONAL - SET EMPTY ###
+            parsed_data['programme'] = ""
+
+            # Validate that required fields are present
+            if not all([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
+                return None
+
+            return parsed_data
+
+        except Exception as e:
+            st.error(f"Errore durante la lettura del file Excel: {str(e)}")
+            return None
+
+    # NEW HELPER METHOD - PARSE NLP INPUT
+    def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse natural language input to extract course information.
+        Improved version with better pattern matching for Italian text.
+        """
+        if not st.session_state.nlp_model:
+            st.error("Modello NLP non caricato. Installa spacy con: python -m spacy download it_core_news_sm")
+            return None
+
+        try:
+            import re
+
+            parsed_data = {
+                'title': "",
+                'short_description': "",
+                'start_date': "",
+                'programme': ""
+            }
+
+            # ### HASHTAG: NORMALIZE TEXT - REMOVE EXTRA SPACES ###
+            text = ' '.join(text.split())  # Normalize whitespace
+            text_lower = text.lower()
+
+            # ### HASHTAG: IMPROVED TITLE EXTRACTION - MORE FLEXIBLE PATTERNS ###
+            title_patterns = [
+                # Pattern 1: "titolo [X]" with comma or end
+                r'titolo\s+([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 2: "titolo: [X]"
+                r'titolo:\s*([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 3: "corso [X]"
+                r'corso\s+([^,]+?)(?:\s*,|\s*con\s+descrizione|\s*descrizione|\s*$)',
+                # Pattern 4: More flexible - anything after "titolo" until comma or keywords
+                r'titolo\s+(.+?)(?=\s*,|\s+descrizione|\s+con|\s+data|\s+pubblicazione|$)',
+            ]
+
+            for pattern in title_patterns:
+                match = re.search(pattern, text_lower, re.IGNORECASE)
+                if match:
+                    # Extract from original text to preserve case
+                    start_pos = match.start(1)
+                    end_pos = match.end(1)
+                    parsed_data['title'] = text[start_pos:end_pos].strip()
+                    if parsed_data['title']:  # Only break if we got something
+                        break
+
+            # ### HASHTAG: IMPROVED DESCRIPTION EXTRACTION ###
+            desc_patterns = [
+                # Pattern 1: "descrizione [X]" with comma or end
+                r'descrizione\s+([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 2: "descrizione: [X]"
+                r'descrizione:\s*([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 3: "descrizione breve [X]"
+                r'descrizione\s+breve\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
+                # Pattern 4: More flexible
+                r'descrizione\s+(.+?)(?=\s*,|\s+data|\s+pubblicazione|\s+inizio|$)',
+            ]
+
+            for pattern in desc_patterns:
+                match = re.search(pattern, text_lower, re.IGNORECASE)
+                if match:
+                    start_pos = match.start(1)
+                    end_pos = match.end(1)
+                    parsed_data['short_description'] = text[start_pos:end_pos].strip()
+                    if parsed_data['short_description']:  # Only break if we got something
+                        break
+
+            # ### HASHTAG: IMPROVED DATE EXTRACTION - MULTIPLE FORMATS ###
+            date_patterns = [
+                # Pattern 1: DD/MM/YYYY or DD-MM-YYYY
+                r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b',
+                # Pattern 2: DD/MM/YY or DD-MM-YY
+                r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2})\b',
+                # Pattern 3: Italian month names
+                r'(\d{1,2})\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})',
+            ]
+
+            date_str = None
+            for pattern in date_patterns:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    date_str = match.group(0).replace('-', '/')
+                    break
+
+            if date_str:
+                # Normalize to DD/MM/YYYY format
+                try:
+                    # Try DD/MM/YYYY first
+                    parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
+                    parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
+                except ValueError:
+                    try:
+                        # Try DD/MM/YY
+                        parsed_date = datetime.strptime(date_str, "%d/%m/%y")
+                        parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
+                    except ValueError:
+                        pass
+
+            # ### HASHTAG: VALIDATION WITH DETAILED FEEDBACK ###
+            missing_fields = []
+            if not parsed_data.get('title') or not parsed_data['title'].strip():
+                missing_fields.append("Titolo")
+            if not parsed_data.get('short_description') or not parsed_data['short_description'].strip():
+                missing_fields.append("Descrizione")
+            if not parsed_data.get('start_date') or not parsed_data['start_date'].strip():
+                missing_fields.append("Data")
+
+            if missing_fields:
+                st.warning(f"⚠️ Campi mancanti: {', '.join(missing_fields)}")
+                st.info("**Dati estratti finora:**")
+                if parsed_data.get('title') and parsed_data['title'].strip():
+                    st.write(f"- ✅ Titolo: `{parsed_data['title']}`")
+                else:
+                    st.write(f"- ❌ Titolo: non trovato")
+                if parsed_data.get('short_description') and parsed_data['short_description'].strip():
+                    st.write(f"- ✅ Descrizione: `{parsed_data['short_description']}`")
+                else:
+                    st.write(f"- ❌ Descrizione: non trovata")
+                if parsed_data.get('start_date') and parsed_data['start_date'].strip():
+                    st.write(f"- ✅ Data: `{parsed_data['start_date']}`")
+                else:
+                    st.write(f"- ❌ Data: non trovata")
+                return None
+
+            return parsed_data
+
+        except Exception as e:
+            st.error(f"Errore durante l'analisi NLP: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+            return None
+
     def _clear_edition_activity_form_callback(self):
         st.session_state.edition_course_name_key = ""
         st.session_state.edition_title_key = ""
@@ -512,56 +738,282 @@ class CourseView:
             if f"student_name_{i}" in st.session_state:
                 st.session_state[f"student_name_{i}"] = ""
 
-    def _render_course_form(self, is_disabled):
-        """Original structured form - unchanged from your code"""
-        with st.form(key='course_form'):
-            course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati",
-                                         key="course_title_key")
-            programme = st.text_area("Dettagli del Programma", placeholder="Campo opzionale...",
-                                     key="course_programme_key")
-            short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati Informatica",
-                                       key="course_short_desc_key")
-            date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", key="course_date_str_key")
+    # NEW HELPER METHOD - DISPLAY SUMMARY WITH EDIT/CONFIRM
+    def _render_course_summary(self):
+        """
+        Display parsed course data in a summary format with Edit/Confirm buttons.
+        """
+        if not st.session_state.course_parsed_data:
+            return
 
-            col1, col2 = st.columns([3, 1])
+        st.success("✅ Dati estratti con successo!")
+
+        st.subheader("Riepilogo Corso")
+
+        # ### HASHTAG: DISPLAY PARSED DATA IN EDITABLE FORMAT ###
+        with st.form(key='course_summary_form'):
+            title = st.text_input(
+                "Titolo del Corso",
+                value=st.session_state.course_parsed_data.get('title', ''),
+                key="summary_title"
+            )
+
+            short_desc = st.text_input(
+                "Breve Descrizione",
+                value=st.session_state.course_parsed_data.get('short_description', ''),
+                key="summary_short_desc"
+            )
+
+            date_str = st.text_input(
+                "Data di Pubblicazione (GG/MM/AAAA)",
+                value=st.session_state.course_parsed_data.get('start_date', ''),
+                key="summary_date"
+            )
+
+            programme = st.text_area(
+                "Dettagli del Programma (opzionale)",
+                value=st.session_state.course_parsed_data.get('programme', ''),
+                key="summary_programme"
+            )
+
+            col1, col2, col3 = st.columns([2, 1, 1])
+
             with col1:
-                submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled,
-                                                  use_container_width=True)
-            with col2:
-                st.form_submit_button("Pulisci 🧹", use_container_width=True,
-                                      on_click=self._clear_course_form_callback)
+                confirm = st.form_submit_button("✅ Conferma e Crea Corso", type="primary", use_container_width=True)
 
-        if submitted:
-            missing = False
-            if not course_title.strip():
-                st.markdown("<span style='color:red'>⚠️ Il campo 'Titolo corso' è obbligatorio...</span>",
-                            unsafe_allow_html=True)
-                missing = True
-            if not short_desc.strip():
-                st.markdown("<span style='color:red'>⚠️ Il campo 'Breve Descrizione' è obbligatorio...</span>",
-                            unsafe_allow_html=True)
-                missing = True
-            if not date_str.strip():
-                st.markdown("<span style='color:red'>⚠️ Il campo 'Data di Pubblicazione' è obbligatorio...</span>",
-                            unsafe_allow_html=True)
-                missing = True
-            if missing:
+            with col2:
+                edit = st.form_submit_button("✏️ Modifica", use_container_width=True)
+
+            with col3:
+                cancel = st.form_submit_button("❌ Annulla", use_container_width=True)
+
+        # ### HASHTAG: HANDLE FORM ACTIONS ###
+        if confirm:
+            # Validate and submit
+            if not all([title.strip(), short_desc.strip(), date_str.strip()]):
+                st.error("I campi 'Titolo', 'Breve Descrizione' e 'Data' sono obbligatori.")
                 st.stop()
 
             try:
                 start_date_obj = datetime.strptime(date_str, "%d/%m/%Y").date()
+
+                # Update parsed data with edited values
                 st.session_state.course_details = {
-                    "title": course_title,
+                    "title": title,
                     "programme": programme,
                     "short_description": short_desc,
                     "start_date": start_date_obj
                 }
+
+                # Start automation
                 st.session_state.app_state = "RUNNING_COURSE"
                 st.session_state.course_message = ""
+                st.session_state.course_show_summary = False
+                st.session_state.course_parsed_data = None
                 st.rerun()
+
             except ValueError:
                 st.error("Formato data non valido. Usa GG/MM/AAAA.")
                 st.stop()
+
+        elif edit:
+            # Stay on summary page, allow editing
+            st.info("Modifica i campi sopra e clicca 'Conferma' quando pronto.")
+
+        elif cancel:
+            # Reset to input selection
+            st.session_state.course_show_summary = False
+            st.session_state.course_parsed_data = None
+            st.session_state.course_input_method = "structured"
+            st.rerun()
+
+    def _render_course_form(self, is_disabled):
+        """
+        Enhanced course form with three input methods:
+        1. Structured input (original)
+        2. Excel file upload
+        3. Natural language processing
+        """
+
+        # ### HASHTAG: SHOW SUMMARY IF DATA IS PARSED ###
+        if st.session_state.course_show_summary and st.session_state.course_parsed_data:
+            self._render_course_summary()
+            return  # Don't show input selection while summary is displayed
+
+        # ### HASHTAG: INPUT METHOD SELECTION ###
+        st.subheader("Scegli il Metodo di Inserimento")
+
+        input_method = st.radio(
+            "Come vuoi inserire i dati del corso?",
+            options=["structured", "excel", "nlp"],
+            format_func=lambda x: {
+                "structured": "📝 Input Strutturato (Form)",
+                "excel": "📊 Caricamento File Excel",
+                "nlp": "💬 Compilazione con AI"
+            }[x],
+            key="course_input_method",
+            horizontal=True
+        )
+
+        st.divider()
+
+        # RENDER APPROPRIATE INPUT INTERFACE BASED ON SELECTION ###
+
+        # ========== METHOD 1: STRUCTURED INPUT (ORIGINAL) ==========
+        if input_method == "structured":
+            with st.form(key='course_form'):
+                course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati",
+                                             key="course_title_key")
+                programme = st.text_area("Dettagli del Programma", placeholder="Campo opzionale...",
+                                         key="course_programme_key")
+                short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati - Informatica",
+                                           key="course_short_desc_key")
+                date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", key="course_date_str_key")
+
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled,
+                                                      use_container_width=True)
+                with col2:
+                    st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                                          on_click=self._clear_course_form_callback)
+
+            if submitted:
+                missing = False
+                if not course_title.strip():
+                    st.markdown("<span style='color:red'>⚠️ Il campo 'Titolo corso' è obbligatorio...</span>",
+                                unsafe_allow_html=True)
+                    missing = True
+                if not short_desc.strip():
+                    st.markdown("<span style='color:red'>⚠️ Il campo 'Breve Descrizione' è obbligatorio...</span>",
+                                unsafe_allow_html=True)
+                    missing = True
+                if not date_str.strip():
+                    st.markdown("<span style='color:red'>⚠️ Il campo 'Data di Pubblicazione' è obbligatorio...</span>",
+                                unsafe_allow_html=True)
+                    missing = True
+                if missing:
+                    st.stop()
+
+                try:
+                    start_date_obj = datetime.strptime(date_str, "%d/%m/%Y").date()
+                    st.session_state.course_details = {
+                        "title": course_title,
+                        "programme": programme,
+                        "short_description": short_desc,
+                        "start_date": start_date_obj
+                    }
+                    st.session_state.app_state = "RUNNING_COURSE"
+                    st.session_state.course_message = ""
+                    st.rerun()
+                except ValueError:
+                    st.error("Formato data non valido. Usa GG/MM/AAAA.")
+                    st.stop()
+
+        # ========== METHOD 2: EXCEL FILE UPLOAD ==========
+        elif input_method == "excel":
+            st.info("""
+            **Formato Excel Richiesto:**
+            - **Riga 1:** TITOLO | [Nome del Corso]
+            - **Riga 2:** DESCRIZIONE | [Breve Descrizione]
+            - **Riga 3:** DATA INIZIO | [GG/MM/AAAA]
+
+            Le etichette devono essere nella Colonna A, i valori nella Colonna B.
+            """, icon="ℹ️")
+
+            uploaded_file = st.file_uploader(
+                "Carica File Excel (.xlsx, .xls)",
+                type=['xlsx', 'xls'],
+                help="Il file deve seguire il formato specificato sopra"
+            )
+
+            if uploaded_file is not None:
+                col1, col2 = st.columns([1, 1])
+
+                with col1:
+                    if st.button("📊 Analizza File Excel", type="primary", use_container_width=True):
+                        # ### HASHTAG: PARSE EXCEL AND SHOW SUMMARY ###
+                        parsed_data = self._parse_excel_file(uploaded_file)
+
+                        if parsed_data:
+                            st.session_state.course_parsed_data = parsed_data
+                            st.session_state.course_show_summary = True
+                            st.rerun()
+                        else:
+                            st.error("❌ Impossibile estrarre i dati dal file. Verifica il formato.")
+
+                with col2:
+                    if st.button("🧹 Cancella File", use_container_width=True):
+                        st.rerun()
+
+        # ========== METHOD 3: NATURAL LANGUAGE PROCESSING ==========
+        elif input_method == "nlp":
+            st.info("""
+            **Scrivi una frase che descriva il corso**, ad esempio:
+
+            - "Crea un corso titolo Analisi dei Dati con descrizione Informatica avanzata data inizio 15/03/2024"
+            - "Nuovo corso Excel Base, descrizione breve: Gestione fogli di calcolo, pubblicazione 01/04/2024"
+
+            Il sistema estrarrà automaticamente le informazioni rilevanti.
+            """, icon="💡")
+
+            nlp_text = st.text_area(
+                "Descrivi il corso in linguaggio naturale:",
+                height=150,
+                placeholder="Esempio: Crea un corso dal titolo 'Python Avanzato' con descrizione 'Programmazione orientata agli oggetti' che inizia il 20/05/2024",
+                key="course_nlp_input",
+                help="Scrivi una frase completa con titolo, descrizione e data del corso"
+            )
+
+            # ### HASHTAG: SHOW CHARACTER COUNT TO USER ###
+            text_length = len(nlp_text.strip()) if nlp_text else 0
+            if text_length > 0:
+                st.caption(f"✏️ {text_length} caratteri inseriti")
+            else:
+                st.warning("⚠️ Inserisci del testo per abilitare l'analisi", icon="⚠️")
+
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                # ### HASHTAG: BUTTON ALWAYS ENABLED, BUT CHECK INSIDE ###
+                analyze_clicked = st.button(
+                    "🤖 Analizza Testo (NLP)",
+                    type="primary",
+                    use_container_width=True
+                )
+
+                if analyze_clicked:
+                    # ### HASHTAG: VALIDATE TEXT FIRST ###
+                    if not nlp_text or not nlp_text.strip():
+                        st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
+                        st.stop()
+
+                    if text_length < 20:
+                        st.error("⚠️ Il testo è troppo corto. Scrivi una frase più completa.")
+                        st.stop()
+
+                    # ### HASHTAG: PARSE NLP INPUT WITH LOADING INDICATOR ###
+                    with st.spinner("🤖 Analisi del testo in corso..."):
+                        parsed_data = self._parse_nlp_input(nlp_text)
+
+                    if parsed_data:
+                        st.session_state.course_parsed_data = parsed_data
+                        st.session_state.course_show_summary = True
+                        st.rerun()
+                    else:
+                        st.error("""
+                            ❌ Impossibile estrarre le informazioni necessarie.
+
+                            Assicurati di includere:
+                            - **Titolo** del corso (es: "titolo Excel Base")
+                            - **Descrizione** breve (es: "descrizione Gestione fogli di calcolo")
+                            - **Data** di inizio (es: "data inizio 01/01/2023" o "pubblicazione 01/01/2023")
+                            """)
+
+            with col2:
+                if st.button("🧹 Cancella Testo", use_container_width=True):
+                    st.session_state.course_nlp_input = ""
+                    st.rerun()
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
