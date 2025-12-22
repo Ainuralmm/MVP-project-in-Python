@@ -31,5 +31,5 @@ if __name__ == "__main__":
             presenter.run_create_course(st.session_state.get("course_details"))
         elif st.session_state.app_state == "RUNNING_EDITION":
             presenter.run_create_edition_and_activities(st.session_state.get("edition_details"))
-        elif st.session_state.app_state == "RUNNING_STUDENTS":  # New state check
+        elif st.session_state.app_state == "RUNNING_STUDENTS":
             presenter.run_add_students(st.session_state.get("student_details"))
