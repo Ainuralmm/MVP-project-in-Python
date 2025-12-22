@@ -537,7 +537,7 @@ class CourseView:
                     else:
                         st.warning(f"⚠️Formato data non riconosciuto: {date_value}")
 
-            # PROGRAMME FIELD IS OPTIONAL - SET EMPTY ###
+            # PROGRAMME FIELD IS OPTIONAL - SET EMPTY
             parsed_data['programme'] = ""
 
             # Partial extraction support for Excel too
@@ -588,12 +588,12 @@ class CourseView:
                 'programme': ""
             }
 
-            # ### HASHTAG: STEP 1 - NORMALIZE TEXT SAFELY ###
+            # STEP 1 - NORMALIZE TEXT SAFELY ###
             original_text = text
             normalized_text = ' '.join(text.split())  # Remove extra whitespace
             text_lower = normalized_text.lower()
 
-            # ### HASHTAG: STEP 2 - TRY SPACY MATCHER FIRST (MOST ROBUST) ###
+            # STEP 2 - TRY SPACY MATCHER FIRST (MOST ROBUST) ###
             try:
                 spacy_results = extract_with_spacy_matcher(normalized_text, st.session_state.nlp_model)
                 if spacy_results['title']:
@@ -609,7 +609,7 @@ class CourseView:
                 # If spaCy fails, fall back to regex
                 st.warning(f"spaCy Matcher fallback attivo: {spacy_error}")
 
-            # ### HASHTAG: STEP 3 - REGEX FALLBACK WITH SAFE EXTRACTION ###
+            # STEP 3 - REGEX FALLBACK WITH SAFE EXTRACTION ###
             # Only fill in missing fields from Step 2
 
             if not parsed_data['title']:
@@ -985,11 +985,18 @@ class CourseView:
 
         # ========== METHOD 3: NATURAL LANGUAGE PROCESSING ==========
         elif input_method == "nlp":
+            # ### HASHTAG: TEMPORARY DEBUG - REMOVE AFTER FIXING ###
+            with st.expander("🔍 Debug - Stato NLP (rimuovi dopo test)", expanded=False):
+                st.write("**Session State Values:**")
+                st.write(f"- `course_nlp_input`: `{st.session_state.get('course_nlp_input', 'NOT SET')}`")
+                st.write(f"- `course_parsed_data`: `{st.session_state.get('course_parsed_data', 'NOT SET')}`")
+                st.write(f"- `course_show_summary`: `{st.session_state.get('course_show_summary', 'NOT SET')}`")
+                st.write(f"- `nlp_clear_requested`: `{st.session_state.get('nlp_clear_requested', 'NOT SET')}`")
+                st.write(f"- `app_state`: `{st.session_state.get('app_state', 'NOT SET')}`")
             st.info("""
             **Scrivi una frase che descriva il corso**, ad esempio:
 
             - "Crea un corso titolo Analisi dei Dati con descrizione Informatica avanzata data inizio 15/03/2024"
-            - "Nuovo corso Excel Base, descrizione breve: Gestione fogli di calcolo, pubblicazione 01/04/2024"
 
             Il sistema estrarrà automaticamente le informazioni rilevanti.
             """, icon="💡")
@@ -1007,7 +1014,7 @@ class CourseView:
                 if st.session_state.course_show_summary:
                     st.session_state.course_show_summary = False
 
-                # ### HASHTAG: FORCE CLEAN RERUN ###
+                #FORCE CLEAN RERUN ###
                 st.rerun()
 
             nlp_text = st.text_area(
@@ -1029,15 +1036,15 @@ class CourseView:
             col1, col2 = st.columns([1, 1])
 
             with col1:
-                # BUTTON ALWAYS ENABLED
                 analyze_clicked = st.button(
                     "🤖 Analizza Testo (NLP)",
                     type="primary",
-                    use_container_width=True
+                    use_container_width=True,
+                    key="analyze_nlp_button"  # Add unique key
                 )
 
                 if analyze_clicked:
-                    # ### HASHTAG: VALIDATE TEXT FIRST ###
+                    # ### HASHTAG: VALIDATION CHECKS ###
                     if not nlp_text or not nlp_text.strip():
                         st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
                         st.stop()
@@ -1046,10 +1053,16 @@ class CourseView:
                         st.error("⚠️ Il testo è troppo corto. Scrivi una frase più completa.")
                         st.stop()
 
-                    # ### HASHTAG: PARSE NLP INPUT WITH LOADING INDICATOR ###
+                    # ### HASHTAG: CLEAR ANY OLD PARSED DATA BEFORE NEW ANALYSIS ###
+                    # This prevents the "nothing happens" issue
+                    st.session_state.course_parsed_data = None
+                    st.session_state.course_show_summary = False
+
+                    # ### HASHTAG: PERFORM ANALYSIS ###
                     with st.spinner("🤖 Analisi del testo in corso..."):
                         parsed_data = self._parse_nlp_input(nlp_text)
 
+                    # ### HASHTAG: HANDLE ANALYSIS RESULTS ###
                     if parsed_data:
                         st.session_state.course_parsed_data = parsed_data
                         st.session_state.course_show_summary = True
@@ -1063,10 +1076,12 @@ class CourseView:
                             - **Descrizione** breve (es: "descrizione Gestione fogli di calcolo")
                             - **Data** di inizio (es: "data inizio 01/01/2023" o "pubblicazione 01/01/2023")
                             """)
-
             with col2:
-                if st.button("🧹 Cancella Testo", use_container_width=True,on_click=self._clear_nlp_input_callback()):
-                    pass #callback handles the clearing
+                # ### HASHTAG: CLEAR BUTTON WITH CALLBACK ###
+                if st.button("🧹 Cancella Testo", use_container_width=True,
+                             on_click=self._clear_nlp_input_callback,
+                             key="clear_nlp_text_button"):
+                    pass  #callback handles the clearing
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
