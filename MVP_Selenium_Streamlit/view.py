@@ -1,9 +1,324 @@
 import streamlit as st
 from datetime import datetime
-import pandas as pd # pandas: To read Excel files
-import spacy # spacy: For NLP sentence parsing
-from dateutil import parser as date_parser # dateutil.parser: For flexible date parsing from text
-import re # re: For regex pattern matching in sentences
+import pandas as pd
+import spacy
+from typing import Optional, Dict, Any, Tuple, List
+
+# NEW UTILITY FUNCTIONS FOR ENHANCED NLP PARSING
+#========== UTILITY 1: SAFE TEXT EXTRACTION ==========
+def safe_extract_text(original_text: str, normalized_text: str, match_start: int, match_end: int) -> str:
+    """
+    Safely extract text from original while using match positions from normalized text.
+
+    WHY: When we normalize text (remove accents, lowercase), the character positions
+    might shift. This function ensures we always extract from the correct positions.
+
+    Args:
+        original_text: The original user input (with proper case, accents)
+        normalized_text: The text used for pattern matching (lowercase, no accents)
+        match_start: Start position from the regex match on normalized_text
+        match_end: End position from the regex match on normalized_text
+
+    Returns:
+        Extracted text from original, properly aligned
+    """
+    # ### HASHTAG: VERIFY LENGTHS MATCH ###
+    if len(original_text) != len(normalized_text):
+        # If lengths differ (due to accent removal), fall back to normalized extraction
+        return normalized_text[match_start:match_end].strip()
+
+    # ### HASHTAG: SAFE EXTRACTION WITH BOUNDS CHECK ###
+    safe_start = max(0, match_start)
+    safe_end = min(len(original_text), match_end)
+
+    return original_text[safe_start:safe_end].strip()
+
+# ========== UTILITY 2: ITALIAN MONTH NAME PARSER ==========
+ITALIAN_MONTHS = {
+    'gennaio': '01', 'febbraio': '02', 'marzo': '03', 'aprile': '04',
+    'maggio': '05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
+    'settembre': '09', 'ottobre': '10', 'novembre': '11', 'dicembre': '12',
+    # Short forms
+    'gen': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+    'mag': '05', 'giu': '06', 'lug': '07', 'ago': '08',
+    'set': '09', 'ott': '10', 'nov': '11', 'dic': '12'
+}
+
+def parse_italian_date(date_str: str) -> Optional[str]:
+    """
+    Parse Italian date format like "12 gennaio 2024" into "12/01/2024".
+
+    WHY: Users might write dates in natural language. This converts them to
+    the standard DD/MM/YYYY format our system expects.
+
+    Args:
+        date_str: Date string that might contain Italian month names
+
+    Returns:
+        Standardized date string in DD/MM/YYYY format, or None if parsing fails
+    """
+    import re
+
+    # ### HASHTAG: PATTERN FOR "12 gennaio 2024" FORMAT ###
+    month_name_pattern = r'(\d{1,2})\s+(\w+)\s+(\d{4})'
+    match = re.search(month_name_pattern, date_str.lower())
+
+    if match:
+        day = match.group(1).zfill(2)  # Pad with zero: 5 → 05
+        month_name = match.group(2)
+        year = match.group(3)
+
+        if month_name in ITALIAN_MONTHS:
+            month = ITALIAN_MONTHS[month_name]
+            return f"{day}/{month}/{year}"
+
+    return None
+
+# ========== UTILITY 3: TWO-DIGIT YEAR NORMALIZATION ==========
+def normalize_two_digit_year(year_str: str) -> str:
+    """
+    Convert two-digit year to four-digit year using a pivot rule.
+
+    WHY: "23" could mean 1923 or 2023. We need a consistent rule.
+
+    RULE:
+    - 00-69 → 2000-2069 (future dates, likely course start dates)
+    - 70-99 → 1970-1999 (historical dates, unlikely for courses)
+
+    Args:
+        year_str: Two or four digit year as string
+
+    Returns:
+        Four-digit year as string
+    """
+    if len(year_str) == 4:
+        return year_str
+
+    if len(year_str) == 2:
+        year_int = int(year_str)
+        # ### HASHTAG: PIVOT RULE FOR CENTURY DETERMINATION ###
+        if year_int <= 69:
+            return f"20{year_str}"
+        else:
+            return f"19{year_str}"
+
+    return year_str
+
+# ========== UTILITY 4: CENTRALIZED DATE NORMALIZATION ==========
+def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optional[str]:
+    """
+    Universal date normalizer - handles ANY date format and converts to DD/MM/YYYY.
+
+    WHY: Dates come in many forms (datetime objects, strings, Excel dates).
+    This single function handles all cases consistently.
+
+    Args:
+        date_value: Can be datetime object, string, int (Excel date), etc.
+        default_format: Output format (default: DD/MM/YYYY)
+
+    Returns:
+        Normalized date string or None if parsing fails
+    """
+    # ### HASHTAG: CASE 1 - ALREADY A DATETIME OBJECT ###
+    if isinstance(date_value, datetime):
+        return date_value.strftime(default_format)
+
+    # ### HASHTAG: CASE 2 - PANDAS TIMESTAMP ###
+    if hasattr(date_value, 'strftime'):  # Pandas Timestamp
+        return date_value.strftime(default_format)
+
+    # ### HASHTAG: CASE 3 - STRING WITH VARIOUS FORMATS ###
+    if isinstance(date_value, str):
+        date_str = date_value.strip()
+
+        # Try Italian month names first
+        italian_date = parse_italian_date(date_str)
+        if italian_date:
+            return italian_date
+
+        # ### HASHTAG: TRY COMMON FORMATS IN ORDER ###
+        formats_to_try = [
+            "%d/%m/%Y",  # 15/03/2024
+            "%d-%m-%Y",  # 15-03-2024
+            "%d/%m/%y",  # 15/03/24
+            "%d-%m-%y",  # 15-03-24
+            "%Y-%m-%d",  # 2024-03-15 (ISO format)
+            "%d.%m.%Y",  # 15.03.2024
+            "%d %m %Y",  # 15 03 2024
+        ]
+
+        for fmt in formats_to_try:
+            try:
+                parsed = datetime.strptime(date_str, fmt)
+                # ### HASHTAG: HANDLE TWO-DIGIT YEARS ###
+                if fmt.endswith("%y"):
+                    year_normalized = normalize_two_digit_year(str(parsed.year)[-2:])
+                    parsed = parsed.replace(year=int(year_normalized))
+                return parsed.strftime(default_format)
+            except ValueError:
+                continue
+
+        # ### HASHTAG: FALLBACK - PANDAS TO_DATETIME (VERY FLEXIBLE) ###
+        try:
+            parsed = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
+            if pd.notna(parsed):
+                return parsed.strftime(default_format)
+        except:
+            pass
+
+    # ### HASHTAG: CASE 4 - NUMERIC (EXCEL SERIAL DATE) ###
+    if isinstance(date_value, (int, float)):
+        try:
+            # Excel dates are days since 1899-12-30
+            parsed = pd.to_datetime('1899-12-30') + pd.Timedelta(days=date_value)
+            return parsed.strftime(default_format)
+        except:
+            pass
+
+    return None
+
+# ========== UTILITY 4: CENTRALIZED DATE NORMALIZATION ==========
+def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optional[str]:
+    """
+    Universal date normalizer - handles ANY date format and converts to DD/MM/YYYY.
+
+    WHY: Dates come in many forms (datetime objects, strings, Excel dates).
+    This single function handles all cases consistently.
+
+    Args:
+        date_value: Can be datetime object, string, int (Excel date), etc.
+        default_format: Output format (default: DD/MM/YYYY)
+
+    Returns:
+        Normalized date string or None if parsing fails
+    """
+    # ### HASHTAG: CASE 1 - ALREADY A DATETIME OBJECT ###
+    if isinstance(date_value, datetime):
+        return date_value.strftime(default_format)
+
+    # ### HASHTAG: CASE 2 - PANDAS TIMESTAMP ###
+    if hasattr(date_value, 'strftime'):  # Pandas Timestamp
+        return date_value.strftime(default_format)
+
+    # ### HASHTAG: CASE 3 - STRING WITH VARIOUS FORMATS ###
+    if isinstance(date_value, str):
+        date_str = date_value.strip()
+
+        # Try Italian month names first
+        italian_date = parse_italian_date(date_str)
+        if italian_date:
+            return italian_date
+
+        # ### HASHTAG: TRY COMMON FORMATS IN ORDER ###
+        formats_to_try = [
+            "%d/%m/%Y",  # 15/03/2024
+            "%d-%m-%Y",  # 15-03-2024
+            "%d/%m/%y",  # 15/03/24
+            "%d-%m-%y",  # 15-03-24
+            "%Y-%m-%d",  # 2024-03-15 (ISO format)
+            "%d.%m.%Y",  # 15.03.2024
+            "%d %m %Y",  # 15 03 2024
+        ]
+
+        for fmt in formats_to_try:
+            try:
+                parsed = datetime.strptime(date_str, fmt)
+                # ### HASHTAG: HANDLE TWO-DIGIT YEARS ###
+                if fmt.endswith("%y"):
+                    year_normalized = normalize_two_digit_year(str(parsed.year)[-2:])
+                    parsed = parsed.replace(year=int(year_normalized))
+                return parsed.strftime(default_format)
+            except ValueError:
+                continue
+
+        # ### HASHTAG: FALLBACK - PANDAS TO_DATETIME (VERY FLEXIBLE) ###
+        try:
+            parsed = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
+            if pd.notna(parsed):
+                return parsed.strftime(default_format)
+        except:
+            pass
+
+    # ### HASHTAG: CASE 4 - NUMERIC (EXCEL SERIAL DATE) ###
+    if isinstance(date_value, (int, float)):
+        try:
+            # Excel dates are days since 1899-12-30
+            parsed = pd.to_datetime('1899-12-30') + pd.Timedelta(days=date_value)
+            return parsed.strftime(default_format)
+        except:
+            pass
+
+    return None
+
+# ========== UTILITY 5: EXTRACT WITH SPACY MATCHER ==========
+def extract_with_spacy_matcher(text: str, nlp_model) -> Dict[str, str]:
+    """
+    Use spaCy's Matcher for robust keyword-based extraction.
+
+    WHY: Regex assumes fixed word order. spaCy Matcher handles variations like:
+    - "titolo: Excel" vs "Excel è il titolo"
+    - "corso di Python" vs "Python corso"
+
+    This is more robust for natural language input.
+
+    Args:
+        text: User input text
+        nlp_model: Loaded spaCy model
+
+    Returns:
+        Dictionary with extracted 'title', 'description', 'date'
+    """
+    from spacy.matcher import Matcher
+
+    doc = nlp_model(text)
+    matcher = Matcher(nlp_model.vocab)
+
+    results = {
+        'title': "",
+        'description': "",
+        'date': ""
+    }
+
+    # ### HASHTAG: DEFINE PATTERNS FOR TITLE ###
+    # Pattern: "titolo" + optional ":" + text until comma or end
+    title_patterns = [
+        [{"LOWER": "titolo"}, {"IS_PUNCT": True, "OP": "?"}, {"IS_ALPHA": True, "OP": "+"}],
+        [{"LOWER": "corso"}, {"IS_ALPHA": True, "OP": "+"}],
+    ]
+
+    matcher.add("TITLE", title_patterns)
+
+    # ### HASHTAG: DEFINE PATTERNS FOR DESCRIPTION ###
+    desc_patterns = [
+        [{"LOWER": "descrizione"}, {"IS_PUNCT": True, "OP": "?"}, {"IS_ALPHA": True, "OP": "+"}],
+    ]
+
+    matcher.add("DESCRIPTION", desc_patterns)
+
+    # ### HASHTAG: RUN MATCHER ###
+    matches = matcher(doc)
+
+    for match_id, start, end in matches:
+        match_label = nlp_model.vocab.strings[match_id]
+        span = doc[start:end]
+
+        if match_label == "TITLE" and not results['title']:
+            # Extract tokens after "titolo" keyword
+            title_tokens = [token.text for token in span if token.lower_ not in ['titolo', 'corso', ':']]
+            results['title'] = ' '.join(title_tokens)
+
+        elif match_label == "DESCRIPTION" and not results['description']:
+            desc_tokens = [token.text for token in span if token.lower_ not in ['descrizione', ':']]
+            results['description'] = ' '.join(desc_tokens)
+
+    # ### HASHTAG: DATE EXTRACTION WITH REGEX (SPACY DOESN'T HANDLE THIS WELL) ###
+    import re
+    date_pattern = r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b'
+    date_match = re.search(date_pattern, text)
+    if date_match:
+        results['date'] = date_match.group(1)
+
+    return results
 
 
 class CourseView:
@@ -48,6 +363,10 @@ class CourseView:
 
         if "course_nlp_input" not in st.session_state:
             st.session_state.course_nlp_input = ""  # Stores NLP text input
+
+        #add clear flag
+        if "nlp_clear_requested" not in st.session_state:
+            st.session_state.nlp_clear_requested = False
 
         # INITIALIZE SPACY MODEL #
         if "nlp_model" not in st.session_state:
@@ -113,6 +432,28 @@ class CourseView:
         """
         # ### HASHTAG: CALLBACK TO ENSURE TEXT AREA UPDATES ARE CAPTURED ###
         pass  # No action needed, key parameter handles state update
+
+    # NEW METHOD - CLEAR NLP INPUT SAFELY
+    def _clear_nlp_input_callback(self):
+        """
+        Safely clear NLP input and ALL related states.
+
+        WHY: When user clicks "clear", we must reset:
+        - The text input itself
+        - Any parsed data from previous analysis
+        - The summary display flag
+        - The clear request flag
+
+        This ensures a clean slate for the next analysis.
+        """
+        #COMPREHENSIVE STATE RESET
+        st.session_state.nlp_clear_requested = True
+        st.session_state.course_parsed_data = None
+        st.session_state.course_show_summary = False
+
+        # OPTIONAL - ADD DEBUG LOG
+        # Uncomment this to debug state issues:
+        print("DEBUG: NLP cleared - all states reset")
 
     def get_user_options(self):
         st.sidebar.header("Impostazioni")
@@ -500,7 +841,7 @@ class CourseView:
         st.session_state.course_short_desc_key = ""
         st.session_state.course_date_str_key = "01/01/2023"
 
-    # NEW HELPER METHOD - PARSE EXCEL FILE ###
+    # NEW HELPER METHOD - PARSE EXCEL FILE
     def _parse_excel_file(self, uploaded_file) -> Optional[Dict[str, Any]]:
         """
         Parse uploaded Excel file and extract course information.
@@ -513,15 +854,15 @@ class CourseView:
         """
         try:
             # Read Excel file
-            df = pd.read_excel(uploaded_file, header=None)
+            df = pd.read_excel(uploaded_file, header=None, engine='openpyxl')
 
-            # Extract data from specific cells (assuming structure shown in excel image)
+            # Extract data from specific cells (assuming structure shown in Excel image)
             # Column A contains labels (TITOLO, DESCRIZIONE, DATA INIZIO)
             # Column B contains values (EXCEL, INFORMATICA, 01/01/23)
 
             parsed_data = {}
 
-            # EXTRACT TITLE (Row 1, Column B) ###
+            # EXTRACT TITLE (Row 1, Column B)
             if len(df) > 0 and len(df.columns) > 1:
                 parsed_data['title'] = str(df.iloc[0, 1]).strip() if pd.notna(df.iloc[0, 1]) else ""
 
@@ -529,47 +870,55 @@ class CourseView:
             if len(df) > 1 and len(df.columns) > 1:
                 parsed_data['short_description'] = str(df.iloc[1, 1]).strip() if pd.notna(df.iloc[1, 1]) else ""
 
-            # EXTRACT DATE (Row 3, Column B) ###
+            # ENHANCED DATE EXTRACTION WITH CENTRALIZED NORMALIZE (Row 3, Column B) ###
             if len(df) > 2 and len(df.columns) > 1:
                 date_value = df.iloc[2, 1]
 
                 # Handle different date formats
                 if pd.notna(date_value):
-                    if isinstance(date_value, datetime):
-                        parsed_data['start_date'] = date_value.strftime("%d/%m/%Y")
+                    #using centralized normolizer for all date types
+                    normalized_date=normalize_date(date_value)
+                    if normalized_date:
+                        parsed_data['start_date'] = normalized_date
                     else:
-                        # Try to parse as string
-                        date_str = str(date_value).strip()
-                        # Handle both DD/MM/YY and DD/MM/YYYY formats
-                        try:
-                            parsed_date = datetime.strptime(date_str, "%d/%m/%y")
-                        except ValueError:
-                            try:
-                                parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
-                            except ValueError:
-                                parsed_date = None
+                        st.warning(f"⚠️Formato data non riconosciuto: {date_value}")
 
-                        if parsed_date:
-                            parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
-
-            # PROGRAMME FIELD IS OPTIONAL - SET EMPTY ###
+            # PROGRAMME FIELD IS OPTIONAL - SET EMPTY
             parsed_data['programme'] = ""
 
-            # Validate that required fields are present
-            if not all([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
-                return None
+            # Partial extraction support for Excel too
+            missing_fields = []
+            if not parsed_data.get('title'):
+                missing_fields.append("Titolo")
+            if not parsed_data.get('short_description'):
+                missing_fields.append("Descrizione")
+            if not parsed_data.get('start_date'):
+                missing_fields.append("Data inizio")
 
+            if missing_fields:
+                st.warning(f"⚠️Campi mancanti nel file Excel: {', '.join(missing_fields)}")
+                #still return partial data
+                if any ([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
+                    st.info(f"💡Alcuni dati sono stati estratti. Potrebbe completare i campi mancanti nel riepilogo")
+                    return parsed_data
+                return None
             return parsed_data
 
         except Exception as e:
             st.error(f"Errore durante la lettura del file Excel: {str(e)}")
             return None
 
-    # NEW HELPER METHOD - PARSE NLP INPUT
     def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
         """
-        Parse natural language input to extract course information.
-        Improved version with better pattern matching for Italian text.
+        ENHANCED VERSION: Parse natural language input with maximum robustness.
+
+        IMPROVEMENTS:
+        1. Safe text extraction (handles normalization)
+        2. Italian month name support
+        3. Two-digit year handling
+        4. spaCy Matcher for word order flexibility
+        5. Partial extraction (returns what was found + missing fields)
+        6. Centralized date normalization
         """
         if not st.session_state.nlp_model:
             st.error("Modello NLP non caricato. Installa spacy con: python -m spacy download it_core_news_sm")
@@ -585,85 +934,94 @@ class CourseView:
                 'programme': ""
             }
 
-            # ### HASHTAG: NORMALIZE TEXT - REMOVE EXTRA SPACES ###
-            text = ' '.join(text.split())  # Normalize whitespace
-            text_lower = text.lower()
+            # STEP 1 - NORMALIZE TEXT SAFELY ###
+            original_text = text
+            normalized_text = ' '.join(text.split())  # Remove extra whitespace
+            text_lower = normalized_text.lower()
 
-            # ### HASHTAG: IMPROVED TITLE EXTRACTION - MORE FLEXIBLE PATTERNS ###
-            title_patterns = [
-                # Pattern 1: "titolo [X]" with comma or end
-                r'titolo\s+([^,]+?)(?:\s*,|\s*$)',
-                # Pattern 2: "titolo: [X]"
-                r'titolo:\s*([^,]+?)(?:\s*,|\s*$)',
-                # Pattern 3: "corso [X]"
-                r'corso\s+([^,]+?)(?:\s*,|\s*con\s+descrizione|\s*descrizione|\s*$)',
-                # Pattern 4: More flexible - anything after "titolo" until comma or keywords
-                r'titolo\s+(.+?)(?=\s*,|\s+descrizione|\s+con|\s+data|\s+pubblicazione|$)',
-            ]
+            # STEP 2 - TRY SPACY MATCHER FIRST (MOST ROBUST) ###
+            try:
+                spacy_results = extract_with_spacy_matcher(normalized_text, st.session_state.nlp_model)
+                if spacy_results['title']:
+                    parsed_data['title'] = spacy_results['title']
+                if spacy_results['description']:
+                    parsed_data['short_description'] = spacy_results['description']
+                if spacy_results['date']:
+                    # Use centralized date normalizer
+                    normalized_date = normalize_date(spacy_results['date'])
+                    if normalized_date:
+                        parsed_data['start_date'] = normalized_date
+            except Exception as spacy_error:
+                # If spaCy fails, fall back to regex
+                st.warning(f"spaCy Matcher fallback attivo: {spacy_error}")
 
-            for pattern in title_patterns:
-                match = re.search(pattern, text_lower, re.IGNORECASE)
-                if match:
-                    # Extract from original text to preserve case
-                    start_pos = match.start(1)
-                    end_pos = match.end(1)
-                    parsed_data['title'] = text[start_pos:end_pos].strip()
-                    if parsed_data['title']:  # Only break if we got something
-                        break
+            # STEP 3 - REGEX FALLBACK WITH SAFE EXTRACTION ###
+            # Only fill in missing fields from Step 2
 
-            # ### HASHTAG: IMPROVED DESCRIPTION EXTRACTION ###
-            desc_patterns = [
-                # Pattern 1: "descrizione [X]" with comma or end
-                r'descrizione\s+([^,]+?)(?:\s*,|\s*$)',
-                # Pattern 2: "descrizione: [X]"
-                r'descrizione:\s*([^,]+?)(?:\s*,|\s*$)',
-                # Pattern 3: "descrizione breve [X]"
-                r'descrizione\s+breve\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
-                # Pattern 4: More flexible
-                r'descrizione\s+(.+?)(?=\s*,|\s+data|\s+pubblicazione|\s+inizio|$)',
-            ]
+            if not parsed_data['title']:
+                title_patterns = [
+                    r'titolo\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
+                    r'corso\s+([^,]+?)(?:\s*,|\s*con\s+descrizione|\s*descrizione|\s*$)',
+                ]
 
-            for pattern in desc_patterns:
-                match = re.search(pattern, text_lower, re.IGNORECASE)
-                if match:
-                    start_pos = match.start(1)
-                    end_pos = match.end(1)
-                    parsed_data['short_description'] = text[start_pos:end_pos].strip()
-                    if parsed_data['short_description']:  # Only break if we got something
-                        break
+                for pattern in title_patterns:
+                    match = re.search(pattern, text_lower, re.IGNORECASE)
+                    if match:
+                        # ### HASHTAG: USE SAFE EXTRACTION ###
+                        extracted = safe_extract_text(
+                            original_text,
+                            text_lower,
+                            match.start(1),
+                            match.end(1)
+                        )
+                        if extracted:
+                            parsed_data['title'] = extracted
+                            break
 
-            # ### HASHTAG: IMPROVED DATE EXTRACTION - MULTIPLE FORMATS ###
-            date_patterns = [
-                # Pattern 1: DD/MM/YYYY or DD-MM-YYYY
-                r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b',
-                # Pattern 2: DD/MM/YY or DD-MM-YY
-                r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2})\b',
-                # Pattern 3: Italian month names
-                r'(\d{1,2})\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(\d{4})',
-            ]
+            if not parsed_data['short_description']:
+                desc_patterns = [
+                    r'descrizione\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
+                    r'descrizione\s+breve\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
+                ]
 
-            date_str = None
-            for pattern in date_patterns:
-                match = re.search(pattern, text, re.IGNORECASE)
-                if match:
-                    date_str = match.group(0).replace('-', '/')
-                    break
+                for pattern in desc_patterns:
+                    match = re.search(pattern, text_lower, re.IGNORECASE)
+                    if match:
+                        extracted = safe_extract_text(
+                            original_text,
+                            text_lower,
+                            match.start(1),
+                            match.end(1)
+                        )
+                        if extracted:
+                            parsed_data['short_description'] = extracted
+                            break
 
-            if date_str:
-                # Normalize to DD/MM/YYYY format
-                try:
-                    # Try DD/MM/YYYY first
-                    parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
-                    parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
-                except ValueError:
-                    try:
-                        # Try DD/MM/YY
-                        parsed_date = datetime.strptime(date_str, "%d/%m/%y")
-                        parsed_data['start_date'] = parsed_date.strftime("%d/%m/%Y")
-                    except ValueError:
-                        pass
+            # ### HASHTAG: STEP 4 - DATE EXTRACTION WITH MULTIPLE STRATEGIES ###
+            if not parsed_data['start_date']:
+                # Strategy 1: Try Italian month names (e.g., "12 gennaio 2024")
+                italian_date = parse_italian_date(normalized_text)
+                if italian_date:
+                    parsed_data['start_date'] = italian_date
+                else:
+                    # Strategy 2: Numeric date patterns
+                    date_patterns = [
+                        r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b',  # DD/MM/YYYY
+                        r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2})\b',  # DD/MM/YY
+                    ]
 
-            # ### HASHTAG: VALIDATION WITH DETAILED FEEDBACK ###
+                    for pattern in date_patterns:
+                        match = re.search(pattern, normalized_text)
+                        if match:
+                            raw_date = match.group(1)
+                            # ### HASHTAG: USE CENTRALIZED NORMALIZER ###
+                            normalized_date = normalize_date(raw_date)
+                            if normalized_date:
+                                parsed_data['start_date'] = normalized_date
+                                break
+
+            # ### HASHTAG: STEP 5 - PARTIAL EXTRACTION SUPPORT ###
+            # Instead of returning None, we return partial results + missing fields
             missing_fields = []
             if not parsed_data.get('title') or not parsed_data['title'].strip():
                 missing_fields.append("Titolo")
@@ -672,23 +1030,48 @@ class CourseView:
             if not parsed_data.get('start_date') or not parsed_data['start_date'].strip():
                 missing_fields.append("Data")
 
+            # ### HASHTAG: SHOW PARTIAL RESULTS (BETTER UX) ###
             if missing_fields:
                 st.warning(f"⚠️ Campi mancanti: {', '.join(missing_fields)}")
-                st.info("**Dati estratti finora:**")
-                if parsed_data.get('title') and parsed_data['title'].strip():
-                    st.write(f"- ✅ Titolo: `{parsed_data['title']}`")
-                else:
-                    st.write(f"- ❌ Titolo: non trovato")
-                if parsed_data.get('short_description') and parsed_data['short_description'].strip():
-                    st.write(f"- ✅ Descrizione: `{parsed_data['short_description']}`")
-                else:
-                    st.write(f"- ❌ Descrizione: non trovata")
-                if parsed_data.get('start_date') and parsed_data['start_date'].strip():
-                    st.write(f"- ✅ Data: `{parsed_data['start_date']}`")
-                else:
-                    st.write(f"- ❌ Data: non trovata")
-                return None
 
+                # Show what WAS extracted
+                extracted_count = sum([
+                    bool(parsed_data.get('title', '').strip()),
+                    bool(parsed_data.get('short_description', '').strip()),
+                    bool(parsed_data.get('start_date', '').strip())
+                ])
+
+                if extracted_count > 0:
+                    st.success(f"✅ Estratti {extracted_count}/3 campi con successo!")
+                    st.info("**Dati estratti finora:**")
+
+                    if parsed_data.get('title') and parsed_data['title'].strip():
+                        st.write(f"- ✅ **Titolo:** `{parsed_data['title']}`")
+                    else:
+                        st.write(f"- ❌ **Titolo:** non trovato")
+
+                    if parsed_data.get('short_description') and parsed_data['short_description'].strip():
+                        st.write(f"- ✅ **Descrizione:** `{parsed_data['short_description']}`")
+                    else:
+                        st.write(f"- ❌ **Descrizione:** non trovata")
+
+                    if parsed_data.get('start_date') and parsed_data['start_date'].strip():
+                        st.write(f"- ✅ **Data:** `{parsed_data['start_date']}`")
+                    else:
+                        st.write(f"- ❌ **Data:** non trovata")
+
+                    # ### HASHTAG: OFFER TO PROCEED WITH PARTIAL DATA ###
+                    st.info(
+                        "💡 **Suggerimento:** Puoi comunque procedere. I campi mancanti potranno essere inseriti manualmente nel riepilogo.")
+
+                    # ### HASHTAG: RETURN PARTIAL DATA INSTEAD OF None ###
+                    # This allows the summary form to pre-fill what was found
+                    return parsed_data  # Return even if incomplete!
+                else:
+                    # Nothing was extracted at all
+                    return None
+
+            # ### HASHTAG: ALL FIELDS SUCCESSFULLY EXTRACTED ###
             return parsed_data
 
         except Exception as e:
@@ -835,7 +1218,7 @@ class CourseView:
         3. Natural language processing
         """
 
-        # ### HASHTAG: SHOW SUMMARY IF DATA IS PARSED ###
+        # SHOW SUMMARY IF DATA IS PARSED
         if st.session_state.course_show_summary and st.session_state.course_parsed_data:
             self._render_course_summary()
             return  # Don't show input selection while summary is displayed
@@ -948,24 +1331,48 @@ class CourseView:
 
         # ========== METHOD 3: NATURAL LANGUAGE PROCESSING ==========
         elif input_method == "nlp":
+            # ### HASHTAG: TEMPORARY DEBUG - REMOVE AFTER FIXING ###
+            # with st.expander("🔍 Debug - Stato NLP (rimuovi dopo test)", expanded=False):
+            #     st.write("**Session State Values:**")
+            #     st.write(f"- `course_nlp_input`: `{st.session_state.get('course_nlp_input', 'NOT SET')}`")
+            #     st.write(f"- `course_parsed_data`: `{st.session_state.get('course_parsed_data', 'NOT SET')}`")
+            #     st.write(f"- `course_show_summary`: `{st.session_state.get('course_show_summary', 'NOT SET')}`")
+            #     st.write(f"- `nlp_clear_requested`: `{st.session_state.get('nlp_clear_requested', 'NOT SET')}`")
+            #     st.write(f"- `app_state`: `{st.session_state.get('app_state', 'NOT SET')}`")
             st.info("""
             **Scrivi una frase che descriva il corso**, ad esempio:
 
             - "Crea un corso titolo Analisi dei Dati con descrizione Informatica avanzata data inizio 15/03/2024"
-            - "Nuovo corso Excel Base, descrizione breve: Gestione fogli di calcolo, pubblicazione 01/04/2024"
 
             Il sistema estrarrà automaticamente le informazioni rilevanti.
             """, icon="💡")
 
+            #Handle clear request
+            if st.session_state.get('nlp_clear_requested', False):
+                # Reset the input to empty string
+                st.session_state.course_nlp_input = ""
+                st.session_state.nlp_clear_requested = False
+
+                # DOUBLE-CHECK OTHER STATES ARE CLEARED ###
+                # (Callback should have done this, but ensure it)
+                if st.session_state.course_parsed_data is not None:
+                    st.session_state.course_parsed_data = None
+                if st.session_state.course_show_summary:
+                    st.session_state.course_show_summary = False
+
+                #FORCE CLEAN RERUN ###
+                st.rerun()
+
             nlp_text = st.text_area(
                 "Descrivi il corso in linguaggio naturale:",
-                height=150,
-                placeholder="Esempio: Crea un corso dal titolo 'Python Avanzato' con descrizione 'Programmazione orientata agli oggetti' che inizia il 20/05/2024",
-                key="course_nlp_input",
+                height=150, value=st.session_state.course_nlp_input,#use value instead of key for manual holder
+                placeholder="",
                 help="Scrivi una frase completa con titolo, descrizione e data del corso"
             )
+            #update session state manually
+            st.session_state.course_nlp_input = nlp_text
 
-            # ### HASHTAG: SHOW CHARACTER COUNT TO USER ###
+            # SHOW CHARACTER COUNT TO USER ###
             text_length = len(nlp_text.strip()) if nlp_text else 0
             if text_length > 0:
                 st.caption(f"✏️ {text_length} caratteri inseriti")
@@ -975,15 +1382,15 @@ class CourseView:
             col1, col2 = st.columns([1, 1])
 
             with col1:
-                # ### HASHTAG: BUTTON ALWAYS ENABLED, BUT CHECK INSIDE ###
                 analyze_clicked = st.button(
                     "🤖 Analizza Testo (NLP)",
                     type="primary",
-                    use_container_width=True
+                    use_container_width=True,
+                    key="analyze_nlp_button"  # Add unique key
                 )
 
                 if analyze_clicked:
-                    # ### HASHTAG: VALIDATE TEXT FIRST ###
+                    # ### HASHTAG: VALIDATION CHECKS ###
                     if not nlp_text or not nlp_text.strip():
                         st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
                         st.stop()
@@ -992,10 +1399,16 @@ class CourseView:
                         st.error("⚠️ Il testo è troppo corto. Scrivi una frase più completa.")
                         st.stop()
 
-                    # ### HASHTAG: PARSE NLP INPUT WITH LOADING INDICATOR ###
+                    # ### HASHTAG: CLEAR ANY OLD PARSED DATA BEFORE NEW ANALYSIS ###
+                    # This prevents the "nothing happens" issue
+                    st.session_state.course_parsed_data = None
+                    st.session_state.course_show_summary = False
+
+                    # ### HASHTAG: PERFORM ANALYSIS ###
                     with st.spinner("🤖 Analisi del testo in corso..."):
                         parsed_data = self._parse_nlp_input(nlp_text)
 
+                    # ### HASHTAG: HANDLE ANALYSIS RESULTS ###
                     if parsed_data:
                         st.session_state.course_parsed_data = parsed_data
                         st.session_state.course_show_summary = True
@@ -1009,11 +1422,12 @@ class CourseView:
                             - **Descrizione** breve (es: "descrizione Gestione fogli di calcolo")
                             - **Data** di inizio (es: "data inizio 01/01/2023" o "pubblicazione 01/01/2023")
                             """)
-
             with col2:
-                if st.button("🧹 Cancella Testo", use_container_width=True):
-                    st.session_state.course_nlp_input = ""
-                    st.rerun()
+                # ### HASHTAG: CLEAR BUTTON WITH CALLBACK ###
+                if st.button("🧹 Cancella Testo", use_container_width=True,
+                             on_click=self._clear_nlp_input_callback,
+                             key="clear_nlp_text_button"):
+                    pass  #callback handles the clearing
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
