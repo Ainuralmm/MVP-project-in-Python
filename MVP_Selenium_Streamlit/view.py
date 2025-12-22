@@ -324,11 +324,31 @@ def extract_with_spacy_matcher(text: str, nlp_model) -> Dict[str, str]:
 class CourseView:
     def __init__(self):
         st.set_page_config(layout='centered')
+
+        ### HASHTAG: NEW - Load spaCy model for NLP ###
+        # This loads the Italian language model for better parsing
+        # Install with: python -m spacy download it_core_news_sm
+        try:
+            self.nlp = spacy.load("it_core_news_sm")
+        except:
+            st.warning("⚠️ Modello spaCy italiano non trovato. Installa con: python -m spacy download it_core_news_sm")
+            self.nlp = None
+
         # --- Basic App State ---
         if "app_state" not in st.session_state:
             st.session_state.app_state = "IDLE"
 
-        # --- Message States: COURSE ---
+        ### HASHTAG: NEW - Input method selection state ###
+        # Tracks which input method the user selected (structured/excel/nlp)
+        if "course_input_method" not in st.session_state:
+            st.session_state.course_input_method = "structured"
+
+        ### HASHTAG: NEW - Parsed data from Excel/NLP ###
+        # Stores the extracted data before confirmation
+        if "course_parsed_data" not in st.session_state:
+            st.session_state.course_parsed_data = None
+
+        # --- Message States ---
         if "course_message" not in st.session_state:
             st.session_state.course_message = ""
         # NEW STATE VARIABLES FOR COURSE INPUT METHOD
@@ -446,6 +466,149 @@ class CourseView:
                 debug_pause = st.sidebar.slider("Durata pausa (secondi)", 1, 5, 2)
         return headless, debug_mode, debug_pause
 
+    ### HASHTAG: NEW METHOD - Parse Excel file for course data ###
+    def _parse_excel_course(self, uploaded_file):
+        """
+        Extracts course data from uploaded Excel file.
+        Expected format: Column A = field names (TITOLO, DESCRIZIONE, etc.)
+                        Column B = values (EXCEL, INFORMATICA, etc.)
+        Returns: dict with parsed course data or None if parsing fails
+        """
+        try:
+            # Read Excel file into DataFrame
+            df = pd.read_excel(uploaded_file, header=None)
+
+            # Initialize result dictionary
+            parsed = {
+                "title": "",
+                "programme": "",
+                "short_description": "",
+                "start_date": None
+            }
+
+            # Iterate through rows to find matching fields
+            for idx, row in df.iterrows():
+                if len(row) < 2:
+                    continue
+
+                field_name = str(row[0]).strip().upper() if pd.notna(row[0]) else ""
+                field_value = str(row[1]).strip() if pd.notna(row[1]) else ""
+
+                # Map Excel fields to our structure
+                if "TITOLO" in field_name:
+                    parsed["title"] = field_value
+                elif "DESCRIZIONE" in field_name or "DESCRIZIONE" in field_name:
+                    parsed["short_description"] = field_value
+                elif "PROGRAMMA" in field_name:
+                    parsed["programme"] = field_value
+                elif "DATA" in field_name and "INIZIO" in field_name:
+                    # Parse date from various formats
+                    try:
+                        if "/" in field_value or "-" in field_value:
+                            parsed["start_date"] = datetime.strptime(field_value, "%d/%m/%y").date()
+                        else:
+                            parsed["start_date"] = date_parser.parse(field_value, dayfirst=True).date()
+                    except:
+                        st.warning(f"⚠️ Impossibile interpretare la data: {field_value}")
+
+            # Validate that we got at least the required fields
+            if not parsed["title"] or not parsed["start_date"]:
+                st.error("❌ Il file Excel deve contenere almeno TITOLO e DATA INIZIO")
+                return None
+
+            return parsed
+
+        except Exception as e:
+            st.error(f"❌ Errore nella lettura del file Excel: {str(e)}")
+            return None
+
+    ### HASHTAG: NEW METHOD - Parse natural language sentence for course data ###
+    def _parse_nlp_course(self, sentence):
+        """
+        Extracts course data from natural language sentence using spaCy.
+        Example: "Crea un corso di computer vision, descrizione breve informatica, data pubblicazione 1.1.2023"
+        Returns: dict with parsed course data or None if parsing fails
+        """
+        try:
+            if not self.nlp:
+                st.error("❌ Modello NLP non disponibile")
+                return None
+
+            # Initialize result
+            parsed = {
+                "title": "",
+                "programme": "",
+                "short_description": "",
+                "start_date": None
+            }
+
+            # Clean the sentence
+            sentence = sentence.strip()
+
+            # Extract title using patterns
+            # Pattern 1: "corso di X" or "corso X"
+            title_patterns = [
+                r"corso\s+(?:di\s+)?([^,\.]+?)(?:\s*,|\s+descrizione|\s+data|\s*$)",
+                r"(?:crea|creare)\s+(?:un\s+)?(?:corso\s+)?(?:di\s+)?([^,\.]+?)(?:\s*,|\s+descrizione|\s+data)"
+            ]
+            for pattern in title_patterns:
+                match = re.search(pattern, sentence, re.IGNORECASE)
+                if match:
+                    parsed["title"] = match.group(1).strip()
+                    break
+
+            # Extract short description
+            # Pattern: "descrizione [breve] X" or "breve descrizione X"
+            desc_patterns = [
+                r"(?:descrizione\s+(?:breve\s+)?|breve\s+descrizione\s+)(?:è\s+)?['\"]?([^,\.\"']+)['\"]?",
+                r"descrizione[:\s]+['\"]?([^,\.\"']+)['\"]?"
+            ]
+            for pattern in desc_patterns:
+                match = re.search(pattern, sentence, re.IGNORECASE)
+                if match:
+                    parsed["short_description"] = match.group(1).strip()
+                    break
+
+            # Extract date
+            # Pattern: various date formats
+            date_patterns = [
+                r"data\s+(?:di\s+)?pubblicazione[:\s]+(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})",
+                r"pubblicazione[:\s]+(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})",
+                r"(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})"
+            ]
+            for pattern in date_patterns:
+                match = re.search(pattern, sentence, re.IGNORECASE)
+                if match:
+                    date_str = match.group(1)
+                    try:
+                        # Try different date formats
+                        for fmt in ["%d/%m/%Y", "%d.%m.%Y", "%d-%m-%Y", "%d/%m/%y"]:
+                            try:
+                                parsed["start_date"] = datetime.strptime(date_str, fmt).date()
+                                break
+                            except:
+                                continue
+                        if not parsed["start_date"]:
+                            parsed["start_date"] = date_parser.parse(date_str, dayfirst=True).date()
+                    except:
+                        pass
+                    break
+
+            # Validate minimum required fields
+            if not parsed["title"]:
+                st.error("❌ Non riesco a identificare il titolo del corso nella frase")
+                return None
+
+            if not parsed["start_date"]:
+                st.warning("⚠️ Non riesco a identificare la data. Usa formato GG/MM/AAAA")
+                return None
+
+            return parsed
+
+        except Exception as e:
+            st.error(f"❌ Errore nell'analisi della frase: {str(e)}")
+            return None
+
     def render_ui(self):
         is_running = st.session_state.app_state != "IDLE"
 
@@ -456,13 +619,37 @@ class CourseView:
             "3. Aggiungi Allievi"
         ])
 
-        # --- Tab1:Course Form Container ---
+        # --- Tab1: Course Form Container ---
         with tab1:
             st.header("Creazione Nuovo Corso")
+
+            ### HASHTAG: NEW - Input method selector ###
+            # Radio buttons to choose between 3 input methods
+            if st.session_state.app_state == "IDLE":
+                st.subheader("📋 Scegli il metodo di inserimento dati:")
+                input_method = st.radio(
+                    "Metodo",
+                    options=["structured", "excel", "nlp"],
+                    format_func=lambda x: {
+                        "structured": "✍️ Compilazione Manuale (Form Strutturato)",
+                        "excel": "📊 Carica File Excel",
+                        "nlp": "💬 Scrivi una Frase"
+                    }[x],
+                    key="course_input_method",
+                    horizontal=False
+                )
+
             if st.session_state.app_state == "RUNNING_COURSE":
                 self.course_output_placeholder = st.empty()
             else:
-                self._render_course_form(is_disabled=is_running)
+                ### HASHTAG: NEW - Render different UIs based on input method ###
+                if st.session_state.course_input_method == "structured":
+                    self._render_course_form(is_disabled=is_running)
+                elif st.session_state.course_input_method == "excel":
+                    self._render_course_excel_upload(is_disabled=is_running)
+                elif st.session_state.course_input_method == "nlp":
+                    self._render_course_nlp_input(is_disabled=is_running)
+
                 self.course_output_placeholder = st.empty()
                 if st.session_state.course_message:
                     self.show_message("course", st.session_state.course_message, show_clear_button=True)
@@ -478,7 +665,7 @@ class CourseView:
                 if st.session_state.edition_message:
                     self.show_message("edition", st.session_state.edition_message, show_clear_button=True)
 
-        # --- Tab3:Student Form Container ---
+        # --- Tab3: Student Form Container ---
         with tab3:
             st.header("Aggiungi Allievi (a Edizione Esistente)")
             if st.session_state.app_state == "RUNNING_STUDENTS":
@@ -488,6 +675,165 @@ class CourseView:
                 self.student_output_placeholder = st.empty()
                 if st.session_state.student_message:
                     self.show_message("student", st.session_state.student_message, True)
+
+    ### HASHTAG: NEW METHOD - Render Excel upload UI ###
+    def _render_course_excel_upload(self, is_disabled):
+        """
+        Renders the Excel file upload interface for course creation.
+        Shows upload widget -> Parse button -> Confirmation UI
+        """
+        st.markdown("---")
+        st.subheader("📊 Carica File Excel")
+        st.info("Il file deve contenere i campi: TITOLO, DESCRIZIONE INFORMATICA, DATA INIZIO (formato: GG/MM/AA)")
+
+        uploaded_file = st.file_uploader(
+            "Seleziona file Excel (.xlsx, .xls)",
+            type=["xlsx", "xls"],
+            key="course_excel_file",
+            disabled=is_disabled
+        )
+
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            parse_button = st.button("📖 Leggi File", disabled=not uploaded_file or is_disabled, type="primary")
+        with col2:
+            if st.button("🧹 Cancella", disabled=is_disabled):
+                st.session_state.course_parsed_data = None
+                st.rerun()
+
+        ### HASHTAG: Parse Excel when button clicked ###
+        if parse_button and uploaded_file:
+            parsed_data = self._parse_excel_course(uploaded_file)
+            if parsed_data:
+                st.session_state.course_parsed_data = parsed_data
+                st.success("✅ File letto con successo!")
+                st.rerun()
+
+        ### HASHTAG: Show parsed data for confirmation ###
+        if st.session_state.course_parsed_data:
+            self._render_course_confirmation_ui(st.session_state.course_parsed_data, is_disabled)
+
+    ### HASHTAG: NEW METHOD - Render NLP sentence input UI ###
+    def _render_course_nlp_input(self, is_disabled):
+        """
+        Renders the natural language input interface for course creation.
+        Shows text area -> Parse button -> Confirmation UI
+        """
+        st.markdown("---")
+        st.subheader("💬 Scrivi una Frase")
+        st.info(
+            'Esempio: "Crea un corso di computer vision, descrizione breve informatica, data pubblicazione 1.1.2023"')
+
+        sentence = st.text_area(
+            "Inserisci la descrizione del corso:",
+            height=100,
+            key="course_nlp_sentence",
+            disabled=is_disabled,
+            placeholder="Scrivi qui la frase che descrive il corso da creare..."
+        )
+
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            parse_button = st.button("🤖 Analizza Frase", disabled=not sentence or is_disabled, type="primary")
+        with col2:
+            if st.button("🧹 Cancella", disabled=is_disabled):
+                st.session_state.course_parsed_data = None
+                st.rerun()
+
+        ### HASHTAG: Parse sentence when button clicked ###
+        if parse_button and sentence:
+            with st.spinner("🤔 Analisi in corso..."):
+                parsed_data = self._parse_nlp_course(sentence)
+                if parsed_data:
+                    st.session_state.course_parsed_data = parsed_data
+                    st.success("✅ Frase analizzata con successo!")
+                    st.rerun()
+
+        ### HASHTAG: Show parsed data for confirmation ###
+        if st.session_state.course_parsed_data:
+            self._render_course_confirmation_ui(st.session_state.course_parsed_data, is_disabled)
+
+    ### HASHTAG: NEW METHOD - Render confirmation UI with Edit/Confirm buttons ###
+    def _render_course_confirmation_ui(self, parsed_data, is_disabled):
+        """
+        Shows the parsed data in an editable form with Edit/Confirm buttons.
+        This is the common UI for both Excel and NLP methods.
+        """
+        st.markdown("---")
+        st.subheader("📝 Dati Estratti - Verifica e Conferma")
+
+        with st.form(key="course_confirmation_form"):
+            st.markdown("**Puoi modificare i dati prima di confermare:**")
+
+            title = st.text_input(
+                "Titolo del Corso",
+                value=parsed_data.get("title", ""),
+                key="parsed_title"
+            )
+
+            programme = st.text_area(
+                "Programma (opzionale)",
+                value=parsed_data.get("programme", ""),
+                key="parsed_programme"
+            )
+
+            short_desc = st.text_input(
+                "Breve Descrizione",
+                value=parsed_data.get("short_description", ""),
+                key="parsed_short_desc"
+            )
+
+            date_value = parsed_data.get("start_date")
+            date_str = date_value.strftime("%d/%m/%Y") if date_value else ""
+
+            publication_date = st.text_input(
+                "Data di Pubblicazione (GG/MM/AAAA)",
+                value=date_str,
+                key="parsed_date"
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                confirm_button = st.form_submit_button("✅ Conferma e Crea Corso", type="primary", disabled=is_disabled,
+                                                       use_container_width=True)
+            with col2:
+                cancel_button = st.form_submit_button("❌ Annulla", use_container_width=True)
+
+        ### HASHTAG: Handle confirmation ###
+        if confirm_button:
+            # Validate fields
+            if not title.strip():
+                st.error("❌ Il titolo è obbligatorio")
+                st.stop()
+            if not short_desc.strip():
+                st.error("❌ La descrizione breve è obbligatoria")
+                st.stop()
+            if not publication_date.strip():
+                st.error("❌ La data di pubblicazione è obbligatoria")
+                st.stop()
+
+            try:
+                start_date_obj = datetime.strptime(publication_date, "%d/%m/%Y").date()
+
+                # Store in session state for automation
+                st.session_state.course_details = {
+                    "title": title,
+                    "programme": programme,
+                    "short_description": short_desc,
+                    "start_date": start_date_obj
+                }
+                st.session_state.app_state = "RUNNING_COURSE"
+                st.session_state.course_message = ""
+                st.session_state.course_parsed_data = None  # Clear parsed data
+                st.rerun()
+            except ValueError:
+                st.error("❌ Formato data non valido. Usa GG/MM/AAAA")
+                st.stop()
+
+        ### HASHTAG: Handle cancellation ###
+        if cancel_button:
+            st.session_state.course_parsed_data = None
+            st.rerun()
 
     def _clear_course_form_callback(self):
         st.session_state.course_title_key = ""
@@ -1085,7 +1431,6 @@ class CourseView:
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
-        # CRITICAL: Also preserve the count itself
         st.session_state.preserved_activity_data["_count"] = num_activities
 
         for i in range(num_activities):
