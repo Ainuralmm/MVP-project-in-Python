@@ -986,13 +986,13 @@ class CourseView:
         # ========== METHOD 3: NATURAL LANGUAGE PROCESSING ==========
         elif input_method == "nlp":
             # ### HASHTAG: TEMPORARY DEBUG - REMOVE AFTER FIXING ###
-            with st.expander("🔍 Debug - Stato NLP (rimuovi dopo test)", expanded=False):
-                st.write("**Session State Values:**")
-                st.write(f"- `course_nlp_input`: `{st.session_state.get('course_nlp_input', 'NOT SET')}`")
-                st.write(f"- `course_parsed_data`: `{st.session_state.get('course_parsed_data', 'NOT SET')}`")
-                st.write(f"- `course_show_summary`: `{st.session_state.get('course_show_summary', 'NOT SET')}`")
-                st.write(f"- `nlp_clear_requested`: `{st.session_state.get('nlp_clear_requested', 'NOT SET')}`")
-                st.write(f"- `app_state`: `{st.session_state.get('app_state', 'NOT SET')}`")
+            # with st.expander("🔍 Debug - Stato NLP (rimuovi dopo test)", expanded=False):
+            #     st.write("**Session State Values:**")
+            #     st.write(f"- `course_nlp_input`: `{st.session_state.get('course_nlp_input', 'NOT SET')}`")
+            #     st.write(f"- `course_parsed_data`: `{st.session_state.get('course_parsed_data', 'NOT SET')}`")
+            #     st.write(f"- `course_show_summary`: `{st.session_state.get('course_show_summary', 'NOT SET')}`")
+            #     st.write(f"- `nlp_clear_requested`: `{st.session_state.get('nlp_clear_requested', 'NOT SET')}`")
+            #     st.write(f"- `app_state`: `{st.session_state.get('app_state', 'NOT SET')}`")
             st.info("""
             **Scrivi una frase che descriva il corso**, ad esempio:
 
