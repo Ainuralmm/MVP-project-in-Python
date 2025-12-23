@@ -36,6 +36,144 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
+    def run_create_batch_courses(self, batch_data):
+        """
+        Create multiple courses sequentially from batch data.
+
+        WHY: Process multiple courses from Excel in one operation.
+        Shows progress and handles errors gracefully.
+
+        Args:
+            batch_data: Dictionary with 'courses' list from Excel parser
+        """
+        try:
+            oracle_url = st.secrets['ORACLE_URL']
+            oracle_user = st.secrets['ORACLE_USER']
+            oracle_pass = st.secrets['ORACLE_PASS']
+
+            courses = batch_data['courses']
+            total_courses = len(courses)
+            continue_on_error = st.session_state.get('batch_continue_on_error', True)
+
+            # ### HASHTAG: INITIALIZE RESULTS TRACKING ###
+            results = {
+                'successful': [],
+                'failed': [],
+                'skipped': []
+            }
+
+            # ### HASHTAG: LOGIN ONCE FOR ALL COURSES ###
+            self.view.update_progress("course", f"Accesso a Oracle...", 5)
+            if not self.model.login(oracle_url, oracle_user, oracle_pass):
+                raise Exception("Login fallito. Controlla le credenziali.")
+
+            # ### HASHTAG: PROCESS EACH COURSE ###
+            for idx, course in enumerate(courses, 1):
+                course_title = course['title']
+
+                # Calculate progress percentage
+                progress_pct = int((idx / total_courses) * 85) + 10  # 10-95% range
+
+                self.view.update_progress(
+                    "course",
+                    f"Creazione corso {idx}/{total_courses}: '{course_title}'...",
+                    progress_pct
+                )
+
+                try:
+                    # ### HASHTAG: NAVIGATE TO COURSE PAGE ###
+                    if not self.model.navigate_to_courses_page():
+                        raise Exception("Navigazione fallita")
+
+                    # ### HASHTAG: CHECK IF COURSE ALREADY EXISTS ###
+                    if self.model.search_course(course_title):
+                        results['skipped'].append({
+                            'course': course_title,
+                            'reason': 'Corso già esistente'
+                        })
+                        print(f"⚠️ Corso '{course_title}' già esiste. Saltato.")
+                        continue
+
+                    # ### HASHTAG: PREPARE COURSE DETAILS ###
+                    # Convert date string back to date object for model
+                    date_obj = datetime.strptime(course['start_date'], "%d/%m/%Y").date()
+
+                    course_details = {
+                        'title': course['title'],
+                        'programme': course.get('programme', ''),
+                        'short_description': course['short_description'],
+                        'start_date': date_obj
+                    }
+
+                    # ### HASHTAG: CREATE COURSE ###
+                    result_message = self.model.create_course(course_details)
+
+                    if "✅" in result_message or "Successo" in result_message:
+                        results['successful'].append(course_title)
+                        print(f"✅ Corso '{course_title}' creato con successo.")
+                    else:
+                        results['failed'].append({
+                            'course': course_title,
+                            'error': result_message
+                        })
+
+                        if not continue_on_error:
+                            raise Exception(f"Creazione fallita: {result_message}")
+
+                    time.sleep(1)  # Brief pause between courses
+
+                except Exception as course_error:
+                    error_msg = str(course_error)
+                    results['failed'].append({
+                        'course': course_title,
+                        'error': error_msg
+                    })
+
+                    print(f"❌ Errore con corso '{course_title}': {error_msg}")
+
+                    if not continue_on_error:
+                        # Stop processing if user chose not to continue on error
+                        break
+
+            # ### HASHTAG: FINAL PROGRESS UPDATE ###
+            self.view.update_progress("course", "Processo completato!", 100)
+
+            # ### HASHTAG: GENERATE SUMMARY MESSAGE ###
+            summary_parts = []
+
+            if results['successful']:
+                summary_parts.append(
+                    f"✅ **{len(results['successful'])} corsi creati con successo:**\n" +
+                    "\n".join([f"  - {c}" for c in results['successful']])
+                )
+
+            if results['skipped']:
+                summary_parts.append(
+                    f"\n⚠️ **{len(results['skipped'])} corsi saltati:**\n" +
+                    "\n".join([f"  - {r['course']}: {r['reason']}" for r in results['skipped']])
+                )
+
+            if results['failed']:
+                summary_parts.append(
+                    f"\n❌ **{len(results['failed'])} corsi falliti:**\n" +
+                    "\n".join([f"  - {r['course']}: {r['error']}" for r in results['failed']])
+                )
+
+            final_message = "\n\n".join(summary_parts)
+
+            self.view.show_message("course", final_message)
+
+        except Exception as e:
+            error_message = f"‼️ Errore durante la creazione batch: {str(e)}"
+            print(f"Presenter Error: {error_message}")
+            self.view.show_message("course", error_message)
+
+        finally:
+            print("Presenter: Batch automation finished. Cleaning up.")
+            self.model.close_driver()
+            st.session_state.app_state = "IDLE"
+            st.rerun()
+
     def run_create_edition_and_activities(self, edition_details):
         try:
             oracle_url = st.secrets['ORACLE_URL']
