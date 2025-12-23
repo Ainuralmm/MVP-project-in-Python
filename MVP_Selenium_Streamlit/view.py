@@ -1128,19 +1128,36 @@ class CourseView:
 
         # ========== METHOD 2: EXCEL FILE UPLOAD ==========
         elif input_method == "excel":
-            st.info("""
-            **Formato Excel Richiesto:**
-            - **Riga 1:** TITOLO | [Nome del Corso]
-            - **Riga 2:** DESCRIZIONE | [Breve Descrizione]
-            - **Riga 3:** DATA INIZIO | [GG/MM/AAAA]
+            # ### HASHTAG: CHECK IF SHOWING BATCH PREVIEW ###
+            if st.session_state.course_show_summary and st.session_state.course_parsed_data:
+                # Show batch preview instead of single course summary
+                if 'courses' in st.session_state.course_parsed_data:
+                    self._render_batch_course_preview(st.session_state.course_parsed_data)
+                else:
+                    # Fallback to single course (backward compatibility)
+                    self._render_course_summary()
+                return
 
-            Le etichette devono essere nella Colonna A, i valori nella Colonna B.
-            """, icon="ℹ️")
+            # st.info("""
+            # **Formato Excel Richiesto (Verticale/Tabella):**
+            #
+            # | NOME CORSO | DESCRIZIONE | DATA INIZIO PUBBLICAZIONE |
+            # |------------|-------------|---------------------------|
+            # | Analitica  | Informatica | 1.1.2023                  |
+            # | Musica     | Art         | 1.1.2023                  |
+            # | Fine art   | Art         | 1.1.2023                  |
+            #
+            # **Note:**
+            # - La prima riga deve contenere i nomi delle colonne
+            # - Ogni riga successiva rappresenta un corso
+            # - Puoi includere quanti corsi desideri
+            # - Le righe incomplete verranno saltate
+            # """, icon="ℹ️")
 
             uploaded_file = st.file_uploader(
                 "Carica File Excel (.xlsx, .xls)",
                 type=['xlsx', 'xls'],
-                help="Il file deve seguire il formato specificato sopra"
+                help="File con uno o più corsi in formato tabella"
             )
 
             if uploaded_file is not None:
@@ -1148,8 +1165,9 @@ class CourseView:
 
                 with col1:
                     if st.button("📊 Analizza File Excel", type="primary", use_container_width=True):
-                        # ### HASHTAG: PARSE EXCEL AND SHOW SUMMARY ###
-                        parsed_data = self._parse_excel_file(uploaded_file)
+                        # ### HASHTAG: PARSE EXCEL AND SHOW PREVIEW ###
+                        with st.spinner("🔍 Lettura file Excel..."):
+                            parsed_data = self._parse_excel_file(uploaded_file)
 
                         if parsed_data:
                             st.session_state.course_parsed_data = parsed_data
