@@ -344,6 +344,12 @@ class CourseView:
         if "course_nlp_input" not in st.session_state:
             st.session_state.course_nlp_input = ""  # Stores NLP text input
 
+        # ### HASHTAG: BATCH PROCESSING STATE VARIABLES ###
+        if "batch_course_data" not in st.session_state:
+            st.session_state.batch_course_data = None
+
+        if "batch_continue_on_error" not in st.session_state:
+            st.session_state.batch_continue_on_error = True
         #add clear flag
         if "nlp_clear_requested" not in st.session_state:
             st.session_state.nlp_clear_requested = False
