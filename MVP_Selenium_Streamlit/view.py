@@ -626,6 +626,121 @@ class CourseView:
                 st.code(traceback.format_exc())
             return None
 
+    def _render_batch_course_preview(self, batch_data: Dict[str, Any]):
+        """
+        Display preview table of all courses from Excel with selection options.
+
+        WHY: Users need to review and optionally select which courses to create.
+        Prevents accidental bulk creation and allows quality control.
+
+        Args:
+            batch_data: Dictionary from _parse_excel_file() with 'courses' list
+        """
+        if not batch_data or 'courses' not in batch_data:
+            return
+
+        st.success(f"✅ {batch_data['total_count']} corsi pronti per la creazione!")
+
+        if batch_data.get('skipped_count', 0) > 0:
+            st.info(f"ℹ️ {batch_data['skipped_count']} righe saltate (dati incompleti)")
+
+        st.subheader("📋 Anteprima Corsi da Creare")
+
+        # ### HASHTAG: CREATE PREVIEW DATAFRAME ###
+        preview_data = []
+        for idx, course in enumerate(batch_data['courses']):
+            preview_data.append({
+                '#': idx + 1,
+                'Titolo': course['title'],
+                'Descrizione': course['short_description'],
+                'Data Pubblicazione': course['start_date'],
+                'Riga Excel': course.get('row_number', '-')
+            })
+
+        preview_df = pd.DataFrame(preview_data)
+
+        # ### HASHTAG: DISPLAY AS INTERACTIVE TABLE ###
+        st.dataframe(
+            preview_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                '#': st.column_config.NumberColumn('#', width='small'),
+                'Titolo': st.column_config.TextColumn('Titolo', width='medium'),
+                'Descrizione': st.column_config.TextColumn('Descrizione', width='large'),
+                'Data Pubblicazione': st.column_config.TextColumn('Data', width='small'),
+                'Riga Excel': st.column_config.NumberColumn('Riga', width='small')
+            }
+        )
+
+        # ### HASHTAG: SELECTION OPTIONS ###
+        st.divider()
+
+        with st.form(key='batch_course_confirmation_form'):
+            st.subheader("⚙️ Opzioni di Creazione")
+
+            # ### HASHTAG: OPTION TO SELECT SPECIFIC COURSES (FUTURE ENHANCEMENT) ###
+            create_all = st.checkbox(
+                f"Crea tutti i {len(batch_data['courses'])} corsi",
+                value=True,
+                help="Deseleziona per scegliere singolarmente"
+            )
+
+            if not create_all:
+                st.info("🚧 Selezione individuale - Funzionalità in sviluppo")
+                st.write("Per ora, puoi creare tutti i corsi o annullare.")
+
+            # ### HASHTAG: PROCESSING OPTIONS ###
+            st.write("**Comportamento in caso di errore:**")
+            continue_on_error = st.checkbox(
+                "Continua anche se un corso fallisce",
+                value=True,
+                help="Se deselezionato, si ferma al primo errore"
+            )
+
+            col1, col2, col3 = st.columns([2, 1, 1])
+
+            with col1:
+                confirm = st.form_submit_button(
+                    f"✅ Conferma e Crea {len(batch_data['courses'])} Corsi",
+                    type="primary",
+                    use_container_width=True
+                )
+
+            with col2:
+                edit = st.form_submit_button(
+                    "✏️ Modifica File",
+                    use_container_width=True
+                )
+
+            with col3:
+                cancel = st.form_submit_button(
+                    "❌ Annulla",
+                    use_container_width=True
+                )
+
+        # ### HASHTAG: HANDLE USER ACTIONS ###
+        if confirm:
+            # Store data for batch processing
+            st.session_state.batch_course_data = batch_data
+            st.session_state.batch_continue_on_error = continue_on_error
+            st.session_state.app_state = "RUNNING_BATCH_COURSE"
+            st.session_state.course_message = ""
+            st.rerun()
+
+        elif edit:
+            # Go back to file upload
+            st.session_state.course_parsed_data = None
+            st.session_state.course_show_summary = False
+            st.rerun()
+
+        elif cancel:
+            # Reset everything
+            st.session_state.course_parsed_data = None
+            st.session_state.course_show_summary = False
+            st.session_state.course_input_method = "structured"
+            st.rerun()
+
     def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
         """
         ENHANCED VERSION: Parse natural language input with maximum robustness.
