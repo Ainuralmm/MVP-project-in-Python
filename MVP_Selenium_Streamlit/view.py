@@ -498,68 +498,132 @@ class CourseView:
     # NEW HELPER METHOD - PARSE EXCEL FILE
     def _parse_excel_file(self, uploaded_file) -> Optional[Dict[str, Any]]:
         """
-        Parse uploaded Excel file and extract course information.
-        Expected Excel format:
-        - Row 1: TITOLO | [Course Title]
-        - Row 2: DESCRIZIONE | [Short Description]
-        - Row 3: DATA INIZIO | [DD/MM/YYYY]
+        Parse uploaded Excel file and extract MULTIPLE courses.
 
-        Returns: Dictionary with parsed data or None if parsing fails
+        NEW FORMAT (Vertical/Table):
+        Row 1: NOME CORSO | DESCRIZIONE | DATA INIZIO PUBBLICAZIONE
+        Row 2: Analitica  | Informatica | 1.1.2023
+        Row 3: Musica     | Art         | 1.1.2023
+        Row 4: Fine art   | Art         | 1.1.2023
+
+        Returns: Dictionary with 'courses' list and metadata
+
+        WHY: Vertical format scales to any number of courses and matches
+        standard spreadsheet practices.
         """
         try:
-            # Read Excel file
-            df = pd.read_excel(uploaded_file, header=None, engine='openpyxl')
+            # ### HASHTAG: READ EXCEL WITH HEADER ROW ###
+            # Read with first row as header
+            df = pd.read_excel(uploaded_file, header=0, engine='openpyxl')
 
-            # Extract data from specific cells (assuming structure shown in Excel image)
-            # Column A contains labels (TITOLO, DESCRIZIONE, DATA INIZIO)
-            # Column B contains values (EXCEL, INFORMATICA, 01/01/23)
+            # ### HASHTAG: NORMALIZE COLUMN NAMES ###
+            # Remove extra spaces, convert to lowercase for matching
+            df.columns = df.columns.str.strip().str.lower()
 
-            parsed_data = {}
+            # ### HASHTAG: SHOW WHAT COLUMNS WERE FOUND ###
+            st.info(f"📊 Colonne trovate nel file: {', '.join(df.columns)}")
 
-            # EXTRACT TITLE (Row 1, Column B)
-            if len(df) > 0 and len(df.columns) > 1:
-                parsed_data['title'] = str(df.iloc[0, 1]).strip() if pd.notna(df.iloc[0, 1]) else ""
+            # ### HASHTAG: DEFINE EXPECTED COLUMN MAPPINGS ###
+            # Support multiple possible column names for flexibility
+            column_mappings = {
+                'title': ['nome corso', 'titolo', 'corso', 'nome', 'title'],
+                'description': ['descrizione', 'desc', 'breve descrizione', 'description'],
+                'date': ['data inizio pubblicazione', 'data pubblicazione', 'data inizio',
+                         'data', 'pubblicazione', 'date', 'start date']
+            }
 
-            # EXTRACT SHORT DESCRIPTION (Row 2, Column B) ###
-            if len(df) > 1 and len(df.columns) > 1:
-                parsed_data['short_description'] = str(df.iloc[1, 1]).strip() if pd.notna(df.iloc[1, 1]) else ""
+            # ### HASHTAG: FIND ACTUAL COLUMN NAMES IN FILE ###
+            found_columns = {}
+            for field, possible_names in column_mappings.items():
+                for possible_name in possible_names:
+                    if possible_name in df.columns:
+                        found_columns[field] = possible_name
+                        break
 
-            # ENHANCED DATE EXTRACTION WITH CENTRALIZED NORMALIZE (Row 3, Column B) ###
-            if len(df) > 2 and len(df.columns) > 1:
-                date_value = df.iloc[2, 1]
+            # ### HASHTAG: VALIDATE REQUIRED COLUMNS EXIST ###
+            missing_columns = []
+            for field in ['title', 'description', 'date']:
+                if field not in found_columns:
+                    missing_columns.append(field)
 
-                # Handle different date formats
-                if pd.notna(date_value):
-                    #using centralized normolizer for all date types
-                    normalized_date=normalize_date(date_value)
-                    if normalized_date:
-                        parsed_data['start_date'] = normalized_date
-                    else:
-                        st.warning(f"⚠️Formato data non riconosciuto: {date_value}")
-
-            # PROGRAMME FIELD IS OPTIONAL - SET EMPTY
-            parsed_data['programme'] = ""
-
-            # Partial extraction support for Excel too
-            missing_fields = []
-            if not parsed_data.get('title'):
-                missing_fields.append("Titolo")
-            if not parsed_data.get('short_description'):
-                missing_fields.append("Descrizione")
-            if not parsed_data.get('start_date'):
-                missing_fields.append("Data inizio")
-
-            if missing_fields:
-                st.warning(f"⚠️Campi mancanti nel file Excel: {', '.join(missing_fields)}")
-                #still return partial data
-                if any ([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
-                    st.info(f"💡Alcuni dati sono stati estratti. Potrebbe completare i campi mancanti nel riepilogo")
-                    return parsed_data
+            if missing_columns:
+                st.error(f"❌ Colonne mancanti nel file Excel: {', '.join(missing_columns)}")
+                st.info("""
+                **Formato richiesto:**
+                - Colonna 1: NOME CORSO (o TITOLO, CORSO)
+                - Colonna 2: DESCRIZIONE (o DESC)
+                - Colonna 3: DATA INIZIO PUBBLICAZIONE (o DATA)
+                """)
                 return None
-            return parsed_data
+
+            # ### HASHTAG: EXTRACT ALL COURSES FROM ROWS ###
+            courses_list = []
+            skipped_rows = []
+
+            for index, row in df.iterrows():
+                # Get values from mapped columns
+                title_val = row[found_columns['title']]
+                desc_val = row[found_columns['description']]
+                date_val = row[found_columns['date']]
+
+                # ### HASHTAG: SKIP EMPTY ROWS ###
+                if pd.isna(title_val) and pd.isna(desc_val) and pd.isna(date_val):
+                    continue  # Skip completely empty rows
+
+                # ### HASHTAG: VALIDATE ROW DATA ###
+                if pd.isna(title_val) or not str(title_val).strip():
+                    skipped_rows.append(f"Riga {index + 2}: Titolo mancante")
+                    continue
+
+                if pd.isna(desc_val) or not str(desc_val).strip():
+                    skipped_rows.append(f"Riga {index + 2}: Descrizione mancante")
+                    continue
+
+                if pd.isna(date_val):
+                    skipped_rows.append(f"Riga {index + 2}: Data mancante")
+                    continue
+
+                # ### HASHTAG: NORMALIZE DATE USING CENTRALIZED FUNCTION ###
+                normalized_date = normalize_date(date_val)
+
+                if not normalized_date:
+                    skipped_rows.append(f"Riga {index + 2}: Formato data non valido ({date_val})")
+                    continue
+
+                # ### HASHTAG: ADD VALID COURSE TO LIST ###
+                courses_list.append({
+                    'title': str(title_val).strip(),
+                    'short_description': str(desc_val).strip(),
+                    'start_date': normalized_date,
+                    'programme': "",  # Optional field, empty for now
+                    'row_number': index + 2  # Excel row number for reference
+                })
+
+            # ### HASHTAG: SHOW SUMMARY OF PARSING RESULTS ###
+            if skipped_rows:
+                st.warning(f"⚠️ {len(skipped_rows)} righe saltate:")
+                for skip_msg in skipped_rows:
+                    st.write(f"- {skip_msg}")
+
+            if not courses_list:
+                st.error("❌ Nessun corso valido trovato nel file Excel.")
+                return None
+
+            st.success(f"✅ {len(courses_list)} corsi estratti con successo!")
+
+            # ### HASHTAG: RETURN DATA STRUCTURE FOR BATCH PROCESSING ###
+            return {
+                'courses': courses_list,
+                'total_count': len(courses_list),
+                'skipped_count': len(skipped_rows),
+                'file_name': uploaded_file.name
+            }
 
         except Exception as e:
-            st.error(f"Errore durante la lettura del file Excel: {str(e)}")
+            st.error(f"❌ Errore durante la lettura del file Excel: {str(e)}")
+            import traceback
+            with st.expander("🔍 Dettagli errore"):
+                st.code(traceback.format_exc())
             return None
 
     def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
