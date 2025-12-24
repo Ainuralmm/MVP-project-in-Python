@@ -727,6 +727,18 @@ class CourseView:
 
         # ### HASHTAG: HANDLE USER ACTIONS ###
         if confirm:
+            # ### HASHTAG: CONVERT STRING DATES TO DATE OBJECTS ###
+            # This is the FIX for  datetime error
+            for course in batch_data['courses']:
+                # Convert string date to datetime object
+                date_str = course['start_date']  # e.g., "01/01/2023"
+                try:
+                    date_obj = datetime.strptime(date_str, "%d/%m/%Y").date()
+                    course['start_date'] = date_obj  # Replace string with object
+                except ValueError as e:
+                    st.error(f"❌ Errore conversione data per '{course['title']}': {date_str}")
+                    st.stop()
+
             # Store data for batch processing
             st.session_state.batch_course_data = batch_data
             st.session_state.batch_continue_on_error = continue_on_error
@@ -746,6 +758,127 @@ class CourseView:
             st.session_state.course_show_summary = False
             st.session_state.course_input_method = "structured"
             st.rerun()
+
+        # NEW HELPER METHOD - PARSE EXCEL FILE FOR BATCH (VERTICAL FORMAT)
+
+    def _parse_excel_batch(self, uploaded_file) -> Optional[Dict[str, Any]]:
+            """
+            Parse uploaded Excel file with MULTIPLE courses (vertical/table format).
+
+            NEW FORMAT (Vertical/Table):
+            Row 1: NOME CORSO | DESCRIZIONE | DATA INIZIO PUBBLICAZIONE
+            Row 2: Analitica  | Informatica | 1.1.2023
+            Row 3: Musica     | Art         | 1.1.2023
+
+            Returns: Dictionary with 'courses' list and metadata
+            """
+            try:
+                # Read Excel with first row as header
+                df = pd.read_excel(uploaded_file, header=0, engine='openpyxl')
+
+                # Normalize column names
+                df.columns = df.columns.str.strip().str.lower()
+
+                st.info(f"📊 Colonne trovate: {', '.join(df.columns)}")
+
+                # Define expected column mappings
+                column_mappings = {
+                    'title': ['nome corso', 'titolo', 'corso', 'nome'],
+                    'description': ['descrizione', 'desc', 'breve descrizione'],
+                    'date': ['data inizio pubblicazione', 'data pubblicazione', 'data inizio', 'data']
+                }
+
+                # Find actual column names in file
+                found_columns = {}
+                for field, possible_names in column_mappings.items():
+                    for possible_name in possible_names:
+                        if possible_name in df.columns:
+                            found_columns[field] = possible_name
+                            break
+
+                # Validate required columns exist
+                missing_columns = []
+                for field in ['title', 'description', 'date']:
+                    if field not in found_columns:
+                        missing_columns.append(field)
+
+                if missing_columns:
+                    st.error(f"❌ Colonne mancanti: {', '.join(missing_columns)}")
+                    st.info("""
+                    **Formato richiesto:**
+                    - Colonna 1: NOME CORSO (o TITOLO)
+                    - Colonna 2: DESCRIZIONE
+                    - Colonna 3: DATA INIZIO PUBBLICAZIONE (o DATA)
+                    """)
+                    return None
+
+                # Extract all courses from rows
+                courses_list = []
+                skipped_rows = []
+
+                for index, row in df.iterrows():
+                    title_val = row[found_columns['title']]
+                    desc_val = row[found_columns['description']]
+                    date_val = row[found_columns['date']]
+
+                    # Skip empty rows
+                    if pd.isna(title_val) and pd.isna(desc_val) and pd.isna(date_val):
+                        continue
+
+                    # Validate row data
+                    if pd.isna(title_val) or not str(title_val).strip():
+                        skipped_rows.append(f"Riga {index + 2}: Titolo mancante")
+                        continue
+
+                    if pd.isna(desc_val) or not str(desc_val).strip():
+                        skipped_rows.append(f"Riga {index + 2}: Descrizione mancante")
+                        continue
+
+                    if pd.isna(date_val):
+                        skipped_rows.append(f"Riga {index + 2}: Data mancante")
+                        continue
+
+                    # Normalize date
+                    normalized_date = normalize_date(date_val)
+
+                    if not normalized_date:
+                        skipped_rows.append(f"Riga {index + 2}: Formato data non valido ({date_val})")
+                        continue
+
+                    # Add valid course to list
+                    courses_list.append({
+                        'title': str(title_val).strip(),
+                        'short_description': str(desc_val).strip(),
+                        'start_date': normalized_date,
+                        'programme': "",
+                        'row_number': index + 2
+                    })
+
+                # Show summary
+                if skipped_rows:
+                    st.warning(f"⚠️ {len(skipped_rows)} righe saltate:")
+                    for skip_msg in skipped_rows:
+                        st.write(f"- {skip_msg}")
+
+                if not courses_list:
+                    st.error("❌ Nessun corso valido trovato.")
+                    return None
+
+                st.success(f"✅ {len(courses_list)} corsi estratti!")
+
+                return {
+                    'courses': courses_list,
+                    'total_count': len(courses_list),
+                    'skipped_count': len(skipped_rows),
+                    'file_name': uploaded_file.name
+                }
+
+            except Exception as e:
+                st.error(f"❌ Errore lettura Excel: {str(e)}")
+                import traceback
+                with st.expander("🔍 Dettagli errore"):
+                    st.code(traceback.format_exc())
+                return None
 
     def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
         """
@@ -967,7 +1100,11 @@ class CourseView:
         """
         if not st.session_state.course_parsed_data:
             return
-
+            # ### HASHTAG: CHECK IF BATCH OR SINGLE ###
+        if 'courses' in st.session_state.course_parsed_data:
+                # Batch format - show preview table
+                self._render_batch_course_preview(st.session_state.course_parsed_data)
+                return
         st.success("✅ Dati estratti con successo!")
 
         st.subheader("Riepilogo Corso")
