@@ -70,13 +70,13 @@ class OracleAutomator:
             # ### HASHTAG: ENSURE WE'RE ON THE COURSES PAGE ###
             # If we just created a course, we're on the details page
             # We need to navigate back to the courses list
-            current_url = self.driver.current_url
-            if "lsCrDtl" in current_url or "lsVwCrs" in current_url:
-                # We're on a course details or edit page, go back to list
-                print("Currently on course details page, navigating back to courses list...")
-                if not self.navigate_to_courses_page():
-                    print("Failed to navigate back to courses page")
-                    return False
+            # current_url = self.driver.current_url
+            # if "lsCrDtl" in current_url or "lsVwCrs" in current_url:
+            #     # We're on a course details or edit page, go back to list
+            #     print("Currently on course details page, navigating back to courses list...")
+            #     if not self.navigate_to_courses_page():
+            #         print("Failed to navigate back to courses page")
+            #         return False
 
             # Clean and capitalize course name
             cleaned_course_name = course_name.strip()
@@ -128,15 +128,16 @@ class OracleAutomator:
 
         except Exception as e:
             print(f"Error during search_course for '{course_name}': {e}")
-            # Save screenshot on error
-            try:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                ss_path = f"error_search_course_{timestamp}.png"
-                self.driver.save_screenshot(ss_path)
-                print(f"Saved screenshot: {ss_path}")
-            except Exception as ss_e:
-                print(f"Could not save screenshot: {ss_e}")
             return False
+            # Save screenshot on error
+            # try:
+            #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            #     ss_path = f"error_search_course_{timestamp}.png"
+            #     self.driver.save_screenshot(ss_path)
+            #     print(f"Saved screenshot: {ss_path}")
+            # except Exception as ss_e:
+            #     print(f"Could not save screenshot: {ss_e}")
+            # return False
 
     def open_course_from_list(self, course_name):
         try:
