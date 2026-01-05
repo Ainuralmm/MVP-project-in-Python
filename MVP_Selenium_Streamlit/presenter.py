@@ -118,7 +118,7 @@ class CoursePresenter:
                         if not continue_on_error:
                             raise Exception(f"Creazione fallita: {result_message}")
 
-                    time.sleep(1)
+                    time.sleep(0.5)
 
                 except Exception as course_error:
                     error_msg = str(course_error)
