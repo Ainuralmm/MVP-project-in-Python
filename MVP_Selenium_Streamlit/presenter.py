@@ -56,14 +56,14 @@ class CoursePresenter:
             total_courses = len(courses)
             continue_on_error = st.session_state.get('batch_continue_on_error', True)
 
-            # ### HASHTAG: INITIALIZE RESULTS TRACKING ###
+            # INITIALIZE RESULTS TRACKING ###
             results = {
                 'successful': [],
                 'failed': [],
                 'skipped': []
             }
 
-            # ### HASHTAG: LOGIN ONCE FOR ALL COURSES ###
+            # LOGIN ONCE FOR ALL COURSES ###
             self.view.update_progress("course", f"Accesso a Oracle...", 5)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito. Controlla le credenziali.")
@@ -94,7 +94,7 @@ class CoursePresenter:
                         print(f"⚠️ Corso '{course_title}' già esiste. Saltato.")
                         continue
 
-                    # ### CREATE COURSE - DON'T RE-NAVIGATE! ###
+                    # ### CREATE COURSE
                     # search_course leaves us on the Corsi page, ready to create
                     course_details = {
                         'title': course['title'],
@@ -109,9 +109,7 @@ class CoursePresenter:
                         results['successful'].append(course_title)
                         print(f"✅ Corso '{course_title}' creato con successo.")
 
-                        # ### IMPORTANT: Navigate back to Corsi page for next course ###
-                        if idx < total_courses:  # Only if more courses to process
-                            self.model.navigate_to_courses_page()
+
                     else:
                         results['failed'].append({
                             'course': course_title,
