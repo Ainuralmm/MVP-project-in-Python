@@ -290,44 +290,15 @@ class OracleAutomator:
         takes us to the course details page.
         """
         try:
-            # Multiple XPaths for the back button
-            back_button_xpaths = [
-                "//svg[@aria-label='Indietro']/ancestor::a",  # SVG with aria-label
-                "//svg[contains(@id, 'SPdonei::icon')]/parent::a",  # By ID fragment
-                "//a[.//svg[@aria-label='Indietro']]",  # Anchor containing the SVG
-                "//span[text()='Indietro']/ancestor::a",  # If there's a text span
-                "//a[contains(@id, 'SPdonei')]",  # By partial ID
-            ]
-
-            back_button = None
-            for xpath in back_button_xpaths:
-                try:
-                    back_button = WebDriverWait(self.driver, 5).until(
-                        EC.element_to_be_clickable((By.XPATH, xpath)))
-                    print(f"Found 'Indietro' button with XPath: {xpath}")
-                    break
-                except TimeoutException:
-                    continue
-
-            if not back_button:
-                # Try clicking the parent element directly
-                try:
-                    back_button = self.driver.find_element(
-                        By.XPATH, "//*[contains(@aria-label, 'Indietro')]")
-                    print("Found back button via aria-label")
-                except:
-                    self.driver.save_screenshot("error_back_button_not_found.png")
-                    raise Exception("Could not find 'Indietro' (Back) button")
+            back_button = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, 'SPdonei')]")))
 
             back_button.click()
-            print("Clicked 'Indietro' button to return to Corsi list")
-
-            # Wait for Corsi page to load (search box appears)
-            self.wait.until(EC.presence_of_element_located(
-                (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')))
-            print("Successfully returned to Corsi list page")
-
-            self._pause_for_visual_check()
+            print("Clicked 'Indietro' button")
+            # Wait for Create button to appear (confirms we're on Corsi list)
+            WebDriverWait(self.driver, 15).until(
+                EC.element_to_be_clickable((By.XPATH, "//a[.//span[text()='Create'] or .//span[text()='Crea']]")))
+            print("Back on Corsi list")
             return True
 
         except Exception as e:
