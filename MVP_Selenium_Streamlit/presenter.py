@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+from datetime import datetime
 
 class CoursePresenter:
     def __init__(self, model, view):
@@ -67,12 +68,15 @@ class CoursePresenter:
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito. Controlla le credenziali.")
 
-            # ### HASHTAG: PROCESS EACH COURSE ###
+            # ### NAVIGATE TO COURSES PAGE ONCE ###
+            self.view.update_progress("course", "Navigazione alla pagina corsi...", 10)
+            if not self.model.navigate_to_courses_page():
+                raise Exception("Navigazione alla pagina corsi fallita")
+
+            # ### PROCESS EACH COURSE ###
             for idx, course in enumerate(courses, 1):
                 course_title = course['title']
-
-                # Calculate progress percentage
-                progress_pct = int((idx / total_courses) * 85) + 10  # 10-95% range
+                progress_pct = int((idx / total_courses) * 85) + 10
 
                 self.view.update_progress(
                     "course",
@@ -81,11 +85,7 @@ class CoursePresenter:
                 )
 
                 try:
-                    # ### HASHTAG: NAVIGATE TO COURSE PAGE ###
-                    if not self.model.navigate_to_courses_page():
-                        raise Exception("Navigazione fallita")
-
-                    # ### HASHTAG: CHECK IF COURSE ALREADY EXISTS ###
+                    # ### CHECK IF COURSE EXISTS (search resets after each search) ###
                     if self.model.search_course(course_title):
                         results['skipped'].append({
                             'course': course_title,
@@ -94,39 +94,39 @@ class CoursePresenter:
                         print(f"⚠️ Corso '{course_title}' già esiste. Saltato.")
                         continue
 
-                    # ### HASHTAG: PREPARE COURSE DETAILS ###
-                    # Convert date string back to date object for model
-                    date_obj = datetime.strptime(course['start_date'], "%d/%m/%Y").date()
-
+                    # ### CREATE COURSE - DON'T RE-NAVIGATE! ###
+                    # search_course leaves us on the Corsi page, ready to create
                     course_details = {
                         'title': course['title'],
                         'programme': course.get('programme', ''),
                         'short_description': course['short_description'],
-                        'start_date': date_obj
+                        'start_date': course['start_date']
                     }
 
-                    # ### HASHTAG: CREATE COURSE ###
                     result_message = self.model.create_course(course_details)
 
                     if "✅" in result_message or "Successo" in result_message:
                         results['successful'].append(course_title)
                         print(f"✅ Corso '{course_title}' creato con successo.")
+
+                        # ### IMPORTANT: Navigate back to Corsi page for next course ###
+                        if idx < total_courses:  # Only if more courses to process
+                            self.model.navigate_to_courses_page()
                     else:
                         results['failed'].append({
                             'course': course_title,
                             'error': result_message
                         })
-
                         if not continue_on_error:
                             raise Exception(f"Creazione fallita: {result_message}")
 
-                    time.sleep(1)  # Brief pause between courses
+                    time.sleep(1)
 
                 except Exception as course_error:
                     error_msg = str(course_error)
                     results['failed'].append({
                         'course': course_title,
-                        'error': error_msg
+                        'error': str(course_error) #error_msg
                     })
 
                     print(f"❌ Errore con corso '{course_title}': {error_msg}")

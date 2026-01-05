@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, date
 import pandas as pd
 import spacy
 from typing import Optional, Dict, Any, Tuple, List
@@ -366,6 +366,8 @@ class CourseView:
             st.session_state.edition_message = ""
         if "student_message" not in st.session_state:
             st.session_state.student_message = ""
+        if "student_convocazione_presenza" not in st.session_state:
+            st.session_state.student_convocazione_presenza = True
 
         # --- Form Specific State ---
         if "num_activities" not in st.session_state:
@@ -733,7 +735,8 @@ class CourseView:
                 # Convert string date to datetime object
                 date_str = course['start_date']  # e.g., "01/01/2023"
                 try:
-                    date_obj = datetime.strptime(date_str, "%d/%m/%Y").date()
+                    # Option 2: One-liner
+                    date_obj = date_str if isinstance(date_str, date) else datetime.strptime(date_str,"%d/%m/%Y").date()
                     course['start_date'] = date_obj  # Replace string with object
                 except ValueError as e:
                     st.error(f"❌ Errore conversione data per '{course['title']}': {date_str}")
