@@ -634,7 +634,7 @@ class CourseView:
                 st.code(traceback.format_exc())
             return None
 
-    def _render_batch_course_preview(self, batch_data: Dict[str, Any]):
+    def _render_batch_course_preview(self, batch_data: Dict[str, Any], course):
         """
         Display preview table of all courses from Excel with selection options.
 
@@ -654,6 +654,18 @@ class CourseView:
 
         st.subheader("📋 Anteprima Corsi da Creare")
 
+        # ### HASHTAG: FORMAT DATE FOR DISPLAY ###
+        # Convert date object to string for preview table
+        date_display = course['start_date']
+        if isinstance(date_display, (datetime, date)):
+            date_display = date_display.strftime("%d/%m/%Y")
+        elif isinstance(date_display, str):
+            # Already a string, use as-is
+            pass
+        else:
+            # Unknown type, try to convert
+            date_display = str(date_display)
+
         # ### HASHTAG: CREATE PREVIEW DATAFRAME ###
         preview_data = []
         for idx, course in enumerate(batch_data['courses']):
@@ -661,7 +673,7 @@ class CourseView:
                 '#': idx + 1,
                 'Titolo': course['title'],
                 'Descrizione': course['short_description'],
-                'Data Pubblicazione': course['start_date'],
+                'Data Pubblicazione': date_display,
                 'Riga Excel': course.get('row_number', '-')
             })
 
