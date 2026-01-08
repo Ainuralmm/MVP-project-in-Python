@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, date
 import pandas as pd
 import spacy
 from typing import Optional, Dict, Any, Tuple, List
@@ -344,6 +344,12 @@ class CourseView:
         if "course_nlp_input" not in st.session_state:
             st.session_state.course_nlp_input = ""  # Stores NLP text input
 
+        # ### HASHTAG: BATCH PROCESSING STATE VARIABLES ###
+        if "batch_course_data" not in st.session_state:
+            st.session_state.batch_course_data = None
+
+        if "batch_continue_on_error" not in st.session_state:
+            st.session_state.batch_continue_on_error = True
         #add clear flag
         if "nlp_clear_requested" not in st.session_state:
             st.session_state.nlp_clear_requested = False
@@ -360,6 +366,8 @@ class CourseView:
             st.session_state.edition_message = ""
         if "student_message" not in st.session_state:
             st.session_state.student_message = ""
+        if "student_convocazione_presenza" not in st.session_state:
+            st.session_state.student_convocazione_presenza = True
 
         # --- Form Specific State ---
         if "num_activities" not in st.session_state:
@@ -498,69 +506,394 @@ class CourseView:
     # NEW HELPER METHOD - PARSE EXCEL FILE
     def _parse_excel_file(self, uploaded_file) -> Optional[Dict[str, Any]]:
         """
-        Parse uploaded Excel file and extract course information.
-        Expected Excel format:
-        - Row 1: TITOLO | [Course Title]
-        - Row 2: DESCRIZIONE | [Short Description]
-        - Row 3: DATA INIZIO | [DD/MM/YYYY]
+        Parse uploaded Excel file and extract MULTIPLE courses.
 
-        Returns: Dictionary with parsed data or None if parsing fails
+        NEW FORMAT (Vertical/Table):
+        Row 1: NOME CORSO | DESCRIZIONE | DATA INIZIO PUBBLICAZIONE
+        Row 2: Analitica  | Informatica | 1.1.2023
+        Row 3: Musica     | Art         | 1.1.2023
+        Row 4: Fine art   | Art         | 1.1.2023
+
+        Returns: Dictionary with 'courses' list and metadata
+
+        WHY: Vertical format scales to any number of courses and matches
+        standard spreadsheet practices.
         """
         try:
-            # Read Excel file
-            df = pd.read_excel(uploaded_file, header=None, engine='openpyxl')
+            # ### HASHTAG: READ EXCEL WITH HEADER ROW ###
+            # Read with first row as header
+            df = pd.read_excel(uploaded_file, header=0, engine='openpyxl')
 
-            # Extract data from specific cells (assuming structure shown in Excel image)
-            # Column A contains labels (TITOLO, DESCRIZIONE, DATA INIZIO)
-            # Column B contains values (EXCEL, INFORMATICA, 01/01/23)
+            # ### HASHTAG: NORMALIZE COLUMN NAMES ###
+            # Remove extra spaces, convert to lowercase for matching
+            df.columns = df.columns.str.strip().str.lower()
 
-            parsed_data = {}
+            # ### HASHTAG: SHOW WHAT COLUMNS WERE FOUND ###
+            st.info(f"📊 Colonne trovate nel file: {', '.join(df.columns)}")
 
-            # EXTRACT TITLE (Row 1, Column B)
-            if len(df) > 0 and len(df.columns) > 1:
-                parsed_data['title'] = str(df.iloc[0, 1]).strip() if pd.notna(df.iloc[0, 1]) else ""
+            # ### HASHTAG: DEFINE EXPECTED COLUMN MAPPINGS ###
+            # Support multiple possible column names for flexibility
+            column_mappings = {
+                'title': ['nome corso', 'titolo', 'corso', 'nome', 'title'],
+                'description': ['descrizione', 'desc', 'breve descrizione', 'description'],
+                'date': ['data inizio pubblicazione', 'data pubblicazione', 'data inizio',
+                         'data', 'pubblicazione', 'date', 'start date']
+            }
 
-            # EXTRACT SHORT DESCRIPTION (Row 2, Column B) ###
-            if len(df) > 1 and len(df.columns) > 1:
-                parsed_data['short_description'] = str(df.iloc[1, 1]).strip() if pd.notna(df.iloc[1, 1]) else ""
+            # ### HASHTAG: FIND ACTUAL COLUMN NAMES IN FILE ###
+            found_columns = {}
+            for field, possible_names in column_mappings.items():
+                for possible_name in possible_names:
+                    if possible_name in df.columns:
+                        found_columns[field] = possible_name
+                        break
 
-            # ENHANCED DATE EXTRACTION WITH CENTRALIZED NORMALIZE (Row 3, Column B) ###
-            if len(df) > 2 and len(df.columns) > 1:
-                date_value = df.iloc[2, 1]
+            # ### HASHTAG: VALIDATE REQUIRED COLUMNS EXIST ###
+            missing_columns = []
+            for field in ['title', 'description', 'date']:
+                if field not in found_columns:
+                    missing_columns.append(field)
 
-                # Handle different date formats
-                if pd.notna(date_value):
-                    #using centralized normolizer for all date types
-                    normalized_date=normalize_date(date_value)
-                    if normalized_date:
-                        parsed_data['start_date'] = normalized_date
-                    else:
-                        st.warning(f"⚠️Formato data non riconosciuto: {date_value}")
-
-            # PROGRAMME FIELD IS OPTIONAL - SET EMPTY
-            parsed_data['programme'] = ""
-
-            # Partial extraction support for Excel too
-            missing_fields = []
-            if not parsed_data.get('title'):
-                missing_fields.append("Titolo")
-            if not parsed_data.get('short_description'):
-                missing_fields.append("Descrizione")
-            if not parsed_data.get('start_date'):
-                missing_fields.append("Data inizio")
-
-            if missing_fields:
-                st.warning(f"⚠️Campi mancanti nel file Excel: {', '.join(missing_fields)}")
-                #still return partial data
-                if any ([parsed_data.get('title'), parsed_data.get('short_description'), parsed_data.get('start_date')]):
-                    st.info(f"💡Alcuni dati sono stati estratti. Potrebbe completare i campi mancanti nel riepilogo")
-                    return parsed_data
+            if missing_columns:
+                st.error(f"❌ Colonne mancanti nel file Excel: {', '.join(missing_columns)}")
+                st.info("""
+                **Formato richiesto:**
+                - Colonna 1: NOME CORSO (o TITOLO, CORSO)
+                - Colonna 2: DESCRIZIONE (o DESC)
+                - Colonna 3: DATA INIZIO PUBBLICAZIONE (o DATA)
+                """)
                 return None
-            return parsed_data
+
+            # ### HASHTAG: EXTRACT ALL COURSES FROM ROWS ###
+            courses_list = []
+            skipped_rows = []
+
+            for index, row in df.iterrows():
+                # Get values from mapped columns
+                title_val = row[found_columns['title']]
+                desc_val = row[found_columns['description']]
+                date_val = row[found_columns['date']]
+
+                # ### HASHTAG: SKIP EMPTY ROWS ###
+                if pd.isna(title_val) and pd.isna(desc_val) and pd.isna(date_val):
+                    continue  # Skip completely empty rows
+
+                # ### HASHTAG: VALIDATE ROW DATA ###
+                if pd.isna(title_val) or not str(title_val).strip():
+                    skipped_rows.append(f"Riga {index + 2}: Titolo mancante")
+                    continue
+
+                if pd.isna(desc_val) or not str(desc_val).strip():
+                    skipped_rows.append(f"Riga {index + 2}: Descrizione mancante")
+                    continue
+
+                if pd.isna(date_val):
+                    skipped_rows.append(f"Riga {index + 2}: Data mancante")
+                    continue
+
+                # ### HASHTAG: NORMALIZE DATE USING CENTRALIZED FUNCTION ###
+                normalized_date = normalize_date(date_val)
+
+                if not normalized_date:
+                    skipped_rows.append(f"Riga {index + 2}: Formato data non valido ({date_val})")
+                    continue
+
+                # ### HASHTAG: ADD VALID COURSE TO LIST ###
+                courses_list.append({
+                    'title': str(title_val).strip(),
+                    'short_description': str(desc_val).strip(),
+                    'start_date': normalized_date,
+                    'programme': "",  # Optional field, empty for now
+                    'row_number': index + 2  # Excel row number for reference
+                })
+
+            # ### HASHTAG: SHOW SUMMARY OF PARSING RESULTS ###
+            if skipped_rows:
+                st.warning(f"⚠️ {len(skipped_rows)} righe saltate:")
+                for skip_msg in skipped_rows:
+                    st.write(f"- {skip_msg}")
+
+            if not courses_list:
+                st.error("❌ Nessun corso valido trovato nel file Excel.")
+                return None
+
+            st.success(f"✅ {len(courses_list)} corsi estratti con successo!")
+
+            # ### HASHTAG: RETURN DATA STRUCTURE FOR BATCH PROCESSING ###
+            return {
+                'courses': courses_list,
+                'total_count': len(courses_list),
+                'skipped_count': len(skipped_rows),
+                'file_name': uploaded_file.name
+            }
 
         except Exception as e:
-            st.error(f"Errore durante la lettura del file Excel: {str(e)}")
+            st.error(f"❌ Errore durante la lettura del file Excel: {str(e)}")
+            import traceback
+            with st.expander("🔍 Dettagli errore"):
+                st.code(traceback.format_exc())
             return None
+
+    def _render_batch_course_preview(self, batch_data: Dict[str, Any], course):
+        """
+        Display preview table of all courses from Excel with selection options.
+
+        WHY: Users need to review and optionally select which courses to create.
+        Prevents accidental bulk creation and allows quality control.
+
+        Args:
+            batch_data: Dictionary from _parse_excel_file() with 'courses' list
+        """
+        if not batch_data or 'courses' not in batch_data:
+            return
+
+        st.success(f"✅ {batch_data['total_count']} corsi pronti per la creazione!")
+
+        if batch_data.get('skipped_count', 0) > 0:
+            st.info(f"ℹ️ {batch_data['skipped_count']} righe saltate (dati incompleti)")
+
+        st.subheader("📋 Anteprima Corsi da Creare")
+
+        # ### HASHTAG: FORMAT DATE FOR DISPLAY ###
+        # Convert date object to string for preview table
+        date_display = course['start_date']
+        if isinstance(date_display, (datetime, date)):
+            date_display = date_display.strftime("%d/%m/%Y")
+        elif isinstance(date_display, str):
+            # Already a string, use as-is
+            pass
+        else:
+            # Unknown type, try to convert
+            date_display = str(date_display)
+
+        # ### HASHTAG: CREATE PREVIEW DATAFRAME ###
+        preview_data = []
+        for idx, course in enumerate(batch_data['courses']):
+            preview_data.append({
+                '#': idx + 1,
+                'Titolo': course['title'],
+                'Descrizione': course['short_description'],
+                'Data Pubblicazione': date_display,
+                'Riga Excel': course.get('row_number', '-')
+            })
+
+        preview_df = pd.DataFrame(preview_data)
+
+        # ### HASHTAG: DISPLAY AS INTERACTIVE TABLE ###
+        st.dataframe(
+            preview_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                '#': st.column_config.NumberColumn('#', width='small'),
+                'Titolo': st.column_config.TextColumn('Titolo', width='medium'),
+                'Descrizione': st.column_config.TextColumn('Descrizione', width='large'),
+                'Data Pubblicazione': st.column_config.TextColumn('Data', width='small'),
+                'Riga Excel': st.column_config.NumberColumn('Riga', width='small')
+            }
+        )
+
+        # ### HASHTAG: SELECTION OPTIONS ###
+        st.divider()
+
+        with st.form(key='batch_course_confirmation_form'):
+            st.subheader("⚙️ Opzioni di Creazione")
+
+            # ### HASHTAG: OPTION TO SELECT SPECIFIC COURSES (FUTURE ENHANCEMENT) ###
+            create_all = st.checkbox(
+                f"Crea tutti i {len(batch_data['courses'])} corsi",
+                value=True,
+                help="Deseleziona per scegliere singolarmente"
+            )
+
+            if not create_all:
+                st.info("🚧 Selezione individuale - Funzionalità in sviluppo")
+                st.write("Per ora, puoi creare tutti i corsi o annullare.")
+
+            # ### HASHTAG: PROCESSING OPTIONS ###
+            st.write("**Comportamento in caso di errore:**")
+            continue_on_error = st.checkbox(
+                "Continua anche se un corso fallisce",
+                value=True,
+                help="Se deselezionato, si ferma al primo errore"
+            )
+
+            col1, col2, col3 = st.columns([2, 1, 1])
+
+            with col1:
+                confirm = st.form_submit_button(
+                    f"✅ Conferma e Crea {len(batch_data['courses'])} Corsi",
+                    type="primary",
+                    use_container_width=True
+                )
+
+            with col2:
+                edit = st.form_submit_button(
+                    "✏️ Modifica File",
+                    use_container_width=True
+                )
+
+            with col3:
+                cancel = st.form_submit_button(
+                    "❌ Annulla",
+                    use_container_width=True
+                )
+
+        # ### HASHTAG: HANDLE USER ACTIONS ###
+        if confirm:
+            # ### HASHTAG: CONVERT STRING DATES TO DATE OBJECTS ###
+            # This is the FIX for  datetime error
+            for course in batch_data['courses']:
+                # Convert string date to datetime object
+                date_str = course['start_date']  # e.g., "01/01/2023"
+                try:
+                    # Option 2: One-liner
+                    date_obj = date_str if isinstance(date_str, date) else datetime.strptime(date_str,"%d/%m/%Y").date()
+                    course['start_date'] = date_obj  # Replace string with object
+                except ValueError as e:
+                    st.error(f"❌ Errore conversione data per '{course['title']}': {date_str}")
+                    st.stop()
+
+            # Store data for batch processing
+            st.session_state.batch_course_data = batch_data
+            st.session_state.batch_continue_on_error = continue_on_error
+            st.session_state.app_state = "RUNNING_BATCH_COURSE"
+            st.session_state.course_message = ""
+            st.rerun()
+
+        elif edit:
+            # Go back to file upload
+            st.session_state.course_parsed_data = None
+            st.session_state.course_show_summary = False
+            st.rerun()
+
+        elif cancel:
+            # Reset everything
+            st.session_state.course_parsed_data = None
+            st.session_state.course_show_summary = False
+            st.session_state.course_input_method = "structured"
+            st.rerun()
+
+        # NEW HELPER METHOD - PARSE EXCEL FILE FOR BATCH (VERTICAL FORMAT)
+
+    def _parse_excel_batch(self, uploaded_file) -> Optional[Dict[str, Any]]:
+            """
+            Parse uploaded Excel file with MULTIPLE courses (vertical/table format).
+
+            NEW FORMAT (Vertical/Table):
+            Row 1: NOME CORSO | DESCRIZIONE | DATA INIZIO PUBBLICAZIONE
+            Row 2: Analitica  | Informatica | 1.1.2023
+            Row 3: Musica     | Art         | 1.1.2023
+
+            Returns: Dictionary with 'courses' list and metadata
+            """
+            try:
+                # Read Excel with first row as header
+                df = pd.read_excel(uploaded_file, header=0, engine='openpyxl')
+
+                # Normalize column names
+                df.columns = df.columns.str.strip().str.lower()
+
+                st.info(f"📊 Colonne trovate: {', '.join(df.columns)}")
+
+                # Define expected column mappings
+                column_mappings = {
+                    'title': ['nome corso', 'titolo', 'corso', 'nome'],
+                    'description': ['descrizione', 'desc', 'breve descrizione'],
+                    'date': ['data inizio pubblicazione', 'data pubblicazione', 'data inizio', 'data']
+                }
+
+                # Find actual column names in file
+                found_columns = {}
+                for field, possible_names in column_mappings.items():
+                    for possible_name in possible_names:
+                        if possible_name in df.columns:
+                            found_columns[field] = possible_name
+                            break
+
+                # Validate required columns exist
+                missing_columns = []
+                for field in ['title', 'description', 'date']:
+                    if field not in found_columns:
+                        missing_columns.append(field)
+
+                if missing_columns:
+                    st.error(f"❌ Colonne mancanti: {', '.join(missing_columns)}")
+                    st.info("""
+                    **Formato richiesto:**
+                    - Colonna 1: NOME CORSO (o TITOLO)
+                    - Colonna 2: DESCRIZIONE
+                    - Colonna 3: DATA INIZIO PUBBLICAZIONE (o DATA)
+                    """)
+                    return None
+
+                # Extract all courses from rows
+                courses_list = []
+                skipped_rows = []
+
+                for index, row in df.iterrows():
+                    title_val = row[found_columns['title']]
+                    desc_val = row[found_columns['description']]
+                    date_val = row[found_columns['date']]
+
+                    # Skip empty rows
+                    if pd.isna(title_val) and pd.isna(desc_val) and pd.isna(date_val):
+                        continue
+
+                    # Validate row data
+                    if pd.isna(title_val) or not str(title_val).strip():
+                        skipped_rows.append(f"Riga {index + 2}: Titolo mancante")
+                        continue
+
+                    if pd.isna(desc_val) or not str(desc_val).strip():
+                        skipped_rows.append(f"Riga {index + 2}: Descrizione mancante")
+                        continue
+
+                    if pd.isna(date_val):
+                        skipped_rows.append(f"Riga {index + 2}: Data mancante")
+                        continue
+
+                    # Normalize date
+                    normalized_date = normalize_date(date_val)
+
+                    if not normalized_date:
+                        skipped_rows.append(f"Riga {index + 2}: Formato data non valido ({date_val})")
+                        continue
+
+                    # Add valid course to list
+                    courses_list.append({
+                        'title': str(title_val).strip(),
+                        'short_description': str(desc_val).strip(),
+                        'start_date': normalized_date,
+                        'programme': "",
+                        'row_number': index + 2
+                    })
+
+                # Show summary
+                if skipped_rows:
+                    st.warning(f"⚠️ {len(skipped_rows)} righe saltate:")
+                    for skip_msg in skipped_rows:
+                        st.write(f"- {skip_msg}")
+
+                if not courses_list:
+                    st.error("❌ Nessun corso valido trovato.")
+                    return None
+
+                st.success(f"✅ {len(courses_list)} corsi estratti!")
+
+                return {
+                    'courses': courses_list,
+                    'total_count': len(courses_list),
+                    'skipped_count': len(skipped_rows),
+                    'file_name': uploaded_file.name
+                }
+
+            except Exception as e:
+                st.error(f"❌ Errore lettura Excel: {str(e)}")
+                import traceback
+                with st.expander("🔍 Dettagli errore"):
+                    st.code(traceback.format_exc())
+                return None
 
     def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
         """
@@ -782,7 +1115,11 @@ class CourseView:
         """
         if not st.session_state.course_parsed_data:
             return
-
+            # ### HASHTAG: CHECK IF BATCH OR SINGLE ###
+        if 'courses' in st.session_state.course_parsed_data:
+                # Batch format - show preview table
+                self._render_batch_course_preview(st.session_state.course_parsed_data)
+                return
         st.success("✅ Dati estratti con successo!")
 
         st.subheader("Riepilogo Corso")
@@ -949,19 +1286,36 @@ class CourseView:
 
         # ========== METHOD 2: EXCEL FILE UPLOAD ==========
         elif input_method == "excel":
-            st.info("""
-            **Formato Excel Richiesto:**
-            - **Riga 1:** TITOLO | [Nome del Corso]
-            - **Riga 2:** DESCRIZIONE | [Breve Descrizione]
-            - **Riga 3:** DATA INIZIO | [GG/MM/AAAA]
+            # ### HASHTAG: CHECK IF SHOWING BATCH PREVIEW ###
+            if st.session_state.course_show_summary and st.session_state.course_parsed_data:
+                # Show batch preview instead of single course summary
+                if 'courses' in st.session_state.course_parsed_data:
+                    self._render_batch_course_preview(st.session_state.course_parsed_data)
+                else:
+                    # Fallback to single course (backward compatibility)
+                    self._render_course_summary()
+                return
 
-            Le etichette devono essere nella Colonna A, i valori nella Colonna B.
-            """, icon="ℹ️")
+            # st.info("""
+            # **Formato Excel Richiesto (Verticale/Tabella):**
+            #
+            # | NOME CORSO | DESCRIZIONE | DATA INIZIO PUBBLICAZIONE |
+            # |------------|-------------|---------------------------|
+            # | Analitica  | Informatica | 1.1.2023                  |
+            # | Musica     | Art         | 1.1.2023                  |
+            # | Fine art   | Art         | 1.1.2023                  |
+            #
+            # **Note:**
+            # - La prima riga deve contenere i nomi delle colonne
+            # - Ogni riga successiva rappresenta un corso
+            # - Puoi includere quanti corsi desideri
+            # - Le righe incomplete verranno saltate
+            # """, icon="ℹ️")
 
             uploaded_file = st.file_uploader(
                 "Carica File Excel (.xlsx, .xls)",
                 type=['xlsx', 'xls'],
-                help="Il file deve seguire il formato specificato sopra"
+                help="File con uno o più corsi in formato tabella"
             )
 
             if uploaded_file is not None:
@@ -969,8 +1323,9 @@ class CourseView:
 
                 with col1:
                     if st.button("📊 Analizza File Excel", type="primary", use_container_width=True):
-                        # ### HASHTAG: PARSE EXCEL AND SHOW SUMMARY ###
-                        parsed_data = self._parse_excel_file(uploaded_file)
+                        # ### HASHTAG: PARSE EXCEL AND SHOW PREVIEW ###
+                        with st.spinner("🔍 Lettura file Excel..."):
+                            parsed_data = self._parse_excel_file(uploaded_file)
 
                         if parsed_data:
                             st.session_state.course_parsed_data = parsed_data

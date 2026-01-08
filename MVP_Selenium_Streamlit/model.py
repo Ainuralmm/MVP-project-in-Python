@@ -56,61 +56,88 @@ class OracleAutomator:
             return False
 
     def search_course(self, course_name):
+        """
+        Search for a course by name.
+
+        IMPORTANT: This method assumes you're already on the 'Corsi' page.
+        Call navigate_to_courses_page() first if you're not sure.
+
+        Returns:
+            True if course exists
+            False if course does not exist
+        """
         try:
-            # Remove any leading/trailing whitespace before converting case
+            # ### HASHTAG: ENSURE WE'RE ON THE COURSES PAGE ###
+            # If we just created a course, we're on the details page
+            # We need to navigate back to the courses list
+            # current_url = self.driver.current_url
+            # if "lsCrDtl" in current_url or "lsVwCrs" in current_url:
+            #     # We're on a course details or edit page, go back to list
+            #     print("Currently on course details page, navigating back to courses list...")
+            #     if not self.navigate_to_courses_page():
+            #         print("Failed to navigate back to courses page")
+            #         return False
+
+            # Clean and capitalize course name
             cleaned_course_name = course_name.strip()
             capitalised_course_name = cleaned_course_name.title()
-            ### HASHTAG: ADDED EXPLICIT WAIT BEFORE SEARCH BOX INTERACTION ✅ ###
+
+            # ### HASHTAG: FILL SEARCH FORM ###
             search_box_locator = (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')
-            search_box = self.wait.until(EC.element_to_be_clickable(search_box_locator))  # Wait for clickable
+            search_box = self.wait.until(EC.element_to_be_clickable(search_box_locator))
             search_box.clear()
             search_box.send_keys(capitalised_course_name)
-            self._pause_for_visual_check()# Pause after sending keys
+            self._pause_for_visual_check()
+
+            # ### HASHTAG: SEARCH DATE - FIND ALL COURSES AFTER THIS DATE ###
+            # This is the FILTER date (find courses published after 01/01/2000)
+            # NOT the course's actual publication date!
             date_input = self.wait.until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]')))
             date_input.clear()
-            date_input.send_keys("01/01/2000")
+            date_input.send_keys("01/01/2000")  # Search filter - find all courses after this date
             self._pause_for_visual_check()
+
+            # Click search
             search_button_locator = (By.XPATH,
                                      '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]')
-            search_button = self.wait.until(EC.element_to_be_clickable(search_button_locator))  # Wait for clickable
+            search_button = self.wait.until(EC.element_to_be_clickable(search_button_locator))
             search_button.click()
-            print("Clicked Search button.")
+            print(f"Clicked Search button for course: '{capitalised_course_name}'")
 
-            # --- Wait for results or 'No Data' ---
+            # ### HASHTAG: WAIT FOR RESULTS OR 'NO DATA' MESSAGE ###
             short_wait = WebDriverWait(self.driver, 7)
             try:
-                # First, check for the "no data" message. If it appears, the course definitely doesn't exist.
+                # Check for "no data" message first
                 short_wait.until(
                     EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"Nessun dato da visualizzare.")]')))
+                print(f"Search result: Course '{course_name}' NOT found (no data message)")
                 return False  # Course does not exist
             except TimeoutException:
-                # If there's no "no data" message, we now look for an EXACT match.
+                # No "no data" message, look for exact match
                 course_name_lower = cleaned_course_name.lower()
-                # Switched from `contains()` to an exact match `normalize-space(.)=` for precision.
-                # This XPath converts the link text to lowercase and compares it to our lowercase variable.
                 case_insensitive_xpath = f"//table[@summary='Corsi']//a[translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{course_name_lower}']"
-                self.wait.until(EC.presence_of_element_located((By.XPATH, case_insensitive_xpath)))
+
                 try:
-                    # Check if an element matching the case-insensitive XPath exists
                     short_wait.until(EC.presence_of_element_located((By.XPATH, case_insensitive_xpath)))
-                    print(f"Search successful: Found exact match for '{course_name}'.")
+                    print(f"Search result: Course '{course_name}' FOUND (exact match)")
                     return True  # Exact match found
                 except TimeoutException:
-                    print(f"Search failed: 'Nessun dato' not found, but exact match for '{course_name}' also not found.")
+                    print(f"Search result: Course '{course_name}' NOT found (no exact match)")
                     return False  # Exact match not found
+
         except Exception as e:
-            # If any other error occurs, safely assume it was not found.
-            print(f"An error occurred during search_course: {e}")
-            # Add screenshot on error
-            try:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                ss_path = f"error_search_course_{timestamp}.png"
-                self.driver.save_screenshot(ss_path)
-                print(f"Saved screenshot on search error: {ss_path}")
-            except Exception as ss_e:
-                print(f"Could not save screenshot: {ss_e}")
+            print(f"Error during search_course for '{course_name}': {e}")
             return False
+            # Save screenshot on error
+            # try:
+            #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            #     ss_path = f"error_search_course_{timestamp}.png"
+            #     self.driver.save_screenshot(ss_path)
+            #     print(f"Saved screenshot: {ss_path}")
+            # except Exception as ss_e:
+            #     print(f"Could not save screenshot: {ss_e}")
+            # return False
 
     def open_course_from_list(self, course_name):
         try:
@@ -141,61 +168,143 @@ class OracleAutomator:
             return False
 
     def create_course(self, course_details):
+        """
+        Create a SINGLE course in Oracle.
+
+        IMPORTANT: This assumes you're already on the Corsi page
+        (either from navigation or after a search).
+        """
         try:
             course_name = course_details['title'].title()
-            if not self.navigate_to_courses_page():
-                return f"‼️ Error: Cannot reach the Corsi page."
-            if self.search_course(course_name):
-                return f"‼️🕵🏻️ Attenzione: Il corso '{course_name}' esiste già."
+            print(f"Creating course: '{course_name}'")
 
-            crea_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srAtbl:_ATp:crtBtn"]/a/span')))
+            # ### FIXED: DON'T RE-NAVIGATE - JUST WAIT FOR PAGE TO BE READY ###
+            # We should already be on the Corsi page from search_course()
+            # Just wait for any loading to complete
+            time.sleep(1)
+
+            # Wait for blocking overlay to disappear (if any)
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
+            # ### CLICK CREATE BUTTON WITH ROBUST XPATH ###
+            crea_button_xpaths = [
+                "//a[.//span[text()='Create']]",  # English
+                "//a[.//span[text()='Crea']]",  # Italian
+                "//a[contains(@id, 'crtBtn')]",  # By ID fragment
+            ]
+
+            crea_button = None
+            for xpath in crea_button_xpaths:
+                try:
+                    crea_button = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    print(f"Found Create button with XPath: {xpath}")
+                    break
+                except TimeoutException:
+                    continue
+
+            if not crea_button:
+                self.driver.save_screenshot("error_create_button_not_found.png")
+                raise Exception("Could not find 'Create/Crea' button")
+
             crea_button.click()
+            print(f"Clicked 'Create' button for '{course_name}'")
             self._pause_for_visual_check()
 
-            # fill form fields (as before)
+            # ### FILL COURSE TITLE ###
             title_field = self.wait.until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:ttlInp::content"]')))
             title_field.send_keys(course_details['title'])
             title_field.send_keys(Keys.TAB)
             self._pause_for_visual_check()
 
+            # ### HASHTAG: FILL PROGRAMME (OPTIONAL) ###
             programma_field = self.wait.until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:slbsRte::_cic"]/div[1]/div[2]/div')))
             programma_field.send_keys(course_details.get('programme', ''))
             programma_field.send_keys(Keys.TAB)
             self._pause_for_visual_check()
 
+            # ### HASHTAG: FILL SHORT DESCRIPTION ###
             desc_breve = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, '//input[contains(@id, ":MAnt2:2:lsVwCrs:shdsInp::content")]')))
             desc_breve.send_keys(course_details.get('short_description', ''))
             desc_breve.send_keys(Keys.TAB)
             self._pause_for_visual_check()
 
+            # ### HASHTAG: FILL PUBLICATION DATE (FROM EXCEL!) ###
             data_inizio_pubblic = self.wait.until(EC.visibility_of_element_located(
                 (By.XPATH, '//input[contains(@id, ":MAnt2:2:lsVwCrs:sdDt::content")]')))
             data_inizio_pubblic.clear()
 
-            # This line will now work because 'start_date' is a proper date object
+            # Convert date object to string format DD/MM/YYYY
             publication_date_str = course_details['start_date'].strftime("%d/%m/%Y")
+            print(f"Setting publication date for '{course_name}': {publication_date_str}")
 
-            ### HASHTAG: THE SECOND FIX IS HERE
-            # You must send the formatted STRING to send_keys, not the original object.
             data_inizio_pubblic.send_keys(publication_date_str)
             data_inizio_pubblic.send_keys(Keys.TAB)
             self._pause_for_visual_check()
 
+            # ### HASHTAG: SAVE AND CLOSE ###
             salve_chiude = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:svcBtn"]')))
             salve_chiude.click()
+            print(f"Clicked 'Salva e Chiudi' for '{course_name}'")
             self._pause_for_visual_check()
 
-            # confirm by waiting for edizioni tab (page navigated to details)
+            # ### HASHTAG: WAIT FOR CONFIRMATION (EDIZIONI TAB APPEARS) ###
             edizioni_tab_xpath = '//div[contains(@id, ":lsCrDtl:UPsp1:classTile::text")]'
             self.wait.until(EC.presence_of_element_located((By.XPATH, edizioni_tab_xpath)))
+            print(f"✅ Course '{course_name}' created successfully!")
+
+            # ### NEW: CLICK BACK BUTTON TO RETURN TO CORSI LIST ###
+            if not self._click_back_button():
+                print("Warning: Could not click back button, but course was created")
 
             return f"✅🤩 Successo! Il corso '{course_name}' è stato creato."
+
         except Exception as e:
-            return f"‼️👩🏻‍✈️ Errore durante la creazione del corso. Controlla la console."
+            error_msg = f"‼️👩🏻‍✈️ Errore durante la creazione del corso '{course_details.get('title', 'UNKNOWN')}': {str(e)}"
+            print(error_msg)
+
+            # # Save screenshot on error
+            # try:
+            #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            #     course_title_safe = course_details.get('title', 'unknown').replace(' ', '_')
+            #     ss_path = f"error_create_{course_title_safe}_{timestamp}.png"
+            #     self.driver.save_screenshot(ss_path)
+            #     print(f"Saved error screenshot: {ss_path}")
+            # except:
+            #     pass
+
+            return error_msg
+
+    def _click_back_button(self):
+        """
+        Click the 'Indietro' (Back) button to return to the Corsi list.
+
+        This is needed after creating a course, as 'Salva e Chiudi'
+        takes us to the course details page.
+        """
+        try:
+            back_button = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, 'SPdonei')]")))
+
+            back_button.click()
+            print("Clicked 'Indietro' button")
+            # Wait for Create button to appear (confirms we're on Corsi list)
+            WebDriverWait(self.driver, 15).until(
+                EC.element_to_be_clickable((By.XPATH, "//a[.//span[text()='Create'] or .//span[text()='Crea']]")))
+            print("Back on Corsi list")
+            return True
+
+        except Exception as e:
+            print(f"Error clicking back button: {e}")
+            return False
 
     ### HASHTAG: UPDATED HELPER FOR ACTIVITY CREATION
     def _create_single_activity(self, unique_title, full_description, activity_date_obj, start_time_str, end_time_str,impegno_previsto_in_ore):
