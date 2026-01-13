@@ -1982,137 +1982,47 @@ class CourseView:
                     st.session_state.preserved_activity_data[f"{key_prefix}_ore"]
 
     def _render_edition_form(self, is_disabled):
-        # Restore data BEFORE rendering the form
-        if st.session_state.preserved_activity_data:
-            self._restore_activity_data(st.session_state.num_activities)
+        """
+        Enhanced edition form with three input methods:
+        1. Structured input (original form)
+        2. Excel file upload
+        3. Natural language processing (NLP)
+        """
 
-        num_activities = st.number_input(
-            "Quanti giorni di attività?",
-            min_value=1,
-            max_value=30,
-            key="num_activities"
+        # === CHECK FOR EDIT MODE FIRST ===
+        if st.session_state.get('edition_edit_mode', False) and st.session_state.get('edition_to_edit'):
+            self._render_editable_edition_form()
+            return
+
+        # === CHECK FOR SUMMARY/PREVIEW MODE ===
+        if st.session_state.get('edition_show_summary', False) and st.session_state.get('edition_parsed_data'):
+            self._render_edition_preview(st.session_state.edition_parsed_data)
+            return
+
+        # === INPUT METHOD SELECTION ===
+        st.subheader("Scegli il Metodo di Inserimento")
+
+        input_method = st.radio(
+            "Come vuoi inserire i dati dell'edizione?",
+            options=["structured", "excel", "nlp"],
+            format_func=lambda x: {
+                "structured": "📝 Input Strutturato (Form)",
+                "excel": "📊 Caricamento File Excel",
+                "nlp": "💬 Compilazione con AI"
+            }[x],
+            key="edition_input_method",
+            horizontal=True
         )
 
-        with st.form(key='edition_activity_form'):
-            st.subheader("Dettagli Edizione")
-            st.text_input("Nome del Corso Esistente", placeholder="Nome corso esistente",
-                          key="edition_course_name_key")
-            st.text_input("Titolo Edizione (opzionale)",
-                          placeholder="Lascia vuoto per usare il nome predefinito...",
-                          key="edition_title_key")
-            st.text_input("Data Inizio Edizione (GG/MM/AAAA)", key="edition_start_date_str_key")
-            st.text_input("Data Fine Edizione (GG/MM/AAAA)", key="edition_end_date_str_key")
-            st.text_area("Descrizione Edizione (opzionale)", placeholder="Descrizione...",
-                         key="edition_description_key")
-            st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA DE CARLI",
-                         key="edition_location_key")
-            st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: AEIT",
-                         key="edition_supplier_key")
-            st.text_input("Prezzo Edizione (€) (opzionale)", placeholder="Esempio: 1000",
-                          key="edition_price_key")
+        st.divider()
 
-            st.divider()
-            st.subheader("Dettagli Attività")
-
-            for i in range(num_activities):
-                st.markdown(f"**Giorno {i + 1}**")
-                cols = st.columns([2, 1, 1, 1])
-                with cols[0]:
-                    st.text_input(f"Titolo Attività", key=f"activity_title_{i}")
-                with cols[1]:
-                    st.text_input(f"Data (GG/MM/AAAA)", key=f"activity_date_{i}",
-                                  placeholder=f"Data giorno {i + 1}")
-                with cols[2]:
-                    st.text_input(f"Ora Inizio (HH.MM)", key=f"activity_start_time_{i}")
-                with cols[3]:
-                    st.text_input(f"Ora Fine (HH.MM)", key=f"activity_end_time_{i}")
-
-                st.text_area(f"Descrizione Attività", key=f"activity_desc_{i}", height=100)
-                st.text_input(f"Impegno previsto in ore", key=f"impegno_previsto_in_ore_{i}")
-                st.markdown("---")
-
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                submitted = st.form_submit_button("Crea Edizione e Attività", type="primary",
-                                                  disabled=is_disabled, use_container_width=True)
-            with col2:
-                st.form_submit_button("Pulisci 🧹", use_container_width=True,
-                                      on_click=self._clear_edition_activity_form_callback)
-
-        if submitted:
-            # PRESERVE DATA BEFORE PROCESSING
-            self._preserve_activity_data(num_activities)
-
-            course_name = st.session_state.edition_course_name_key
-            edition_title = st.session_state.edition_title_key
-            start_date_str = st.session_state.edition_start_date_str_key
-            end_date_str = st.session_state.edition_end_date_str_key
-            description = st.session_state.edition_description_key
-            location = st.session_state.edition_location_key
-            supplier = st.session_state.edition_supplier_key
-            price = st.session_state.edition_price_key
-
-            if not all([course_name.strip(), start_date_str.strip(), end_date_str.strip()]):
-                st.error("I campi 'Nome Corso', 'Data Inizio Edizione' e 'Data Fine Edizione' sono obbligatori.")
-                st.stop()
-
-            try:
-                edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
-                edition_end = datetime.strptime(end_date_str, "%d/%m/%Y").date()
-
-                if edition_end < edition_start:
-                    st.error("La data di fine edizione non può essere precedente alla data di inizio.")
-                    st.stop()
-
-                activities_list = []
-                for i in range(num_activities):
-                    title = st.session_state.get(f"activity_title_{i}", "")
-                    act_desc = st.session_state.get(f"activity_desc_{i}", "")
-                    act_date_str = st.session_state.get(f"activity_date_{i}", "")
-                    start_time = st.session_state.get(f"activity_start_time_{i}", "09.00")
-                    end_time = st.session_state.get(f"activity_end_time_{i}", "11.00")
-                    impegno_previsto_in_ore = st.session_state.get(f"impegno_previsto_in_ore_{i}", "")
-
-                    if not all([title.strip(), act_desc.strip(), act_date_str.strip()]):
-                        st.error(f"Titolo, Descrizione e Data sono obbligatori per l'attività del Giorno {i + 1}.")
-                        st.stop()
-
-                    act_date = datetime.strptime(act_date_str, "%d/%m/%Y").date()
-                    datetime.strptime(start_time, "%H.%M")
-                    datetime.strptime(end_time, "%H.%M")
-
-                    if act_date < edition_start or act_date > edition_end:
-                        st.error(
-                            f"La data dell'attività (Giorno {i + 1}: {act_date_str}) deve essere compresa tra l'inizio ({start_date_str}) e la fine ({end_date_str}) dell'edizione.")
-                        st.stop()
-
-                    activities_list.append({
-                        "title": title,
-                        "description": act_desc,
-                        "date": act_date,
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "impegno_previsto_in_ore": impegno_previsto_in_ore
-                    })
-
-            except ValueError:
-                st.error("Formato data o ora non valido. Usa GG/MM/AAAA e HH.MM (con il punto).")
-                st.stop()
-
-            st.session_state.edition_details = {
-                "course_name": course_name,
-                "edition_title": edition_title,
-                "edition_start_date": edition_start,
-                "edition_end_date": edition_end,
-                "location": location,
-                "supplier": supplier,
-                "price": price,
-                "description": description,
-                "activities": activities_list
-            }
-            st.session_state.app_state = "RUNNING_EDITION"
-            st.session_state.edition_message = ""
-            st.rerun()
+        # === RENDER BASED ON SELECTED METHOD ===
+        if input_method == "structured":
+            self._render_edition_structured_form(is_disabled)
+        elif input_method == "excel":
+            self._render_edition_excel_ui(is_disabled)
+        elif input_method == "nlp":
+            self._render_edition_nlp_ui(is_disabled)
 
     def _preserve_student_data(self, num_students):
         """Preserve current student data before form submission"""
