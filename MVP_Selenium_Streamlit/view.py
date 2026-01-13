@@ -2307,6 +2307,150 @@ class CourseView:
                     st.session_state.edition_show_summary = False
                     st.rerun()
 
+    def _render_edition_preview(self, edition_data: Dict[str, Any]):
+        """Display parsed edition and activities for confirmation"""
+
+        # Check if it's a list of editions (from Excel) or single edition (from NLP)
+        if 'editions' in edition_data:
+            # Multiple editions from Excel
+            self._render_multiple_editions_preview(edition_data)
+        else:
+            # Single edition (from NLP or single Excel row)
+            self._render_single_edition_preview(edition_data)
+
+    def _render_single_edition_preview(self, edition_data: Dict[str, Any]):
+        """Preview for a single edition with activities"""
+
+        st.success("✅ Dati estratti con successo!")
+        st.subheader("📋 Anteprima Edizione + Attività")
+
+        # Edition details card
+        st.markdown("### 📚 Dettagli Edizione")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**Corso:** {edition_data.get('course_name', '-')}")
+            st.write(f"**Titolo Edizione:** {edition_data.get('edition_title', '-') or 'Default (nome corso + data)'}")
+            st.write(f"**Data Inizio:** {edition_data.get('start_date', '-')}")
+            st.write(f"**Data Fine:** {edition_data.get('end_date', '-')}")
+        with col2:
+            st.write(f"**Aula:** {edition_data.get('location', '-') or 'Non specificata'}")
+            st.write(f"**Fornitore:** {edition_data.get('supplier', '-') or 'Non specificato'}")
+            st.write(f"**Costo:** €{edition_data.get('price', '-') or '0'}")
+            if edition_data.get('description'):
+                st.write(f"**Descrizione:** {edition_data.get('description', '')}")
+
+        # Activities table
+        st.markdown("### 📝 Attività")
+        activities = edition_data.get('activities', [])
+
+        if activities:
+            activities_preview = []
+            for idx, act in enumerate(activities):
+                activities_preview.append({
+                    '#': idx + 1,
+                    'Titolo': act.get('title', ''),
+                    'Data': act.get('date', ''),
+                    'Ora Inizio': act.get('start_time', ''),
+                    'Ora Fine': act.get('end_time', ''),
+                    'Impegno (ore)': act.get('impegno_ore', '') or act.get('impegno_previsto_in_ore', '')
+                })
+
+            activities_df = pd.DataFrame(activities_preview)
+            st.dataframe(activities_df, use_container_width=True, hide_index=True)
+        else:
+            st.warning("⚠️ Nessuna attività trovata. Aggiungi attività nella modalità Modifica.")
+
+        st.divider()
+
+        # Action buttons (NO FORM - regular buttons)
+        col1, col2, col3 = st.columns([2, 1, 1])
+
+        with col1:
+            if st.button("✅ Conferma e Crea Edizione", type="primary", use_container_width=True,
+                         key="edition_preview_confirm_btn"):
+                self._start_edition_creation(edition_data)
+
+        with col2:
+            if st.button("✏️ Modifica", use_container_width=True, key="edition_preview_edit_btn"):
+                st.session_state.edition_edit_mode = True
+                st.session_state.edition_to_edit = edition_data.copy()
+                st.session_state.edition_show_summary = False
+                st.rerun()
+
+        with col3:
+            if st.button("❌ Annulla", use_container_width=True, key="edition_preview_cancel_btn"):
+                st.session_state.edition_parsed_data = None
+                st.session_state.edition_show_summary = False
+                st.session_state.edition_input_method = "structured"
+                st.rerun()
+
+    def _render_multiple_editions_preview(self, data: Dict[str, Any]):
+        """Preview for multiple editions from Excel"""
+
+        editions = data.get('editions', [])
+
+        st.success(f"✅ {len(editions)} edizioni trovate con {data.get('total_activities', 0)} attività totali!")
+
+        st.subheader("📋 Anteprima Edizioni")
+
+        # Show each edition
+        for idx, edition in enumerate(editions):
+            with st.expander(
+                    f"📚 Edizione {idx + 1}: {edition.get('course_name', '')} - {edition.get('edition_title', 'Default')}",
+                    expanded=(idx == 0)):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**Corso:** {edition.get('course_name', '-')}")
+                    st.write(f"**Titolo:** {edition.get('edition_title', '-') or 'Default'}")
+                    st.write(f"**Date:** {edition.get('start_date', '-')} → {edition.get('end_date', '-')}")
+                with col2:
+                    st.write(f"**Aula:** {edition.get('location', '-') or 'N/A'}")
+                    st.write(f"**Fornitore:** {edition.get('supplier', '-') or 'N/A'}")
+                    st.write(f"**Costo:** €{edition.get('price', '0')}")
+
+                # Activities for this edition
+                activities = edition.get('activities', [])
+                if activities:
+                    st.markdown("**Attività:**")
+                    act_df = pd.DataFrame([{
+                        '#': i + 1,
+                        'Titolo': a.get('title', ''),
+                        'Data': a.get('date', ''),
+                        'Orario': f"{a.get('start_time', '')} - {a.get('end_time', '')}"
+                    } for i, a in enumerate(activities)])
+                    st.dataframe(act_df, use_container_width=True, hide_index=True)
+                else:
+                    st.warning("⚠️ Nessuna attività per questa edizione")
+
+        st.divider()
+
+        st.info(
+            "ℹ️ **Nota:** Le edizioni verranno create una alla volta. Questo processo potrebbe richiedere alcuni minuti.")
+
+        # For now, only support creating first edition (batch would need presenter changes)
+        col1, col2, col3 = st.columns([2, 1, 1])
+
+        with col1:
+            if st.button(f"✅ Crea Prima Edizione ({editions[0].get('course_name', '')})",
+                         type="primary", use_container_width=True, key="edition_multi_confirm_btn"):
+                # Create only the first edition
+                self._start_edition_creation(editions[0])
+
+        with col2:
+            if st.button("✏️ Modifica Prima", use_container_width=True, key="edition_multi_edit_btn"):
+                st.session_state.edition_edit_mode = True
+                st.session_state.edition_to_edit = editions[0].copy()
+                st.session_state.edition_show_summary = False
+                st.rerun()
+
+        with col3:
+            if st.button("❌ Annulla", use_container_width=True, key="edition_multi_cancel_btn"):
+                st.session_state.edition_parsed_data = None
+                st.session_state.edition_show_summary = False
+                st.session_state.edition_input_method = "structured"
+                st.rerun()
+
     def _restore_student_data(self, num_students):
         """Restore preserved student data to form fields"""
         # CRITICAL: Restore the count to show correct number of fields
