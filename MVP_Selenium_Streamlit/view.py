@@ -1116,6 +1116,13 @@ class CourseView:
             if f"impegno_previsto_in_ore_{i}" in st.session_state:
                 st.session_state[f"impegno_previsto_in_ore_{i}"] = ""
 
+    def _clear_edition_nlp_callback(self):
+        """Clear NLP input for edition"""
+        st.session_state.edition_nlp_clear_requested = True
+        st.session_state.edition_parsed_data = None
+        st.session_state.edition_show_summary = False
+        print("DEBUG: Edition NLP cleared")
+
     def _clear_student_form_callback(self):
         st.session_state.student_course_name_key = ""
         st.session_state.student_edition_name_key = ""
