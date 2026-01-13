@@ -344,7 +344,7 @@ class CourseView:
         if "course_nlp_input" not in st.session_state:
             st.session_state.course_nlp_input = ""  # Stores NLP text input
 
-        # ### HASHTAG: BATCH PROCESSING STATE VARIABLES ###
+        # BATCH PROCESSING STATE VARIABLES ###
         if "batch_course_data" not in st.session_state:
             st.session_state.batch_course_data = None
 
@@ -354,7 +354,7 @@ class CourseView:
         if "nlp_clear_requested" not in st.session_state:
             st.session_state.nlp_clear_requested = False
 
-        # INITIALIZE SPACY MODEL #
+        # INITIALIZE SPACY MODEL
         if "nlp_model" not in st.session_state:
             try:
                 st.session_state.nlp_model = spacy.load("it_core_news_sm")  # Italian model
@@ -363,7 +363,7 @@ class CourseView:
 
         # === EDITION INPUT METHOD STATES ===
         if "edition_input_method" not in st.session_state:
-            st.session_state.edition_input_method = "structured"
+            st.session_state.edition_input_method = "structured" # "structured", "excel", "nlp"
 
         if "edition_parsed_data" not in st.session_state:
             st.session_state.edition_parsed_data = None
@@ -379,6 +379,9 @@ class CourseView:
 
         if "edition_nlp_input" not in st.session_state:
             st.session_state.edition_nlp_input = ""
+
+        if "edition_nlp_clear_requested" not in st.session_state:
+            st.session_state.edition_nlp_clear_requested = False
 
         # --- Message States: EDITION and STUDENTS ---
         if "edition_message" not in st.session_state:
