@@ -1138,6 +1138,7 @@ class CourseView:
                 st.session_state[f"student_name_{i}"] = ""
 
     # NEW HELPER METHOD - DISPLAY SUMMARY WITH EDIT/CONFIRM
+    #---COURSE---
     def _render_course_summary(self):
         """
         Display parsed course data in a summary format with Edit/Confirm buttons.
@@ -1643,6 +1644,7 @@ class CourseView:
             'total_activities': sum(len(e['activities']) for e in editions_list)
         }
 
+    #---EDITION + ACTIVITY---
     def _parse_two_sheet_edition_excel(self, excel_file) -> Optional[Dict[str, Any]]:
         """Parse two-sheet format (Edizioni + Attivita sheets)"""
         try:
@@ -2252,15 +2254,6 @@ class CourseView:
         st.session_state.edition_message = ""
         st.rerun()
 
-    def _preserve_student_data(self, num_students):
-        """Preserve current student data before form submission"""
-        # CRITICAL: Also preserve the count itself
-        st.session_state.preserved_student_data["_count"] = num_students
-
-        for i in range(num_students):
-            st.session_state.preserved_student_data[f"student_{i}_name"] = \
-                st.session_state.get(f"student_name_{i}", "")
-
     def _render_edition_excel_ui(self, is_disabled):
         """UI for Excel file upload for edition + activities"""
 
@@ -2511,6 +2504,323 @@ class CourseView:
             st.error(f"❌ Errore conversione dati: {str(e)}")
             import traceback
             st.code(traceback.format_exc())
+
+    def _render_editable_edition_form(self):
+        """Editable form for modifying parsed edition data before creation"""
+
+        edition = st.session_state.edition_to_edit
+
+        if not edition:
+            st.warning("Nessun dato da modificare.")
+            if st.button("⬅️ Torna indietro", key="edition_edit_back_btn"):
+                st.session_state.edition_edit_mode = False
+                st.rerun()
+            return
+
+        st.subheader("✏️ Modifica Edizione + Attività")
+        st.info("Modifica i dettagli e clicca 'Crea Edizione' quando pronto.")
+
+        # Activity count management (outside form)
+        activities = edition.get('activities', [])
+
+        col_add, col_remove, col_spacer = st.columns([1, 1, 2])
+        with col_add:
+            if st.button("➕ Aggiungi Attività", key="edition_edit_add_activity"):
+                if 'activities' not in st.session_state.edition_to_edit:
+                    st.session_state.edition_to_edit['activities'] = []
+                st.session_state.edition_to_edit['activities'].append({
+                    'title': '',
+                    'description': '',
+                    'date': edition.get('start_date', ''),
+                    'start_time': '09.00',
+                    'end_time': '11.00',
+                    'impegno_ore': ''
+                })
+                st.rerun()
+
+        with col_remove:
+            if len(activities) > 1:
+                if st.button("➖ Rimuovi Ultima", key="edition_edit_remove_activity"):
+                    st.session_state.edition_to_edit['activities'].pop()
+                    st.rerun()
+
+        st.divider()
+
+        # Main form
+        with st.form(key='edit_edition_form'):
+            # Edition details
+            st.markdown("### 📚 Dettagli Edizione")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                course_name = st.text_input(
+                    "Nome Corso Esistente *",
+                    value=edition.get('course_name', ''),
+                    key="edit_edition_course_name"
+                )
+                edition_title = st.text_input(
+                    "Titolo Edizione (opzionale)",
+                    value=edition.get('edition_title', ''),
+                    key="edit_edition_title"
+                )
+                start_date = st.text_input(
+                    "Data Inizio Edizione (GG/MM/AAAA) *",
+                    value=edition.get('start_date', ''),
+                    key="edit_edition_start_date"
+                )
+                end_date = st.text_input(
+                    "Data Fine Edizione (GG/MM/AAAA) *",
+                    value=edition.get('end_date', ''),
+                    key="edit_edition_end_date"
+                )
+
+            with col2:
+                location = st.text_input(
+                    "Aula Principale",
+                    value=edition.get('location', ''),
+                    key="edit_edition_location"
+                )
+                supplier = st.text_input(
+                    "Fornitore Formazione",
+                    value=edition.get('supplier', ''),
+                    key="edit_edition_supplier"
+                )
+                price = st.text_input(
+                    "Costo (€)",
+                    value=edition.get('price', ''),
+                    key="edit_edition_price"
+                )
+                description = st.text_area(
+                    "Descrizione",
+                    value=edition.get('description', ''),
+                    key="edit_edition_description",
+                    height=100
+                )
+
+            # Activities
+            st.markdown("### 📝 Attività")
+
+            activities = edition.get('activities', [])
+            for idx, activity in enumerate(activities):
+                with st.expander(f"Attività {idx + 1}: {activity.get('title', 'Nuova Attività')}", expanded=True):
+                    col1, col2, col3 = st.columns([2, 1, 1])
+
+                    with col1:
+                        st.text_input(
+                            "Titolo *",
+                            value=activity.get('title', ''),
+                            key=f"edit_act_title_{idx}"
+                        )
+                    with col2:
+                        st.text_input(
+                            "Data (GG/MM/AAAA) *",
+                            value=activity.get('date', ''),
+                            key=f"edit_act_date_{idx}"
+                        )
+                    with col3:
+                        st.text_input(
+                            "Impegno (ore)",
+                            value=activity.get('impegno_ore', '') or activity.get('impegno_previsto_in_ore', ''),
+                            key=f"edit_act_hours_{idx}"
+                        )
+
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.text_input(
+                            "Ora Inizio (HH.MM)",
+                            value=activity.get('start_time', '09.00'),
+                            key=f"edit_act_start_{idx}"
+                        )
+                    with col2:
+                        st.text_input(
+                            "Ora Fine (HH.MM)",
+                            value=activity.get('end_time', '11.00'),
+                            key=f"edit_act_end_{idx}"
+                        )
+
+                    st.text_area(
+                        "Descrizione Attività",
+                        value=activity.get('description', ''),
+                        key=f"edit_act_desc_{idx}",
+                        height=80
+                    )
+
+            st.divider()
+
+            # Submit buttons
+            col1, col2, col3 = st.columns([2, 1, 1])
+
+            with col1:
+                submit = st.form_submit_button(
+                    "✅ Crea Edizione e Attività",
+                    type="primary",
+                    use_container_width=True
+                )
+
+            with col2:
+                preview = st.form_submit_button(
+                    "👁️ Anteprima",
+                    use_container_width=True
+                )
+
+            with col3:
+                cancel = st.form_submit_button(
+                    "❌ Annulla",
+                    use_container_width=True
+                )
+
+        # Handle form actions
+        if submit:
+            self._process_edited_edition(edition)
+        elif preview:
+            self._save_edited_edition_to_preview(edition)
+        elif cancel:
+            st.session_state.edition_edit_mode = False
+            st.session_state.edition_to_edit = None
+            st.session_state.edition_parsed_data = None
+            st.session_state.edition_show_summary = False
+            st.session_state.edition_input_method = "structured"
+            st.rerun()
+
+    def _process_edited_edition(self, original_edition):
+        """Validate and process the edited edition form"""
+
+        # Collect values from form
+        course_name = st.session_state.get('edit_edition_course_name', '').strip()
+        edition_title = st.session_state.get('edit_edition_title', '').strip()
+        start_date = st.session_state.get('edit_edition_start_date', '').strip()
+        end_date = st.session_state.get('edit_edition_end_date', '').strip()
+        location = st.session_state.get('edit_edition_location', '').strip()
+        supplier = st.session_state.get('edit_edition_supplier', '').strip()
+        price = st.session_state.get('edit_edition_price', '').strip()
+        description = st.session_state.get('edit_edition_description', '').strip()
+
+        # Validate required fields
+        if not course_name:
+            st.error("❌ Il nome del corso è obbligatorio.")
+            st.stop()
+        if not start_date:
+            st.error("❌ La data di inizio è obbligatoria.")
+            st.stop()
+        if not end_date:
+            st.error("❌ La data di fine è obbligatoria.")
+            st.stop()
+
+        # Validate dates
+        try:
+            start_date_obj = datetime.strptime(start_date, "%d/%m/%Y").date()
+            end_date_obj = datetime.strptime(end_date, "%d/%m/%Y").date()
+
+            if end_date_obj < start_date_obj:
+                st.error("❌ La data di fine non può essere prima della data di inizio.")
+                st.stop()
+        except ValueError:
+            st.error("❌ Formato data non valido. Usa GG/MM/AAAA.")
+            st.stop()
+
+        # Collect activities
+        activities_list = []
+        activities = original_edition.get('activities', [])
+
+        for idx in range(len(activities)):
+            act_title = st.session_state.get(f'edit_act_title_{idx}', '').strip()
+            act_date = st.session_state.get(f'edit_act_date_{idx}', '').strip()
+            act_start = st.session_state.get(f'edit_act_start_{idx}', '09.00').strip()
+            act_end = st.session_state.get(f'edit_act_end_{idx}', '11.00').strip()
+            act_desc = st.session_state.get(f'edit_act_desc_{idx}', '').strip()
+            act_hours = st.session_state.get(f'edit_act_hours_{idx}', '').strip()
+
+            if not act_title:
+                st.error(f"❌ Attività {idx + 1}: Il titolo è obbligatorio.")
+                st.stop()
+            if not act_date:
+                st.error(f"❌ Attività {idx + 1}: La data è obbligatoria.")
+                st.stop()
+
+            # Validate activity date
+            try:
+                act_date_obj = datetime.strptime(act_date, "%d/%m/%Y").date()
+            except ValueError:
+                st.error(f"❌ Attività {idx + 1}: Formato data non valido.")
+                st.stop()
+
+            activities_list.append({
+                'title': act_title,
+                'description': act_desc,
+                'date': act_date_obj,
+                'start_time': act_start,
+                'end_time': act_end,
+                'impegno_previsto_in_ore': act_hours
+            })
+
+        if not activities_list:
+            st.error("❌ Almeno una attività è richiesta.")
+            st.stop()
+
+        # Store and start automation
+        st.session_state.edition_details = {
+            'course_name': course_name,
+            'edition_title': edition_title,
+            'edition_start_date': start_date_obj,
+            'edition_end_date': end_date_obj,
+            'location': location,
+            'supplier': supplier,
+            'price': price,
+            'description': description,
+            'activities': activities_list
+        }
+
+        st.session_state.app_state = "RUNNING_EDITION"
+        st.session_state.edition_message = ""
+        st.session_state.edition_edit_mode = False
+        st.session_state.edition_to_edit = None
+        st.session_state.edition_parsed_data = None
+        st.session_state.edition_show_summary = False
+        st.rerun()
+
+    def _save_edited_edition_to_preview(self, original_edition):
+        """Save edited data and return to preview"""
+
+        activities = original_edition.get('activities', [])
+        updated_activities = []
+
+        for idx in range(len(activities)):
+            updated_activities.append({
+                'title': st.session_state.get(f'edit_act_title_{idx}', ''),
+                'description': st.session_state.get(f'edit_act_desc_{idx}', ''),
+                'date': st.session_state.get(f'edit_act_date_{idx}', ''),
+                'start_time': st.session_state.get(f'edit_act_start_{idx}', '09.00'),
+                'end_time': st.session_state.get(f'edit_act_end_{idx}', '11.00'),
+                'impegno_ore': st.session_state.get(f'edit_act_hours_{idx}', '')
+            })
+
+        updated_edition = {
+            'course_name': st.session_state.get('edit_edition_course_name', ''),
+            'edition_title': st.session_state.get('edit_edition_title', ''),
+            'start_date': st.session_state.get('edit_edition_start_date', ''),
+            'end_date': st.session_state.get('edit_edition_end_date', ''),
+            'location': st.session_state.get('edit_edition_location', ''),
+            'supplier': st.session_state.get('edit_edition_supplier', ''),
+            'price': st.session_state.get('edit_edition_price', ''),
+            'description': st.session_state.get('edit_edition_description', ''),
+            'activities': updated_activities
+        }
+
+        st.session_state.edition_parsed_data = updated_edition
+        st.session_state.edition_show_summary = True
+        st.session_state.edition_edit_mode = False
+        st.session_state.edition_to_edit = None
+        st.rerun()
+
+    #---STUDENT---
+    def _preserve_student_data(self, num_students):
+        """Preserve current student data before form submission"""
+        # CRITICAL: Also preserve the count itself
+        st.session_state.preserved_student_data["_count"] = num_students
+
+        for i in range(num_students):
+            st.session_state.preserved_student_data[f"student_{i}_name"] = \
+                st.session_state.get(f"student_name_{i}", "")
 
     def _restore_student_data(self, num_students):
         """Restore preserved student data to form fields"""
