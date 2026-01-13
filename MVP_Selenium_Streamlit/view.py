@@ -2451,6 +2451,67 @@ class CourseView:
                 st.session_state.edition_input_method = "structured"
                 st.rerun()
 
+    def _start_edition_creation(self, edition_data: Dict[str, Any]):
+        """Convert parsed data to model format and start automation"""
+        try:
+            # Convert string dates to date objects
+            start_date = edition_data.get('start_date', '')
+            end_date = edition_data.get('end_date', '')
+
+            if isinstance(start_date, str):
+                start_date_obj = datetime.strptime(start_date, "%d/%m/%Y").date()
+            else:
+                start_date_obj = start_date
+
+            if isinstance(end_date, str):
+                end_date_obj = datetime.strptime(end_date, "%d/%m/%Y").date()
+            else:
+                end_date_obj = end_date
+
+            # Convert activities
+            activities_list = []
+            for act in edition_data.get('activities', []):
+                act_date = act.get('date', '')
+                if isinstance(act_date, str):
+                    act_date_obj = datetime.strptime(act_date, "%d/%m/%Y").date()
+                else:
+                    act_date_obj = act_date
+
+                activities_list.append({
+                    'title': act.get('title', ''),
+                    'description': act.get('description', ''),
+                    'date': act_date_obj,
+                    'start_time': act.get('start_time', '09.00'),
+                    'end_time': act.get('end_time', '11.00'),
+                    'impegno_previsto_in_ore': act.get('impegno_ore', '') or act.get('impegno_previsto_in_ore', '')
+                })
+
+            # Store in session state (format expected by presenter/model)
+            st.session_state.edition_details = {
+                'course_name': edition_data.get('course_name', ''),
+                'edition_title': edition_data.get('edition_title', ''),
+                'edition_start_date': start_date_obj,
+                'edition_end_date': end_date_obj,
+                'location': edition_data.get('location', ''),
+                'supplier': edition_data.get('supplier', ''),
+                'price': edition_data.get('price', ''),
+                'description': edition_data.get('description', ''),
+                'activities': activities_list
+            }
+
+            # Start automation
+            st.session_state.app_state = "RUNNING_EDITION"
+            st.session_state.edition_message = ""
+            st.session_state.edition_parsed_data = None
+            st.session_state.edition_show_summary = False
+            st.session_state.edition_edit_mode = False
+            st.rerun()
+
+        except ValueError as e:
+            st.error(f"❌ Errore conversione dati: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+
     def _restore_student_data(self, num_students):
         """Restore preserved student data to form fields"""
         # CRITICAL: Restore the count to show correct number of fields
