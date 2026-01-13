@@ -2172,6 +2172,52 @@ class CourseView:
             st.session_state.preserved_student_data[f"student_{i}_name"] = \
                 st.session_state.get(f"student_name_{i}", "")
 
+    def _render_edition_excel_ui(self, is_disabled):
+        """UI for Excel file upload for edition + activities"""
+
+        st.info("""
+        **Formato Excel Supportato:**
+
+        **Opzione 1 - Due fogli separati:**
+        - Foglio "Edizioni": ID_EDIZIONE, NOME_CORSO, TITOLO, DATA_INIZIO, DATA_FINE, AULA, FORNITORE, COSTO
+        - Foglio "Attivita": ID_EDIZIONE, TITOLO, DESCRIZIONE, DATA, ORA_INIZIO, ORA_FINE, IMPEGNO_ORE
+
+        **Opzione 2 - Foglio singolo con marcatori:**
+        - Colonna TIPO: "EDIZIONE" o "ATTIVITA" per ogni riga
+
+        **Opzione 3 - Formato originale:**
+        - Intestazione edizione → dati edizione → intestazione attività → dati attività
+        """, icon="ℹ️")
+
+        uploaded_file = st.file_uploader(
+            "Carica File Excel (.xlsx, .xls)",
+            type=['xlsx', 'xls'],
+            help="File con edizione e attività",
+            key="edition_excel_uploader"
+        )
+
+        if uploaded_file is not None:
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                if st.button("📊 Analizza File Excel", type="primary", use_container_width=True,
+                             key="analyze_edition_excel_btn"):
+                    with st.spinner("🔍 Lettura file Excel..."):
+                        parsed_data = self._parse_edition_excel_file(uploaded_file)
+
+                    if parsed_data:
+                        st.session_state.edition_parsed_data = parsed_data
+                        st.session_state.edition_show_summary = True
+                        st.rerun()
+                    else:
+                        st.error("❌ Impossibile estrarre i dati dal file. Verifica il formato.")
+
+            with col2:
+                if st.button("🧹 Cancella File", use_container_width=True, key="clear_edition_excel_btn"):
+                    st.session_state.edition_parsed_data = None
+                    st.session_state.edition_show_summary = False
+                    st.rerun()
+
     def _restore_student_data(self, num_students):
         """Restore preserved student data to form fields"""
         # CRITICAL: Restore the count to show correct number of fields
