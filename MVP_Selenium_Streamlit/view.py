@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import pandas as pd
 import spacy
 from typing import Optional, Dict, Any, Tuple, List
@@ -360,6 +360,25 @@ class CourseView:
                 st.session_state.nlp_model = spacy.load("it_core_news_sm")  # Italian model
             except OSError:
                 st.session_state.nlp_model = None  # Will show error in UI if not loaded
+
+        # === EDITION INPUT METHOD STATES ===
+        if "edition_input_method" not in st.session_state:
+            st.session_state.edition_input_method = "structured"
+
+        if "edition_parsed_data" not in st.session_state:
+            st.session_state.edition_parsed_data = None
+
+        if "edition_show_summary" not in st.session_state:
+            st.session_state.edition_show_summary = False
+
+        if "edition_edit_mode" not in st.session_state:
+            st.session_state.edition_edit_mode = False
+
+        if "edition_to_edit" not in st.session_state:
+            st.session_state.edition_to_edit = None
+
+        if "edition_nlp_input" not in st.session_state:
+            st.session_state.edition_nlp_input = ""
 
         # --- Message States: EDITION and STUDENTS ---
         if "edition_message" not in st.session_state:
@@ -1437,6 +1456,480 @@ class CourseView:
                              on_click=self._clear_nlp_input_callback,
                              key="clear_nlp_text_button"):
                     pass  #callback handles the clearing
+
+    def _parse_edition_excel_file(self, uploaded_file) -> Optional[Dict[str, Any]]:
+        """
+        Universal parser that auto-detects Excel format:
+
+        Format 1: Two sheets (Edizioni + Attivita) with ID linking
+        Format 2: Single sheet with TIPO column (EDIZIONE/ATTIVITA markers)
+        Format 3: Single sheet with edition headers followed by activity rows
+        """
+        try:
+            excel_file = pd.ExcelFile(uploaded_file, engine='openpyxl')
+            sheet_names = excel_file.sheet_names
+            sheet_names_lower = [s.lower() for s in sheet_names]
+
+            st.info(f"📊 Fogli trovati: {', '.join(sheet_names)}")
+
+            # === DETECT FORMAT ===
+
+            # Check for two-sheet format
+            has_editions_sheet = any('edizion' in s for s in sheet_names_lower)
+            has_activities_sheet = any('attivit' in s for s in sheet_names_lower)
+
+            if has_editions_sheet and has_activities_sheet:
+                st.success("✅ Rilevato formato: Due fogli separati (Edizioni + Attività)")
+                return self._parse_two_sheet_format(excel_file)
+
+            # Single sheet - check for TIPO column or detect pattern
+            df = pd.read_excel(excel_file, sheet_name=0, header=None)
+
+            # Check first column for "TIPO" or "EDIZIONE"/"ATTIVITA" markers
+            first_col_values = df.iloc[:, 0].astype(str).str.lower().tolist()
+
+            if 'tipo' in first_col_values or any('edizione' in v for v in first_col_values):
+                st.success("✅ Rilevato formato: Foglio singolo con marcatori TIPO")
+                return self._parse_single_sheet_with_markers(excel_file)
+
+            # Check for your original format (header pattern detection)
+            if self._detect_original_format(df):
+                st.success("✅ Rilevato formato: Foglio singolo con intestazioni ripetute")
+                return self._parse_original_format(excel_file)
+
+            st.error("❌ Formato Excel non riconosciuto")
+            return None
+
+        except Exception as e:
+            st.error(f"❌ Errore: {str(e)}")
+            return None
+
+    def _parse_single_sheet_with_markers(self, excel_file) -> Optional[Dict[str, Any]]:
+        """Parse single sheet with TIPO column (EDIZIONE/ATTIVITA markers)"""
+        df = pd.read_excel(excel_file, sheet_name=0)
+        df.columns = df.columns.str.strip().str.lower()
+
+        editions_list = []
+        current_edition = None
+
+        for idx, row in df.iterrows():
+            row_type = str(row.get('tipo', '')).strip().lower()
+
+            if 'edizione' in row_type:
+                # Save previous edition if exists
+                if current_edition:
+                    editions_list.append(current_edition)
+
+                # Start new edition
+                current_edition = {
+                    'course_name': str(row.get('nome_corso', '')).strip(),
+                    'edition_title': str(row.get('titolo', '')).strip(),
+                    'start_date': normalize_date(row.get('data_inizio', '')),
+                    'end_date': normalize_date(row.get('data_fine', '')),
+                    'location': str(row.get('aula', '')).strip(),
+                    'supplier': str(row.get('fornitore', '')).strip(),
+                    'price': str(row.get('costo', '')).strip(),
+                    'description': '',
+                    'activities': []
+                }
+
+            elif 'attivita' in row_type and current_edition:
+                # Add activity to current edition
+                activity = {
+                    'title': str(row.get('titolo', '')).strip(),
+                    'description': str(row.get('descrizione', '')).strip(),
+                    'date': normalize_date(row.get('data', '')),
+                    'start_time': str(row.get('ora_inizio', '09.00')).replace(':', '.'),
+                    'end_time': str(row.get('ora_fine', '11.00')).replace(':', '.'),
+                    'impegno_ore': str(row.get('impegno', '')).strip()
+                }
+                current_edition['activities'].append(activity)
+
+        # Don't forget the last edition
+        if current_edition:
+            editions_list.append(current_edition)
+
+        return {
+            'editions': editions_list,
+            'total_editions': len(editions_list),
+            'total_activities': sum(len(e['activities']) for e in editions_list)
+        }
+
+    def _detect_original_format(self, df) -> bool:
+        """Detect if Excel uses original format with repeating headers"""
+        # Look for "Nome del Corso Esistente" appearing multiple times
+        first_col = df.iloc[:, 0].astype(str).str.lower()
+        header_count = sum(1 for v in first_col if 'nome del corso' in v or 'titolo del attivita' in v)
+        return header_count >= 2
+
+    def _parse_original_format(self, excel_file) -> Optional[Dict[str, Any]]:
+        """Parse your original format with edition headers followed by activities"""
+        df = pd.read_excel(excel_file, sheet_name=0, header=None)
+
+        editions_list = []
+        current_edition = None
+        reading_activities = False
+        activity_header_row = None
+
+        for idx, row in df.iterrows():
+            first_cell = str(row.iloc[0]).strip().lower() if pd.notna(row.iloc[0]) else ''
+
+            # Detect edition header row
+            if 'nome del corso' in first_cell:
+                # Next row will have edition data
+                if current_edition:
+                    editions_list.append(current_edition)
+                current_edition = None
+                reading_activities = False
+                continue
+
+            # Detect activity header row
+            if 'titolo del attivita' in first_cell or 'titolo attivita' in first_cell:
+                reading_activities = True
+                activity_header_row = idx
+                continue
+
+            # Skip empty rows
+            if row.isna().all() or first_cell == '' or first_cell == 'nan':
+                continue
+
+            # Parse edition data (row after edition header)
+            if current_edition is None and not reading_activities:
+                current_edition = {
+                    'course_name': str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else '',
+                    'edition_title': str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else '',
+                    'start_date': normalize_date(row.iloc[2]) if len(row) > 2 else '',
+                    'end_date': normalize_date(row.iloc[3]) if len(row) > 3 else '',
+                    'location': str(row.iloc[4]).strip() if len(row) > 4 and pd.notna(row.iloc[4]) else '',
+                    'supplier': str(row.iloc[5]).strip() if len(row) > 5 and pd.notna(row.iloc[5]) else '',
+                    'price': str(row.iloc[6]).strip() if len(row) > 6 and pd.notna(row.iloc[6]) else '',
+                    'description': '',
+                    'activities': []
+                }
+                continue
+
+            # Parse activity data
+            if reading_activities and current_edition:
+                activity = {
+                    'title': str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else '',
+                    'description': str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else '',
+                    'date': normalize_date(row.iloc[2]) if len(row) > 2 else '',
+                    'start_time': str(row.iloc[3]).replace(':', '.') if len(row) > 3 and pd.notna(
+                        row.iloc[3]) else '09.00',
+                    'end_time': str(row.iloc[4]).replace(':', '.') if len(row) > 4 and pd.notna(
+                        row.iloc[4]) else '11.00',
+                    'impegno_ore': str(row.iloc[6]).strip() if len(row) > 6 and pd.notna(row.iloc[6]) else ''
+                }
+                if activity['title']:  # Only add if has title
+                    current_edition['activities'].append(activity)
+
+        # Don't forget the last edition
+        if current_edition:
+            editions_list.append(current_edition)
+
+        return {
+            'editions': editions_list,
+            'total_editions': len(editions_list),
+            'total_activities': sum(len(e['activities']) for e in editions_list)
+        }
+
+    def _parse_two_sheet_edition_excel(self, excel_file) -> Optional[Dict[str, Any]]:
+        """Parse two-sheet format (Edizioni + Attivita sheets)"""
+        try:
+            # Find sheet names (case-insensitive)
+            edizioni_sheet = None
+            attivita_sheet = None
+
+            for sheet_name in excel_file.sheet_names:
+                if 'edizion' in sheet_name.lower():
+                    edizioni_sheet = sheet_name
+                elif 'attivit' in sheet_name.lower():
+                    attivita_sheet = sheet_name
+
+            if not edizioni_sheet or not attivita_sheet:
+                st.error("❌ File deve contenere fogli 'Edizioni' e 'Attivita'")
+                return None
+
+            # Read both sheets
+            df_edizioni = pd.read_excel(excel_file, sheet_name=edizioni_sheet, header=0)
+            df_attivita = pd.read_excel(excel_file, sheet_name=attivita_sheet, header=0)
+
+            # Normalize column names
+            df_edizioni.columns = df_edizioni.columns.str.strip().str.lower()
+            df_attivita.columns = df_attivita.columns.str.strip().str.lower()
+
+            st.info(f"📊 Colonne Edizioni: {', '.join(df_edizioni.columns)}")
+            st.info(f"📊 Colonne Attività: {', '.join(df_attivita.columns)}")
+
+            # Column mappings for editions
+            edition_mappings = {
+                'id': ['id_edizione', 'id', 'edizione_id'],
+                'course_name': ['nome_corso', 'nome del corso esistente', 'corso'],
+                'title': ['titolo_edizione', 'titolo (optionale)', 'titolo'],
+                'start_date': ['data_inizio', 'data inizio edizione', 'data_inizio_edizione'],
+                'end_date': ['data_fine', 'data fine edizione', 'data_fine_edizione'],
+                'location': ['aula', 'aula principale', 'aula_principale'],
+                'supplier': ['fornitore', 'fornitore formazione'],
+                'price': ['costo', 'prezzo'],
+                'description': ['descrizione', 'desc']
+            }
+
+            # Column mappings for activities
+            activity_mappings = {
+                'edition_id': ['id_edizione', 'edizione_id', 'id'],
+                'title': ['titolo_attivita', 'titolo del attivita', 'titolo'],
+                'description': ['descrizione', 'descrizione per elen', 'desc'],
+                'date': ['data_attivita', "data attivita'", 'data'],
+                'start_time': ['ora_inizio', 'ora inizio'],
+                'end_time': ['ora_fine', 'ora fine'],
+                'hours': ['impegno_ore', 'impegno in ore', 'ore']
+            }
+
+            # Find actual column names
+            def find_column(df, possible_names):
+                for name in possible_names:
+                    if name in df.columns:
+                        return name
+                return None
+
+            edition_cols = {k: find_column(df_edizioni, v) for k, v in edition_mappings.items()}
+            activity_cols = {k: find_column(df_attivita, v) for k, v in activity_mappings.items()}
+
+            # Parse editions
+            editions_list = []
+            for idx, row in df_edizioni.iterrows():
+                edition_id = str(row[edition_cols['id']]) if edition_cols['id'] else f"E{idx + 1}"
+
+                # Validate required fields
+                course_name = row[edition_cols['course_name']] if edition_cols['course_name'] else None
+                start_date = row[edition_cols['start_date']] if edition_cols['start_date'] else None
+                end_date = row[edition_cols['end_date']] if edition_cols['end_date'] else None
+
+                if pd.isna(course_name) or pd.isna(start_date) or pd.isna(end_date):
+                    continue
+
+                # Normalize dates
+                start_date_str = normalize_date(start_date)
+                end_date_str = normalize_date(end_date)
+
+                if not start_date_str or not end_date_str:
+                    st.warning(f"⚠️ Riga {idx + 2}: Formato data non valido")
+                    continue
+
+                edition = {
+                    'id': edition_id,
+                    'course_name': str(course_name).strip(),
+                    'edition_title': str(row[edition_cols['title']]).strip() if edition_cols['title'] and pd.notna(
+                        row[edition_cols['title']]) else '',
+                    'start_date': start_date_str,
+                    'end_date': end_date_str,
+                    'location': str(row[edition_cols['location']]).strip() if edition_cols['location'] and pd.notna(
+                        row[edition_cols['location']]) else '',
+                    'supplier': str(row[edition_cols['supplier']]).strip() if edition_cols['supplier'] and pd.notna(
+                        row[edition_cols['supplier']]) else '',
+                    'price': str(row[edition_cols['price']]).strip() if edition_cols['price'] and pd.notna(
+                        row[edition_cols['price']]) else '',
+                    'description': str(row[edition_cols['description']]).strip() if edition_cols[
+                                                                                        'description'] and pd.notna(
+                        row[edition_cols['description']]) else '',
+                    'activities': []
+                }
+                editions_list.append(edition)
+
+            # Parse activities and link to editions
+            for idx, row in df_attivita.iterrows():
+                edition_id = str(row[activity_cols['edition_id']]) if activity_cols['edition_id'] else None
+
+                if not edition_id:
+                    continue
+
+                # Find the edition this activity belongs to
+                for edition in editions_list:
+                    if edition['id'] == edition_id:
+                        activity_date = row[activity_cols['date']] if activity_cols['date'] else None
+                        date_str = normalize_date(activity_date) if activity_date else ''
+
+                        # Format times
+                        start_time = row[activity_cols['start_time']] if activity_cols['start_time'] else '09.00'
+                        end_time = row[activity_cols['end_time']] if activity_cols['end_time'] else '11.00'
+
+                        # Convert time format if needed
+                        if isinstance(start_time, (int, float)):
+                            hours = int(start_time)
+                            minutes = int((start_time - hours) * 60)
+                            start_time = f"{hours:02d}.{minutes:02d}"
+                        else:
+                            start_time = str(start_time).replace(':', '.')
+
+                        if isinstance(end_time, (int, float)):
+                            hours = int(end_time)
+                            minutes = int((end_time - hours) * 60)
+                            end_time = f"{hours:02d}.{minutes:02d}"
+                        else:
+                            end_time = str(end_time).replace(':', '.')
+
+                        activity = {
+                            'title': str(row[activity_cols['title']]).strip() if activity_cols['title'] and pd.notna(
+                                row[activity_cols['title']]) else f'Attività {len(edition["activities"]) + 1}',
+                            'description': str(row[activity_cols['description']]).strip() if activity_cols[
+                                                                                                 'description'] and pd.notna(
+                                row[activity_cols['description']]) else '',
+                            'date': date_str,
+                            'start_time': start_time,
+                            'end_time': end_time,
+                            'impegno_ore': str(row[activity_cols['hours']]).strip() if activity_cols[
+                                                                                           'hours'] and pd.notna(
+                                row[activity_cols['hours']]) else ''
+                        }
+                        edition['activities'].append(activity)
+                        break
+
+            if not editions_list:
+                st.error("❌ Nessuna edizione valida trovata")
+                return None
+
+            st.success(f"✅ Trovate {len(editions_list)} edizioni con le loro attività!")
+
+            return {
+                'editions': editions_list,
+                'total_editions': len(editions_list),
+                'total_activities': sum(len(e['activities']) for e in editions_list),
+                'file_name': excel_file.io.name if hasattr(excel_file.io, 'name') else 'Excel'
+            }
+
+        except Exception as e:
+            st.error(f"❌ Errore parsing: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+            return None
+
+    def _parse_edition_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse natural language input to extract edition and activities.
+
+        Example input:
+        "Crea edizione per corso Data Science01 titolo Winter Edition
+         data inizio 12/02/2026 data fine 20/02/2026
+         aula Aula de carli fornitore Aeit costo 1000
+         attività: primo giorno 12/02/2026 ore 09.00-11.00,
+         secondo giorno 13/02/2026 ore 10.00-12.00"
+        """
+        import re
+
+        parsed = {
+            'course_name': '',
+            'edition_title': '',
+            'start_date': '',
+            'end_date': '',
+            'location': '',
+            'supplier': '',
+            'price': '',
+            'description': '',
+            'activities': []
+        }
+
+        text_lower = text.lower()
+        original_text = text
+
+        # Extract course name
+        course_patterns = [
+            r'(?:corso|per corso|del corso)\s+["\']?([^"\']+?)["\']?\s+(?:titolo|data|edizione)',
+            r'corso\s+([A-Za-z0-9\s]+?)(?:\s+titolo|\s+data|\s+edizione|,|$)',
+        ]
+        for pattern in course_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                parsed['course_name'] = match.group(1).strip().title()
+                break
+
+        # Extract edition title
+        title_patterns = [
+            r'titolo\s+["\']?([^"\']+?)["\']?\s+(?:data|aula|fornitore|attività)',
+            r'titolo\s+([^,]+?)(?:,|\s+data)',
+        ]
+        for pattern in title_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                parsed['edition_title'] = match.group(1).strip().title()
+                break
+
+        # Extract dates
+        date_pattern = r'(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})'
+        dates = re.findall(date_pattern, text)
+
+        # Try to identify start and end dates
+        start_match = re.search(r'(?:data\s+)?inizio\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})', text_lower)
+        end_match = re.search(r'(?:data\s+)?fine\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})', text_lower)
+
+        if start_match:
+            parsed['start_date'] = normalize_date(start_match.group(1)) or ''
+        elif dates:
+            parsed['start_date'] = normalize_date(dates[0]) or ''
+
+        if end_match:
+            parsed['end_date'] = normalize_date(end_match.group(1)) or ''
+        elif len(dates) > 1:
+            parsed['end_date'] = normalize_date(dates[1]) or ''
+
+        # Extract location
+        location_match = re.search(r'aula\s+([^,]+?)(?:,|\s+fornitore|\s+costo|\s+attività|$)', text_lower)
+        if location_match:
+            parsed['location'] = location_match.group(1).strip().title()
+
+        # Extract supplier
+        supplier_match = re.search(r'fornitore\s+([^,]+?)(?:,|\s+costo|\s+aula|\s+attività|$)', text_lower)
+        if supplier_match:
+            parsed['supplier'] = supplier_match.group(1).strip().title()
+
+        # Extract price
+        price_match = re.search(r'(?:costo|prezzo)\s+(\d+)', text_lower)
+        if price_match:
+            parsed['price'] = price_match.group(1)
+
+        # Extract activities
+        # Pattern: "primo giorno 12/02/2026 ore 09.00-11.00" or similar
+        activity_section = re.search(r'attività[:\s]+(.+)', text_lower, re.DOTALL)
+        if activity_section:
+            activity_text = activity_section.group(1)
+
+            # Find individual activities
+            activity_patterns = [
+                r'(\w+\s+giorno)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})',
+                r'(giorno\s+\d+|day\s+\d+)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})',
+            ]
+
+            for pattern in activity_patterns:
+                matches = re.findall(pattern, activity_text)
+                for match in matches:
+                    title, date_str, start_time, end_time = match
+                    parsed['activities'].append({
+                        'title': title.strip().title(),
+                        'description': '',
+                        'date': normalize_date(date_str) or '',
+                        'start_time': start_time.replace(':', '.'),
+                        'end_time': end_time.replace(':', '.'),
+                        'impegno_ore': ''
+                    })
+
+        # If no activities found, try to detect number of days
+        if not parsed['activities']:
+            days_match = re.search(r'(\d+)\s+(?:giorni|days|attività)', text_lower)
+            if days_match and parsed['start_date']:
+                num_days = int(days_match.group(1))
+                start_date_obj = datetime.strptime(parsed['start_date'], "%d/%m/%Y")
+
+                for i in range(num_days):
+                    activity_date = start_date_obj + timedelta(days=i)
+                    parsed['activities'].append({
+                        'title': f'Giorno {i + 1}',
+                        'description': '',
+                        'date': activity_date.strftime("%d/%m/%Y"),
+                        'start_time': '09.00',
+                        'end_time': '11.00',
+                        'impegno_ore': ''
+                    })
+
+        return parsed
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
