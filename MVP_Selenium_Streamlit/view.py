@@ -2094,6 +2094,88 @@ class CourseView:
         if submitted:
             self._process_structured_edition_submission(num_activities)
 
+    def _render_edition_nlp_ui(self, is_disabled):
+        """UI for natural language input for edition + activities"""
+
+        st.info("""
+        **Scrivi una frase che descriva l'edizione e le attività**, ad esempio:
+
+        "Crea edizione per corso Data Science01 titolo Winter Edition
+        data inizio 12/02/2026 data fine 20/02/2026
+        aula Aula de carli fornitore Aeit costo 1000
+        attività: primo giorno 12/02/2026 ore 09.00-11.00,
+        secondo giorno 13/02/2026 ore 10.00-12.00"
+
+        Oppure più semplice:
+        "Edizione per corso Python Base dal 15/03/2026 al 17/03/2026, 3 giorni di attività"
+        """, icon="💡")
+
+        # Handle clear request
+        if st.session_state.get('edition_nlp_clear_requested', False):
+            st.session_state.edition_nlp_input = ""
+            st.session_state.edition_nlp_clear_requested = False
+            st.rerun()
+
+        nlp_text = st.text_area(
+            "Descrivi l'edizione in linguaggio naturale:",
+            height=200,
+            value=st.session_state.edition_nlp_input,
+            placeholder="Crea edizione per corso [nome corso] data inizio [data] data fine [data]...",
+            help="Scrivi una frase completa con i dettagli dell'edizione e delle attività",
+            key="edition_nlp_text_area"
+        )
+
+        # Update session state
+        st.session_state.edition_nlp_input = nlp_text
+
+        # Show character count
+        text_length = len(nlp_text.strip()) if nlp_text else 0
+        if text_length > 0:
+            st.caption(f"✏️ {text_length} caratteri inseriti")
+        else:
+            st.warning("⚠️ Inserisci del testo per abilitare l'analisi", icon="⚠️")
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            if st.button("🤖 Analizza Testo (NLP)", type="primary", use_container_width=True,
+                         key="analyze_edition_nlp_btn"):
+                if not nlp_text or not nlp_text.strip():
+                    st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
+                    st.stop()
+
+                if text_length < 30:
+                    st.error("⚠️ Il testo è troppo corto. Scrivi una frase più completa.")
+                    st.stop()
+
+                # Clear old data
+                st.session_state.edition_parsed_data = None
+                st.session_state.edition_show_summary = False
+
+                with st.spinner("🤖 Analisi del testo in corso..."):
+                    parsed_data = self._parse_edition_nlp_input(nlp_text)
+
+                if parsed_data and parsed_data.get('course_name'):
+                    st.session_state.edition_parsed_data = parsed_data
+                    st.session_state.edition_show_summary = True
+                    st.rerun()
+                else:
+                    st.error("""
+                    ❌ Impossibile estrarre le informazioni necessarie.
+
+                    Assicurati di includere:
+                    - **Nome del corso** esistente (es: "corso Data Science01")
+                    - **Data inizio** edizione (es: "data inizio 12/02/2026")
+                    - **Data fine** edizione (es: "data fine 20/02/2026")
+                    - **Attività** (es: "attività: primo giorno 12/02/2026 ore 09.00-11.00")
+                    """)
+
+        with col2:
+            if st.button("🧹 Cancella Testo", use_container_width=True,
+                         on_click=self._clear_edition_nlp_callback,
+                         key="clear_edition_nlp_btn"):
+                pass
+
     def _process_structured_edition_submission(self, num_activities):
         """Process the structured form submission"""
         # PRESERVE DATA BEFORE PROCESSING
