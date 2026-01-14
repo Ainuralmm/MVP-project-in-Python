@@ -307,74 +307,206 @@ class OracleAutomator:
             return False
 
     ### HASHTAG: UPDATED HELPER FOR ACTIVITY CREATION
-    def _create_single_activity(self, unique_title, full_description, activity_date_obj, start_time_str, end_time_str,impegno_previsto_in_ore):
+    def _create_single_activity(self, unique_title, full_description, activity_date_obj, start_time_str, end_time_str,
+                                impegno_previsto_in_ore):
+        """
+        Create a single activity in Oracle.
+
+        FIXED: Updated XPath for CKEditor rich text field.
+        """
         try:
             activity_date_str = activity_date_obj.strftime('%d/%m/%Y')
+
+            # Click Aggiungi button
             button_aggiungi_attivita = self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']"))
             )
             button_aggiungi_attivita.click()
             print(f"Clicked 'Aggiungi' button for activity on {activity_date_str}")
+
+            # ### IMPORTANT: WAIT FOR POPUP TO FULLY LOAD ###
+            time.sleep(2)  # Give popup time to render completely
             self._pause_for_visual_check()
 
             # --- Fill Activity Details ---
-            box_attivita_titolo = self.wait.until(
-                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Titolo"]')))
-            box_attivita_titolo.send_keys(unique_title)
 
-            desc_per_elenco_attivita = self.wait.until(
-                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Descrizione per elenco"]')))
-            desc_per_elenco_attivita.send_keys(f"{unique_title}-{activity_date_str}")
+            # 1. TITOLO
+            print("  [1/7] Filling Titolo...")
+            try:
+                box_attivita_titolo = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Titolo"]')))
+                box_attivita_titolo.clear()
+                box_attivita_titolo.send_keys(unique_title)
+                print(f"       ✓ Entered title: {unique_title}")
+            except Exception as e:
+                print(f"       ✗ FAILED on Titolo: {e}")
+                raise
 
-            desc_dettagliata_attivita = self.wait.until(
-                EC.presence_of_element_located((By.XPATH, '//div[@aria-label="Editor editing area: main"]')))
-            desc_dettagliata_attivita.send_keys(full_description)
+            # 2. DESCRIZIONE PER ELENCO
+            print("  [2/7] Filling Descrizione per elenco...")
+            try:
+                desc_per_elenco_attivita = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Descrizione per elenco"]')))
+                desc_per_elenco_attivita.clear()
+                desc_per_elenco_attivita.send_keys(f"{unique_title}-{activity_date_str}")
+                print(f"       ✓ Entered desc per elenco: {unique_title}-{activity_date_str}")
+            except Exception as e:
+                print(f"       ✗ FAILED on Descrizione per elenco: {e}")
+                raise
 
-            data_attivita = self.wait.until(
-                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Data attività"]')))
-            self.driver.execute_script("arguments[0].value=arguments[1];", data_attivita, activity_date_str)
-            data_attivita.send_keys(Keys.TAB)  # Trigger potential validation
+            # 3. DESCRIZIONE DETTAGLIATA (CKEditor Rich Text)
+            # FIXED: Use contains() for aria-label since it has extra text
+            print("  [3/7] Filling Descrizione dettagliata (CKEditor)...")
+            try:
+                # XPath that matches partial aria-label
+                ckeditor_xpaths = [
+                    '//div[contains(@aria-label, "Editor editing area: main") and @contenteditable="true"]',
+                    '//div[contains(@class, "ck-editor__editable") and @contenteditable="true"]',
+                    '//div[contains(@class, "ck-content") and @contenteditable="true"]',
+                ]
 
-            ora_inizio_attivita = self.wait.until(
-                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Ora inizio"]')))
-            ora_inizio_attivita.clear()
-            ora_inizio_attivita.send_keys(start_time_str)
+                desc_dettagliata = None
+                for xpath in ckeditor_xpaths:
+                    try:
+                        desc_dettagliata = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        print(f"       Found CKEditor with: {xpath}")
+                        break
+                    except:
+                        continue
 
-            ora_fine_attivita = self.wait.until(
-                EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Ora fine"]')))
-            ora_fine_attivita.clear()
-            ora_fine_attivita.send_keys(end_time_str)
+                if desc_dettagliata:
+                    # Click to focus the editor first
+                    desc_dettagliata.click()
+                    time.sleep(0.3)
 
-            ### HASHTAG: PLACEHOLDER FOR FUTURE INPUT FIELD ###
-            # Replace 'YOUR_FUTURE_FIELD_XPATH_SELECTOR' with the actual XPATH
-            # Replace 'future_input_value' with the data from the view
-            if impegno_previsto_in_ore: # Check if user provided input
-                 impeg_pre_in_ore = self.wait.until(EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Impegno previsto in ore"]')))
-                 impeg_pre_in_ore.clear()
-                 impeg_pre_in_ore.send_keys(impegno_previsto_in_ore)
-                 print(f"Entered future field value: {impegno_previsto_in_ore}")
-                 self._pause_for_visual_check()
+                    # Use JavaScript to set content (more reliable for CKEditor)
+                    description_text = full_description if full_description else f"Attività: {unique_title}"
+                    self.driver.execute_script(
+                        "arguments[0].innerHTML = '<p>' + arguments[1] + '</p>';",
+                        desc_dettagliata,
+                        description_text
+                    )
+                    # Also try send_keys as backup
+                    desc_dettagliata.send_keys(" ")  # Trigger change detection
+                    print(f"       ✓ Entered detailed description")
+                else:
+                    print("       ⚠ WARNING: Could not find CKEditor, skipping detailed description")
 
-            # Save and press OK button
-            ok_button_attivita = self.wait.until(
-                EC.element_to_be_clickable((By.XPATH, '//a[./span[text()="OK"]]')))
-            ok_button_attivita.click()
-            print(f"Clicked OK for activity '{unique_title}' on {activity_date_str}")
-            # Wait for the OK button popup to disappear before proceeding
-            self.wait.until(EC.invisibility_of_element_located((By.XPATH, '//a[./span[text()="OK"]]')))
-            self._pause_for_visual_check()  # Short pause after popup closes
-            return True
+            except Exception as e:
+                print(f"       ⚠ WARNING on Descrizione dettagliata (continuing): {e}")
+                # Don't raise - this field might be optional
+
+            # 4. DATA ATTIVITÀ
+            print("  [4/7] Filling Data attività...")
+            try:
+                data_attivita = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Data attività"]')))
+                data_attivita.clear()
+                # Use JavaScript for date field (more reliable)
+                self.driver.execute_script("arguments[0].value = arguments[1];", data_attivita, activity_date_str)
+                data_attivita.send_keys(Keys.TAB)  # Trigger validation
+                print(f"       ✓ Entered date: {activity_date_str}")
+            except Exception as e:
+                print(f"       ✗ FAILED on Data attività: {e}")
+                raise
+
+            # 5. ORA INIZIO
+            print("  [5/7] Filling Ora inizio...")
+            try:
+                ora_inizio_attivita = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Ora inizio"]')))
+                ora_inizio_attivita.clear()
+                ora_inizio_attivita.send_keys(start_time_str)
+                print(f"       ✓ Entered start time: {start_time_str}")
+            except Exception as e:
+                print(f"       ✗ FAILED on Ora inizio: {e}")
+                raise
+
+            # 6. ORA FINE
+            print("  [6/7] Filling Ora fine...")
+            try:
+                ora_fine_attivita = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Ora fine"]')))
+                ora_fine_attivita.clear()
+                ora_fine_attivita.send_keys(end_time_str)
+                print(f"       ✓ Entered end time: {end_time_str}")
+            except Exception as e:
+                print(f"       ✗ FAILED on Ora fine: {e}")
+                raise
+
+            # 7. IMPEGNO PREVISTO IN ORE (optional)
+            print("  [7/7] Filling Impegno previsto in ore...")
+            if impegno_previsto_in_ore:
+                try:
+                    impeg_pre_in_ore = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Impegno previsto in ore"]')))
+                    impeg_pre_in_ore.clear()
+                    impeg_pre_in_ore.send_keys(str(impegno_previsto_in_ore))
+                    print(f"       ✓ Entered impegno: {impegno_previsto_in_ore}")
+                except Exception as e:
+                    print(f"       ⚠ WARNING on Impegno (optional field): {e}")
+            else:
+                print("       - Skipped (no value provided)")
+
+            self._pause_for_visual_check()
+
+            # 8. CLICK OK BUTTON
+            print("  [OK] Clicking OK button...")
+            try:
+                ok_button_attivita = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '//a[./span[text()="OK"]]')))
+                ok_button_attivita.click()
+                print(f"       ✓ Clicked OK for activity '{unique_title}'")
+
+                # Wait for popup to close
+                WebDriverWait(self.driver, 15).until(
+                    EC.invisibility_of_element_located((By.XPATH, '//a[./span[text()="OK"]]')))
+                time.sleep(1)  # Extra wait for popup animation
+                self._pause_for_visual_check()
+
+                print(f"  ✅ Activity '{unique_title}' on {activity_date_str} created successfully!")
+                return True
+
+            except Exception as e:
+                print(f"       ✗ FAILED on OK button: {e}")
+                raise
 
         except Exception as e:
-            print(f"Error creating activity '{unique_title}' on {activity_date_str}: {e}")
-            # Try to click Cancel if OK fails, to avoid getting stuck
+            print(f"\n❌ ERROR creating activity '{unique_title}' on {activity_date_str}")
+            print(f"   Exception type: {type(e).__name__}")
+            print(f"   Exception message: {str(e)}")
+
+            # Save screenshot for debugging
             try:
-                cancel_button = self.driver.find_element(By.XPATH, '//a[./span[text()="Annulla"]]')
-                cancel_button.click()
-                self.wait.until(EC.invisibility_of_element_located((By.XPATH, '//a[./span[text()="Annulla"]]')))
-                print("Clicked Cancel button after error.")
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                safe_title = unique_title.replace(' ', '_')[:20]
+                ss_path = f"error_activity_{safe_title}_{timestamp}.png"
+                self.driver.save_screenshot(ss_path)
+                print(f"   Screenshot saved: {ss_path}")
+            except Exception as ss_e:
+                print(f"   Could not save screenshot: {ss_e}")
+
+            # Try to click Cancel to close popup
+            try:
+                cancel_xpaths = [
+                    '//a[./span[text()="Annulla"]]',
+                    '//button[text()="Annulla"]',
+                    '//a[contains(@id, "cancel")]',
+                ]
+                for cancel_xpath in cancel_xpaths:
+                    try:
+                        cancel_button = WebDriverWait(self.driver, 3).until(
+                            EC.element_to_be_clickable((By.XPATH, cancel_xpath)))
+                        cancel_button.click()
+                        print("   Clicked Cancel button to close popup.")
+                        time.sleep(1)
+                        break
+                    except:
+                        continue
             except:
-                print("Could not click Cancel button after error.")  # Ignore if cancel fails too
+                print("   Could not click Cancel button.")
+
             return False
 
     # CREATE EDITION flow (assumes caller opened the course detail page)
