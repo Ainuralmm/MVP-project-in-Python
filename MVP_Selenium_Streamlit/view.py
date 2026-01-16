@@ -2107,9 +2107,6 @@ class CourseView:
         aula Aula de carli fornitore Aeit costo 1000
         attività: primo giorno 12/02/2026 ore 09.00-11.00,
         secondo giorno 13/02/2026 ore 10.00-12.00"
-
-        Oppure più semplice:
-        "Edizione per corso Python Base dal 15/03/2026 al 17/03/2026, 3 giorni di attività"
         """, icon="💡")
 
         # Handle clear request
@@ -2257,19 +2254,19 @@ class CourseView:
     def _render_edition_excel_ui(self, is_disabled):
         """UI for Excel file upload for edition + activities"""
 
-        st.info("""
-        **Formato Excel Supportato:**
-
-        **Opzione 1 - Due fogli separati:**
-        - Foglio "Edizioni": ID_EDIZIONE, NOME_CORSO, TITOLO, DATA_INIZIO, DATA_FINE, AULA, FORNITORE, COSTO
-        - Foglio "Attivita": ID_EDIZIONE, TITOLO, DESCRIZIONE, DATA, ORA_INIZIO, ORA_FINE, IMPEGNO_ORE
-
-        **Opzione 2 - Foglio singolo con marcatori:**
-        - Colonna TIPO: "EDIZIONE" o "ATTIVITA" per ogni riga
-
-        **Opzione 3 - Formato originale:**
-        - Intestazione edizione → dati edizione → intestazione attività → dati attività
-        """, icon="ℹ️")
+        #st.info("""
+        # **Formato Excel Supportato:**
+        #
+        # **Opzione 1 - Due fogli separati:**
+        # - Foglio "Edizioni": ID_EDIZIONE, NOME_CORSO, TITOLO, DATA_INIZIO, DATA_FINE, AULA, FORNITORE, COSTO
+        # - Foglio "Attivita": ID_EDIZIONE, TITOLO, DESCRIZIONE, DATA, ORA_INIZIO, ORA_FINE, IMPEGNO_ORE
+        #
+        # **Opzione 2 - Foglio singolo con marcatori:**
+        # - Colonna TIPO: "EDIZIONE" o "ATTIVITA" per ogni riga
+        #
+        # **Opzione 3 - Formato originale:**
+        # - Intestazione edizione → dati edizione → intestazione attività → dati attività
+        # """, icon="ℹ️")
 
         uploaded_file = st.file_uploader(
             "Carica File Excel (.xlsx, .xls)",
