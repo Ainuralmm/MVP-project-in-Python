@@ -312,20 +312,78 @@ class OracleAutomator:
         """
         Create a single activity in Oracle.
 
-        FIXED: Updated XPath for CKEditor rich text field.
+        FIXED: Better waiting for 'Aggiungi' button between activities.
         """
         try:
             activity_date_str = activity_date_obj.strftime('%d/%m/%Y')
 
-            # Click Aggiungi button
-            button_aggiungi_attivita = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']"))
-            )
-            button_aggiungi_attivita.click()
+            # === IMPROVED: WAIT FOR PAGE TO BE READY ===
+            print(f"  Preparing to create activity '{unique_title}' on {activity_date_str}...")
+
+            # Wait for any blocking overlay to disappear first
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
+            # Extra wait for page to stabilize after previous activity
+            time.sleep(2)
+
+            # === CLICK AGGIUNGI BUTTON WITH RETRY ===
+            print(f"  Looking for 'Aggiungi' button...")
+
+            aggiungi_xpaths = [
+                "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']",
+                "//div[@title='Aggiungi' and contains(@id, 'actPce')]",
+                "//div[@title='Aggiungi']",
+                "//a[@title='Aggiungi']",
+                "//button[@title='Aggiungi']",
+            ]
+
+            button_aggiungi_attivita = None
+            max_retries = 3
+
+            for attempt in range(max_retries):
+                for xpath in aggiungi_xpaths:
+                    try:
+                        # First wait for presence
+                        WebDriverWait(self.driver, 5).until(
+                            EC.presence_of_element_located((By.XPATH, xpath)))
+
+                        # Then wait for clickable
+                        button_aggiungi_attivita = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+
+                        print(f"  Found 'Aggiungi' button with: {xpath}")
+                        break
+                    except:
+                        continue
+
+                if button_aggiungi_attivita:
+                    break
+                else:
+                    print(f"  Retry {attempt + 1}/{max_retries}: 'Aggiungi' button not found, waiting...")
+                    time.sleep(2)
+
+            if not button_aggiungi_attivita:
+                raise Exception("Could not find 'Aggiungi' button after multiple attempts")
+
+            # Scroll the button into view before clicking
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", button_aggiungi_attivita)
+            time.sleep(0.5)
+
+            # Click the button
+            try:
+                button_aggiungi_attivita.click()
+            except Exception as click_error:
+                print(f"  Normal click failed, trying JavaScript click: {click_error}")
+                self.driver.execute_script("arguments[0].click();", button_aggiungi_attivita)
+
             print(f"Clicked 'Aggiungi' button for activity on {activity_date_str}")
 
-            # ### IMPORTANT: WAIT FOR POPUP TO FULLY LOAD ###
-            time.sleep(2)  # Give popup time to render completely
+            # WAIT FOR POPUP TO FULLY LOAD
+            time.sleep(2)
             self._pause_for_visual_check()
 
             # --- Fill Activity Details ---
@@ -355,10 +413,8 @@ class OracleAutomator:
                 raise
 
             # 3. DESCRIZIONE DETTAGLIATA (CKEditor Rich Text)
-            # FIXED: Use contains() for aria-label since it has extra text
             print("  [3/7] Filling Descrizione dettagliata (CKEditor)...")
             try:
-                # XPath that matches partial aria-label
                 ckeditor_xpaths = [
                     '//div[contains(@aria-label, "Editor editing area: main") and @contenteditable="true"]',
                     '//div[contains(@class, "ck-editor__editable") and @contenteditable="true"]',
@@ -376,26 +432,21 @@ class OracleAutomator:
                         continue
 
                 if desc_dettagliata:
-                    # Click to focus the editor first
                     desc_dettagliata.click()
                     time.sleep(0.3)
-
-                    # Use JavaScript to set content (more reliable for CKEditor)
                     description_text = full_description if full_description else f"Attività: {unique_title}"
                     self.driver.execute_script(
                         "arguments[0].innerHTML = '<p>' + arguments[1] + '</p>';",
                         desc_dettagliata,
                         description_text
                     )
-                    # Also try send_keys as backup
-                    desc_dettagliata.send_keys(" ")  # Trigger change detection
+                    desc_dettagliata.send_keys(" ")
                     print(f"       ✓ Entered detailed description")
                 else:
-                    print("       ⚠ WARNING: Could not find CKEditor, skipping detailed description")
+                    print("       ⚠ WARNING: Could not find CKEditor, skipping")
 
             except Exception as e:
                 print(f"       ⚠ WARNING on Descrizione dettagliata (continuing): {e}")
-                # Don't raise - this field might be optional
 
             # 4. DATA ATTIVITÀ
             print("  [4/7] Filling Data attività...")
@@ -403,9 +454,8 @@ class OracleAutomator:
                 data_attivita = WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, '//input[@aria-label="Data attività"]')))
                 data_attivita.clear()
-                # Use JavaScript for date field (more reliable)
                 self.driver.execute_script("arguments[0].value = arguments[1];", data_attivita, activity_date_str)
-                data_attivita.send_keys(Keys.TAB)  # Trigger validation
+                data_attivita.send_keys(Keys.TAB)
                 print(f"       ✓ Entered date: {activity_date_str}")
             except Exception as e:
                 print(f"       ✗ FAILED on Data attività: {e}")
@@ -451,25 +501,141 @@ class OracleAutomator:
 
             self._pause_for_visual_check()
 
-            # 8. CLICK OK BUTTON
+            # 8. CLICK OK BUTTON - HEADER BAR VERSION
             print("  [OK] Clicking OK button...")
             try:
-                ok_button_attivita = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '//a[./span[text()="OK"]]')))
-                ok_button_attivita.click()
-                print(f"       ✓ Clicked OK for activity '{unique_title}'")
+                # The OK button is in the blue header bar of the popup
+                # It's an <a> tag with class "xrg" containing a <span> with text "OK"
+                ok_button_xpaths = [
+                    # Try the header area first (most specific)
+                    '//div[contains(@class, "AFHeaderArea")]//a[.//span[text()="OK"]]',
+                    '//div[contains(@class, "popup")]//a[.//span[text()="OK"]]',
+                    # Standard button patterns
+                    '//a[@role="button"][.//span[text()="OK"]]',
+                    '//a[@class="xrg"][.//span[@class="xrk" and text()="OK"]]',
+                    '//span[@class="xrk" and text()="OK"]/ancestor::a',
+                    # Direct text match
+                    '//a[contains(@class, "xrg")]/span[text()="OK"]/..',
+                ]
 
-                # Wait for popup to close
-                WebDriverWait(self.driver, 15).until(
-                    EC.invisibility_of_element_located((By.XPATH, '//a[./span[text()="OK"]]')))
-                time.sleep(1)  # Extra wait for popup animation
+                ok_button = None
+                for xpath in ok_button_xpaths:
+                    try:
+                        ok_button = WebDriverWait(self.driver, 3).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        print(f"       Found OK button with: {xpath}")
+                        break
+                    except:
+                        continue
+
+                if not ok_button:
+                    # Last resort: find all elements with "OK" text and click the visible one
+                    print("       Trying to find any visible OK button...")
+                    ok_elements = self.driver.find_elements(By.XPATH, '//span[text()="OK"]/parent::a')
+                    for elem in ok_elements:
+                        if elem.is_displayed():
+                            ok_button = elem
+                            print(f"       Found visible OK button")
+                            break
+
+                if not ok_button:
+                    raise Exception("Could not find OK button with any strategy")
+
+                # Scroll the button into view
+                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", ok_button)
+                time.sleep(0.5)
+
+                # Try multiple click strategies
+                click_success = False
+
+                # Strategy 1: Normal click
+                try:
+                    ok_button.click()
+                    click_success = True
+                    print(f"       ✓ Clicked OK button (normal click)")
+                except Exception as e1:
+                    print(f"       Normal click failed: {e1}")
+
+                # Strategy 2: JavaScript click
+                if not click_success:
+                    try:
+                        self.driver.execute_script("arguments[0].click();", ok_button)
+                        click_success = True
+                        print(f"       ✓ Clicked OK button (JavaScript click)")
+                    except Exception as e2:
+                        print(f"       JavaScript click failed: {e2}")
+
+                # Strategy 3: Action chains
+                if not click_success:
+                    try:
+                        from selenium.webdriver.common.action_chains import ActionChains
+                        actions = ActionChains(self.driver)
+                        actions.move_to_element(ok_button).click().perform()
+                        click_success = True
+                        print(f"       ✓ Clicked OK button (ActionChains)")
+                    except Exception as e3:
+                        print(f"       ActionChains click failed: {e3}")
+
+                if not click_success:
+                    raise Exception("All click strategies failed for OK button")
+
+                # === WAIT FOR POPUP TO CLOSE ===
+                print("       Waiting for popup to close...")
+
+                popup_closed = False
+
+                # Strategy 1: Wait for the popup title to disappear
+                try:
+                    WebDriverWait(self.driver, 15).until(
+                        EC.invisibility_of_element_located((By.XPATH, '//h1[contains(text(), "Aggiungi attività")]')))
+                    popup_closed = True
+                    print("       - Popup title disappeared")
+                except:
+                    pass
+
+                # Strategy 2: Wait for Titolo input to become stale/invisible
+                if not popup_closed:
+                    try:
+                        WebDriverWait(self.driver, 10).until(
+                            EC.invisibility_of_element_located((By.XPATH, '//input[@aria-label="Titolo"]')))
+                        popup_closed = True
+                        print("       - Titolo field disappeared")
+                    except:
+                        pass
+
+                # Strategy 3: Wait for blocking pane
+                try:
+                    WebDriverWait(self.driver, 5).until(
+                        EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
+                    print("       - Blocking pane gone")
+                except:
+                    pass
+
+                # Strategy 4: Check if we can see the activity list again
+                if not popup_closed:
+                    try:
+                        WebDriverWait(self.driver, 10).until(
+                            EC.presence_of_element_located(
+                                (By.XPATH, "//div[contains(@id, ':actPce:iltBtn') and @title='Aggiungi']")))
+                        popup_closed = True
+                        print("       - 'Aggiungi' button visible again")
+                    except:
+                        pass
+
+                # Fallback wait
+                if not popup_closed:
+                    print("       - Using fallback wait (5 seconds)")
+                    time.sleep(5)
+                else:
+                    time.sleep(2)  # Short stabilization wait
+
                 self._pause_for_visual_check()
 
                 print(f"  ✅ Activity '{unique_title}' on {activity_date_str} created successfully!")
                 return True
 
             except Exception as e:
-                print(f"       ✗ FAILED on OK button: {e}")
+                print(f"       ✗ FAILED during OK/close: {e}")
                 raise
 
         except Exception as e:
@@ -484,28 +650,27 @@ class OracleAutomator:
                 ss_path = f"error_activity_{safe_title}_{timestamp}.png"
                 self.driver.save_screenshot(ss_path)
                 print(f"   Screenshot saved: {ss_path}")
-            except Exception as ss_e:
-                print(f"   Could not save screenshot: {ss_e}")
+            except:
+                pass
 
-            # Try to click Cancel to close popup
+            # Try to click Cancel/Annulla
             try:
                 cancel_xpaths = [
-                    '//a[./span[text()="Annulla"]]',
-                    '//button[text()="Annulla"]',
-                    '//a[contains(@id, "cancel")]',
+                    '//a[@role="button"][.//span[text()="Annulla"]]',
+                    '//span[text()="Annulla"]/parent::a',
                 ]
                 for cancel_xpath in cancel_xpaths:
                     try:
                         cancel_button = WebDriverWait(self.driver, 3).until(
                             EC.element_to_be_clickable((By.XPATH, cancel_xpath)))
                         cancel_button.click()
-                        print("   Clicked Cancel button to close popup.")
+                        print("   Clicked Cancel button.")
                         time.sleep(1)
                         break
                     except:
                         continue
             except:
-                print("   Could not click Cancel button.")
+                pass
 
             return False
 
