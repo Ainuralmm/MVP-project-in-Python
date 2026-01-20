@@ -334,6 +334,11 @@ class CourseView:
         # NEW STATE VARIABLES FOR COURSE INPUT METHOD
         if "course_input_method" not in st.session_state:
             st.session_state.course_input_method = "structured"  # Options: "structured", "excel", "nlp"
+        if "course_edit_mode" not in st.session_state:
+            st.session_state.course_edit_mode = False
+
+        if "courses_to_edit" not in st.session_state:
+            st.session_state.courses_to_edit = []
 
         if "course_parsed_data" not in st.session_state:
             st.session_state.course_parsed_data = None  # Stores parsed data from Excel/NLP
@@ -656,15 +661,9 @@ class CourseView:
                 st.code(traceback.format_exc())
             return None
 
-    def _render_batch_course_preview(self, batch_data: Dict[str, Any], course):
+    def _render_batch_course_preview(self, batch_data: Dict[str, Any]):
         """
         Display preview table of all courses from Excel with selection options.
-
-        WHY: Users need to review and optionally select which courses to create.
-        Prevents accidental bulk creation and allows quality control.
-
-        Args:
-            batch_data: Dictionary from _parse_excel_file() with 'courses' list
         """
         if not batch_data or 'courses' not in batch_data:
             return
@@ -676,21 +675,14 @@ class CourseView:
 
         st.subheader("📋 Anteprima Corsi da Creare")
 
-        # ### HASHTAG: FORMAT DATE FOR DISPLAY ###
-        # Convert date object to string for preview table
-        date_display = course['start_date']
-        if isinstance(date_display, (datetime, date)):
-            date_display = date_display.strftime("%d/%m/%Y")
-        elif isinstance(date_display, str):
-            # Already a string, use as-is
-            pass
-        else:
-            # Unknown type, try to convert
-            date_display = str(date_display)
-
-        # ### HASHTAG: CREATE PREVIEW DATAFRAME ###
+        # ### CREATE PREVIEW DATAFRAME ###
         preview_data = []
         for idx, course in enumerate(batch_data['courses']):
+            # Format date for display
+            date_display = course['start_date']
+            if isinstance(date_display, (datetime, date)):
+                date_display = date_display.strftime("%d/%m/%Y")
+
             preview_data.append({
                 '#': idx + 1,
                 'Titolo': course['title'],
@@ -701,7 +693,6 @@ class CourseView:
 
         preview_df = pd.DataFrame(preview_data)
 
-        # ### HASHTAG: DISPLAY AS INTERACTIVE TABLE ###
         st.dataframe(
             preview_df,
             use_container_width=True,
@@ -715,43 +706,172 @@ class CourseView:
             }
         )
 
-        # ### HASHTAG: SELECTION OPTIONS ###
+        st.divider()
+        st.subheader("⚙️ Opzioni di Creazione")
+
+        # ### OPTIONS (outside form) ###
+        continue_on_error = st.checkbox(
+            "Continua anche se un corso fallisce",
+            value=True,
+            help="Se deselezionato, si ferma al primo errore",
+            key="batch_continue_checkbox"
+        )
+
         st.divider()
 
-        with st.form(key='batch_course_confirmation_form'):
-            st.subheader("⚙️ Opzioni di Creazione")
+        # ### BUTTONS (NO FORM - regular buttons) ###
+        col1, col2, col3 = st.columns([2, 1, 1])
 
-            # ### HASHTAG: OPTION TO SELECT SPECIFIC COURSES (FUTURE ENHANCEMENT) ###
-            create_all = st.checkbox(
-                f"Crea tutti i {len(batch_data['courses'])} corsi",
-                value=True,
-                help="Deseleziona per scegliere singolarmente"
-            )
+        with col1:
+            if st.button(
+                    f"✅ Conferma e Crea {len(batch_data['courses'])} Corsi",
+                    type="primary",
+                    use_container_width=True,
+                    key="batch_confirm_btn"
+            ):
+                # Convert string dates to date objects
+                for course in batch_data['courses']:
+                    date_str = course['start_date']
+                    if isinstance(date_str, str):
+                        try:
+                            course['start_date'] = datetime.strptime(date_str, "%d/%m/%Y").date()
+                        except ValueError:
+                            st.error(f"❌ Formato data non valido per '{course['title']}': {date_str}")
+                            st.stop()
+                    elif isinstance(date_str, date):
+                        course['start_date'] = date_str
 
-            if not create_all:
-                st.info("🚧 Selezione individuale - Funzionalità in sviluppo")
-                st.write("Per ora, puoi creare tutti i corsi o annullare.")
+                st.session_state.batch_course_data = batch_data
+                st.session_state.batch_continue_on_error = continue_on_error
+                st.session_state.app_state = "RUNNING_BATCH_COURSE"
+                st.session_state.course_message = ""
+                st.rerun()
 
-            # ### HASHTAG: PROCESSING OPTIONS ###
-            st.write("**Comportamento in caso di errore:**")
-            continue_on_error = st.checkbox(
-                "Continua anche se un corso fallisce",
-                value=True,
-                help="Se deselezionato, si ferma al primo errore"
-            )
+        with col2:
+            if st.button(
+                    "✏️ Modifica",
+                    use_container_width=True,
+                    key="batch_edit_btn"
+            ):
+                # Transfer data to edit mode
+                st.session_state.course_edit_mode = True
+                st.session_state.courses_to_edit = batch_data['courses'].copy()
+                st.session_state.course_parsed_data = None
+                st.session_state.course_show_summary = False
+                st.rerun()
 
+        with col3:
+            if st.button(
+                    "❌ Annulla",
+                    use_container_width=True,
+                    key="batch_cancel_btn"
+            ):
+                st.session_state.course_parsed_data = None
+                st.session_state.course_show_summary = False
+                st.session_state.course_input_method = "structured"
+                st.session_state.course_edit_mode = False
+                st.session_state.courses_to_edit = []
+                st.rerun()
+
+        # NEW HELPER METHOD - PARSE EXCEL FILE FOR BATCH (VERTICAL FORMAT)
+
+    def _render_editable_courses_form(self):
+        """
+        Render editable form for courses imported from Excel.
+        Users can modify each course before batch creation.
+        """
+        courses = st.session_state.courses_to_edit
+
+        if not courses:
+            st.warning("Nessun corso da modificare.")
+            if st.button("⬅️ Torna indietro"):
+                st.session_state.course_edit_mode = False
+                st.rerun()
+            return
+
+        st.subheader(f"✏️ Modifica {len(courses)} Corsi")
+        st.info("Modifica i dettagli di ogni corso, poi clicca 'Crea Tutti i Corsi' quando pronto.")
+
+        # Add/Remove course buttons
+        col_add, col_remove, col_spacer = st.columns([1, 1, 2])
+        with col_add:
+            if st.button("➕ Aggiungi Corso", key="add_course_btn"):
+                st.session_state.courses_to_edit.append({
+                    'title': '',
+                    'short_description': '',
+                    'start_date': '01/01/2023',
+                    'programme': ''
+                })
+                st.rerun()
+
+        with col_remove:
+            if len(courses) > 1:
+                if st.button("➖ Rimuovi Ultimo", key="remove_course_btn"):
+                    st.session_state.courses_to_edit.pop()
+                    st.rerun()
+
+        st.divider()
+
+        # EDITABLE FORM FOR EACH COURSE
+        with st.form(key='edit_courses_form'):
+            for idx, course in enumerate(courses):
+                with st.expander(f"📚 Corso {idx + 1}: {course.get('title', 'Nuovo Corso') or 'Nuovo Corso'}",
+                                 expanded=(idx < 3)):
+                    col1, col2 = st.columns([2, 1])
+
+                    with col1:
+                        st.text_input(
+                            "Titolo del Corso",
+                            value=course.get('title', ''),
+                            key=f"edit_title_{idx}",
+                            placeholder="Inserisci il titolo del corso"
+                        )
+
+                    with col2:
+                        # Handle date - could be string or date object
+                        date_value = course.get('start_date', '')
+                        if isinstance(date_value, date):
+                            date_str = date_value.strftime("%d/%m/%Y")
+                        else:
+                            date_str = str(date_value) if date_value else ''
+
+                        st.text_input(
+                            "Data Pubblicazione (GG/MM/AAAA)",
+                            value=date_str,
+                            key=f"edit_date_{idx}",
+                            placeholder="01/01/2023"
+                        )
+
+                    st.text_input(
+                        "Breve Descrizione",
+                        value=course.get('short_description', ''),
+                        key=f"edit_desc_{idx}",
+                        placeholder="Inserisci una breve descrizione"
+                    )
+
+                    st.text_area(
+                        "Programma (opzionale)",
+                        value=course.get('programme', ''),
+                        key=f"edit_prog_{idx}",
+                        height=80,
+                        placeholder="Dettagli del programma..."
+                    )
+
+            st.divider()
+
+            # Form submit buttons
             col1, col2, col3 = st.columns([2, 1, 1])
 
             with col1:
-                confirm = st.form_submit_button(
-                    f"✅ Conferma e Crea {len(batch_data['courses'])} Corsi",
+                submit = st.form_submit_button(
+                    f"✅ Crea Tutti i {len(courses)} Corsi",
                     type="primary",
                     use_container_width=True
                 )
 
             with col2:
-                edit = st.form_submit_button(
-                    "✏️ Modifica File",
+                back_to_preview = st.form_submit_button(
+                    "👁️ Anteprima",
                     use_container_width=True
                 )
 
@@ -761,42 +881,104 @@ class CourseView:
                     use_container_width=True
                 )
 
-        # ### HASHTAG: HANDLE USER ACTIONS ###
-        if confirm:
-            # ### HASHTAG: CONVERT STRING DATES TO DATE OBJECTS ###
-            # This is the FIX for  datetime error
-            for course in batch_data['courses']:
-                # Convert string date to datetime object
-                date_str = course['start_date']  # e.g., "01/01/2023"
-                try:
-                    # Option 2: One-liner
-                    date_obj = date_str if isinstance(date_str, date) else datetime.strptime(date_str,"%d/%m/%Y").date()
-                    course['start_date'] = date_obj  # Replace string with object
-                except ValueError as e:
-                    st.error(f"❌ Errore conversione data per '{course['title']}': {date_str}")
-                    st.stop()
+        # Handle form actions
+        if submit:
+            # Validate and collect all courses
+            valid_courses = []
+            has_errors = False
 
-            # Store data for batch processing
+            for idx in range(len(courses)):
+                title = st.session_state.get(f"edit_title_{idx}", '').strip()
+                desc = st.session_state.get(f"edit_desc_{idx}", '').strip()
+                date_str = st.session_state.get(f"edit_date_{idx}", '').strip()
+                prog = st.session_state.get(f"edit_prog_{idx}", '').strip()
+
+                # Validate required fields
+                if not title:
+                    st.error(f"❌ Corso {idx + 1}: Il titolo è obbligatorio.")
+                    has_errors = True
+                    continue
+
+                if not desc:
+                    st.error(f"❌ Corso {idx + 1}: La descrizione è obbligatoria.")
+                    has_errors = True
+                    continue
+
+                if not date_str:
+                    st.error(f"❌ Corso {idx + 1}: La data è obbligatoria.")
+                    has_errors = True
+                    continue
+
+                # Validate date format
+                try:
+                    date_obj = datetime.strptime(date_str, "%d/%m/%Y").date()
+                except ValueError:
+                    st.error(f"❌ Corso {idx + 1}: Formato data non valido. Usa GG/MM/AAAA.")
+                    has_errors = True
+                    continue
+
+                valid_courses.append({
+                    'title': title,
+                    'short_description': desc,
+                    'start_date': date_obj,
+                    'programme': prog,
+                    'row_number': idx + 1
+                })
+
+            if has_errors:
+                st.stop()
+
+            if not valid_courses:
+                st.error("❌ Nessun corso valido da creare.")
+                st.stop()
+
+            # Prepare batch data and start creation
+            batch_data = {
+                'courses': valid_courses,
+                'total_count': len(valid_courses),
+                'skipped_count': 0,
+                'file_name': 'Modificato manualmente'
+            }
+
             st.session_state.batch_course_data = batch_data
-            st.session_state.batch_continue_on_error = continue_on_error
+            st.session_state.batch_continue_on_error = True
             st.session_state.app_state = "RUNNING_BATCH_COURSE"
             st.session_state.course_message = ""
+            st.session_state.course_edit_mode = False
+            st.session_state.courses_to_edit = []
             st.rerun()
 
-        elif edit:
-            # Go back to file upload
-            st.session_state.course_parsed_data = None
-            st.session_state.course_show_summary = False
+        elif back_to_preview:
+            # Save edits and go back to preview
+            updated_courses = []
+            for idx in range(len(courses)):
+                updated_courses.append({
+                    'title': st.session_state.get(f"edit_title_{idx}", ''),
+                    'short_description': st.session_state.get(f"edit_desc_{idx}", ''),
+                    'start_date': st.session_state.get(f"edit_date_{idx}", ''),
+                    'programme': st.session_state.get(f"edit_prog_{idx}", ''),
+                    'row_number': idx + 1
+                })
+
+            st.session_state.course_parsed_data = {
+                'courses': updated_courses,
+                'total_count': len(updated_courses),
+                'skipped_count': 0,
+                'file_name': 'Modificato'
+            }
+            st.session_state.course_show_summary = True
+            st.session_state.course_edit_mode = False
+            st.session_state.courses_to_edit = []
             st.rerun()
 
         elif cancel:
             # Reset everything
+            st.session_state.course_edit_mode = False
+            st.session_state.courses_to_edit = []
             st.session_state.course_parsed_data = None
             st.session_state.course_show_summary = False
             st.session_state.course_input_method = "structured"
             st.rerun()
-
-        # NEW HELPER METHOD - PARSE EXCEL FILE FOR BATCH (VERTICAL FORMAT)
 
     def _parse_excel_batch(self, uploaded_file) -> Optional[Dict[str, Any]]:
             """
@@ -1238,6 +1420,11 @@ class CourseView:
         2. Excel file upload
         3. Natural language processing
         """
+
+        # ### CHECK FOR EDIT MODE FIRST ###
+        if st.session_state.get('course_edit_mode', False) and st.session_state.get('courses_to_edit'):
+            self._render_editable_courses_form()
+            return
 
         # SHOW SUMMARY IF DATA IS PARSED
         if st.session_state.course_show_summary and st.session_state.course_parsed_data:
