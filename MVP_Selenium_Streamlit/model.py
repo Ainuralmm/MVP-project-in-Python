@@ -1,5 +1,5 @@
 import time
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
@@ -1006,6 +1006,398 @@ class OracleAutomator:
         ### --- START: NEW METHODS FOR STUDENT INSERTION --- ###
 
         # Helper to find and open the specific edition using search
+
+
+    def create_edition_with_activities_batch(
+            self,
+            course_name: str,
+            edition_title: str,
+            start_date: str,
+            end_date: str,
+            location: str = "",
+            supplier: str = "",
+            price: str = "",
+            activities: list = None,
+            return_to_editions_page: bool = True
+    ) -> bool:
+        """
+        Create a single edition with all its activities, then optionally return to editions page.
+
+        This method is designed for BATCH processing - after creating all activities,
+        it clicks the BACK button to return to the course's Edizioni page so the next
+        edition can be created.
+
+        Args:
+            course_name: Name of the existing course to add edition to
+            edition_title: Title for the new edition
+            start_date: Start date (dd/mm/yyyy format)
+            end_date: End date (dd/mm/yyyy format)
+            location: Classroom/location
+            supplier: Training supplier
+            price: Cost
+            activities: List of activity dictionaries
+            return_to_editions_page: If True, navigate back after creating activities
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            print(f"\n{'=' * 60}")
+            print(f"BATCH: Creating edition '{edition_title}' for course '{course_name}'")
+            print(f"{'=' * 60}")
+
+            # === STEP 1: SEARCH AND OPEN COURSE ===
+            print(f"\n[1] Searching for course: {course_name}")
+
+            if not self._search_and_open_course(course_name):
+                print(f"   ❌ Could not find course '{course_name}'")
+                return False
+            print(f"   ✅ Course found and opened")
+
+            # === STEP 2: NAVIGATE TO EDIZIONI TAB ===
+            print(f"\n[2] Navigating to Edizioni tab...")
+
+            edizioni_tab_xpaths = [
+                '//a[contains(text(), "Edizioni")]',
+                '//span[contains(text(), "Edizioni")]/parent::a',
+                '//div[contains(text(), "Edizioni")]',
+                '//a[@title="Edizioni"]',
+            ]
+
+            edizioni_tab = None
+            for xpath in edizioni_tab_xpaths:
+                try:
+                    edizioni_tab = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if edizioni_tab:
+                edizioni_tab.click()
+                time.sleep(2)
+                print(f"   ✅ Clicked Edizioni tab")
+            else:
+                print(f"   ⚠️ Edizioni tab not found, may already be on correct page")
+
+            # === STEP 3: CLICK "CREA" TO CREATE NEW EDITION ===
+            print(f"\n[3] Clicking 'Crea' button for new edition...")
+
+            crea_xpaths = [
+                '//a[contains(text(), "Crea")]',
+                '//button[contains(text(), "Crea")]',
+                '//div[@title="Crea"]',
+                '//span[text()="Crea"]/parent::a',
+                '//a[@title="Crea"]',
+                '//div[contains(@class, "menu")]//a[contains(text(), "Crea")]',
+            ]
+
+            crea_button = None
+            for xpath in crea_xpaths:
+                try:
+                    crea_button = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if not crea_button:
+                print(f"   ❌ Could not find 'Crea' button")
+                return False
+
+            crea_button.click()
+            time.sleep(2)
+            print(f"   ✅ Clicked 'Crea' button")
+
+            # Wait for edition form to load
+            time.sleep(2)
+            self._pause_for_visual_check()
+
+            # === STEP 4: FILL EDITION FORM ===
+            print(f"\n[4] Filling edition form...")
+
+            # Title
+            try:
+                title_field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, '//input[@aria-label="Titolo edizione" or contains(@id, "titolo")]')))
+                title_field.clear()
+                title_field.send_keys(edition_title)
+                print(f"   ✅ Entered title: {edition_title}")
+            except Exception as e:
+                print(f"   ⚠️ Title field: {e}")
+
+            # Start Date
+            try:
+                start_field = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, '//input[contains(@aria-label, "inizio") or contains(@id, "startDate")]')))
+                start_field.clear()
+                self.driver.execute_script("arguments[0].value = arguments[1];", start_field, start_date)
+                start_field.send_keys(Keys.TAB)
+                print(f"   ✅ Entered start date: {start_date}")
+            except Exception as e:
+                print(f"   ⚠️ Start date: {e}")
+
+            # End Date
+            try:
+                end_field = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, '//input[contains(@aria-label, "fine") or contains(@id, "endDate")]')))
+                end_field.clear()
+                self.driver.execute_script("arguments[0].value = arguments[1];", end_field, end_date)
+                end_field.send_keys(Keys.TAB)
+                print(f"   ✅ Entered end date: {end_date}")
+            except Exception as e:
+                print(f"   ⚠️ End date: {e}")
+
+            # Location (Aula)
+            if location:
+                try:
+                    location_field = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located(
+                            (By.XPATH, '//input[contains(@aria-label, "Aula") or contains(@id, "location")]')))
+                    location_field.clear()
+                    location_field.send_keys(location)
+                    print(f"   ✅ Entered location: {location}")
+                except Exception as e:
+                    print(f"   ⚠️ Location: {e}")
+
+            # Supplier (Fornitore)
+            if supplier:
+                try:
+                    supplier_field = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located(
+                            (By.XPATH, '//input[contains(@aria-label, "Fornitore") or contains(@id, "supplier")]')))
+                    supplier_field.clear()
+                    supplier_field.send_keys(supplier)
+                    print(f"   ✅ Entered supplier: {supplier}")
+                except Exception as e:
+                    print(f"   ⚠️ Supplier: {e}")
+
+            # Price (Costo)
+            if price:
+                try:
+                    price_field = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located(
+                            (By.XPATH, '//input[contains(@aria-label, "Costo") or contains(@id, "cost")]')))
+                    price_field.clear()
+                    price_field.send_keys(str(price))
+                    print(f"   ✅ Entered price: {price}")
+                except Exception as e:
+                    print(f"   ⚠️ Price: {e}")
+
+            self._pause_for_visual_check()
+
+            # === STEP 5: SAVE EDITION ===
+            print(f"\n[5] Saving edition...")
+
+            save_xpaths = [
+                '//button[contains(text(), "Salva") and contains(text(), "Chiudi")]',
+                '//a[contains(text(), "Salva e chiudi")]',
+                '//button[text()="Salva"]',
+                '//a[text()="Salva"]',
+                '//span[text()="Salva e chiudi"]/parent::*',
+            ]
+
+            save_button = None
+            for xpath in save_xpaths:
+                try:
+                    save_button = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if save_button:
+                save_button.click()
+                time.sleep(3)
+                print(f"   ✅ Edition saved")
+            else:
+                print(f"   ⚠️ Save button not found, trying to continue...")
+
+            self._pause_for_visual_check()
+
+            # === STEP 6: NAVIGATE TO ATTIVITÀ TAB ===
+            print(f"\n[6] Navigating to Attività tab...")
+
+            attivita_xpaths = [
+                '//a[contains(text(), "Attività")]',
+                '//span[contains(text(), "Attività")]/parent::a',
+                '//div[contains(text(), "Attività") and @role="tab"]',
+            ]
+
+            attivita_tab = None
+            for xpath in attivita_xpaths:
+                try:
+                    attivita_tab = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if attivita_tab:
+                attivita_tab.click()
+                time.sleep(2)
+                print(f"   ✅ Clicked Attività tab")
+            else:
+                print(f"   ❌ Could not find Attività tab")
+                return False
+
+            self._pause_for_visual_check()
+
+            # === STEP 7: CREATE ALL ACTIVITIES ===
+            if activities:
+                print(f"\n[7] Creating {len(activities)} activities...")
+
+                for act_idx, activity in enumerate(activities):
+                    print(f"\n--- Creating activity {act_idx + 1} of {len(activities)} ---")
+
+                    # Parse activity data
+                    act_title = activity.get('title', f'Attività {act_idx + 1}')
+                    act_description = activity.get('description', '')
+                    act_date = activity.get('date', '')
+                    act_start_time = activity.get('start_time', '09.00')
+                    act_end_time = activity.get('end_time', '11.00')
+                    act_hours = activity.get('impegno_ore', '')
+
+                    # Convert date if needed
+                    if isinstance(act_date, (datetime, date)):
+                        act_date = act_date.strftime('%d/%m/%Y')
+
+                    # Call the existing _create_single_activity method
+                    success = self._create_single_activity(
+                        unique_title=act_title,
+                        full_description=act_description,
+                        activity_date_obj=datetime.strptime(act_date, '%d/%m/%Y') if isinstance(act_date,
+                                                                                                str) else act_date,
+                        start_time_str=act_start_time,
+                        end_time_str=act_end_time,
+                        impegno_previsto_in_ore=act_hours
+                    )
+
+                    if not success:
+                        print(f"   ⚠️ Activity '{act_title}' may have failed, continuing...")
+
+            # === STEP 8: RETURN TO COURSE/EDITIONS PAGE (FOR BATCH) ===
+            if return_to_editions_page:
+                print(f"\n[8] Returning to course page for next edition...")
+
+                # Click the back button (the "<" arrow in the blue header)
+                back_xpaths = [
+                    '//a[contains(@class, "back") or contains(@id, "back")]',
+                    '//button[contains(@class, "back")]',
+                    '//div[contains(@class, "xus")]/a',  # Oracle specific back button
+                    '//a[@title="Indietro"]',
+                    '//a[@title="Back"]',
+                    '//span[contains(@class, "xut")]/parent::a',  # Back arrow icon
+                    '//div[contains(@class, "AFHeaderArea")]//a[1]',  # First link in header
+                ]
+
+                back_button = None
+                for xpath in back_xpaths:
+                    try:
+                        back_button = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        break
+                    except:
+                        continue
+
+                if back_button:
+                    back_button.click()
+                    time.sleep(3)
+                    print(f"   ✅ Clicked back button")
+                else:
+                    print(f"   ⚠️ Back button not found, using browser back")
+                    self.driver.back()
+                    time.sleep(3)
+
+                # May need to click back again to get to course level
+                try:
+                    back_button2 = WebDriverWait(self.driver, 3).until(
+                        EC.element_to_be_clickable((By.XPATH, back_xpaths[0])))
+                    back_button2.click()
+                    time.sleep(2)
+                    print(f"   ✅ Clicked back button again (to course level)")
+                except:
+                    pass
+
+                self._pause_for_visual_check()
+
+            print(f"\n{'=' * 60}")
+            print(f"✅ BATCH: Edition '{edition_title}' completed successfully!")
+            print(f"{'=' * 60}\n")
+
+            return True
+
+        except Exception as e:
+            print(f"\n❌ BATCH ERROR: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+            # Try to save screenshot
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self.driver.save_screenshot(f"batch_error_{timestamp}.png")
+            except:
+                pass
+
+            return False
+
+    def _search_and_open_course(self, course_name: str) -> bool:
+        """
+        Search for a course by name and click to open it.
+        Returns True if successful, False otherwise.
+        """
+        try:
+            # Look for search field
+            search_xpaths = [
+                '//input[contains(@placeholder, "Cerca") or contains(@aria-label, "Cerca")]',
+                '//input[@type="search"]',
+                '//input[contains(@id, "search")]',
+            ]
+
+            search_field = None
+            for xpath in search_xpaths:
+                try:
+                    search_field = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if search_field:
+                search_field.clear()
+                search_field.send_keys(course_name)
+                search_field.send_keys(Keys.ENTER)
+                time.sleep(2)
+
+            # Click on the course in results
+            course_link_xpaths = [
+                f'//a[contains(text(), "{course_name}")]',
+                f'//span[contains(text(), "{course_name}")]/parent::a',
+                f'//td[contains(text(), "{course_name}")]',
+            ]
+
+            course_link = None
+            for xpath in course_link_xpaths:
+                try:
+                    course_link = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if course_link:
+                course_link.click()
+                time.sleep(3)
+                return True
+
+            return False
+
+        except Exception as e:
+            print(f"   Error searching for course: {e}")
+            return False
 
     ### HASHTAG: NEW HELPER FUNCTION FOR PRESENTER ✅ ###
     # This simple function is called by the presenter after opening the course.

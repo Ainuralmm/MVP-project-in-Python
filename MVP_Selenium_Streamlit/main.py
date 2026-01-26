@@ -1,7 +1,5 @@
 #import sys
 import streamlit as st
-
-
 from model import OracleAutomator
 from view import CourseView
 from presenter import CoursePresenter
@@ -13,7 +11,7 @@ from presenter import CoursePresenter
 # and presenter only when needed.
 
 if __name__ == "__main__":
-    DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
+    DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1 /msedgedriver"
 
     # 1. Initialize the View. It handles all state setup.
     view = CourseView()
@@ -33,10 +31,16 @@ if __name__ == "__main__":
         # Run the correct process based on the state
         if st.session_state.app_state == "RUNNING_COURSE":
             presenter.run_create_course(st.session_state.get("course_details"))
-        # NEW BATCH PROCESSING STATE ###
+
         elif st.session_state.app_state == "RUNNING_BATCH_COURSE":
             presenter.run_create_batch_courses(st.session_state.get("batch_course_data"))
+
         elif st.session_state.app_state == "RUNNING_EDITION":
             presenter.run_create_edition_and_activities(st.session_state.get("edition_details"))
+
+        # === NEW STATE ===
+        elif st.session_state.app_state == "RUNNING_BATCH_EDITION":
+            presenter.run_batch_edition_creation()
+
         elif st.session_state.app_state == "RUNNING_STUDENTS":
             presenter.run_add_students(st.session_state.get("student_details"))

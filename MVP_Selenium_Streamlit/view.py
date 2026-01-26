@@ -4,6 +4,10 @@ import pandas as pd
 import spacy
 from typing import Optional, Dict, Any, Tuple, List
 
+import presenter
+from presenter import CoursePresenter
+
+
 # NEW UTILITY FUNCTIONS FOR ENHANCED NLP PARSING
 #========== UTILITY 1: SAFE TEXT EXTRACTION ==========
 def safe_extract_text(original_text: str, normalized_text: str, match_start: int, match_end: int) -> str:
@@ -323,6 +327,7 @@ def extract_with_spacy_matcher(text: str, nlp_model) -> Dict[str, str]:
 
 class CourseView:
     def __init__(self):
+        self.presenter = presenter
         st.set_page_config(layout='centered')
         # --- Basic App State ---
         if "app_state" not in st.session_state:
@@ -331,35 +336,34 @@ class CourseView:
         # --- Message States: COURSE ---
         if "course_message" not in st.session_state:
             st.session_state.course_message = ""
+
         # NEW STATE VARIABLES FOR COURSE INPUT METHOD
         if "course_input_method" not in st.session_state:
             st.session_state.course_input_method = "structured"  # Options: "structured", "excel", "nlp"
         if "course_edit_mode" not in st.session_state:
             st.session_state.course_edit_mode = False
-
         if "courses_to_edit" not in st.session_state:
             st.session_state.courses_to_edit = []
-
         if "course_parsed_data" not in st.session_state:
             st.session_state.course_parsed_data = None  # Stores parsed data from Excel/NLP
-
         if "course_show_summary" not in st.session_state:
             st.session_state.course_show_summary = False  # Controls summary display
-
         if "course_nlp_input" not in st.session_state:
             st.session_state.course_nlp_input = ""  # Stores NLP text input
 
         # BATCH PROCESSING STATE VARIABLES ###
         if "batch_course_data" not in st.session_state:
             st.session_state.batch_course_data = None
-
         if "batch_continue_on_error" not in st.session_state:
             st.session_state.batch_continue_on_error = True
-        #add clear flag
-        if "nlp_clear_requested" not in st.session_state:
-            st.session_state.nlp_clear_requested = False
+        if "batch_edition_data" not in st.session_state:
+            st.session_state.batch_edition_data = None
+        if "batch_edition_results" not in st.session_state:
+            st.session_state.batch_edition_results = []
 
         # INITIALIZE SPACY MODEL
+        if "nlp_clear_requested" not in st.session_state:
+            st.session_state.nlp_clear_requested = False
         if "nlp_model" not in st.session_state:
             try:
                 st.session_state.nlp_model = spacy.load("it_core_news_sm")  # Italian model
@@ -369,22 +373,16 @@ class CourseView:
         # === EDITION INPUT METHOD STATES ===
         if "edition_input_method" not in st.session_state:
             st.session_state.edition_input_method = "structured" # "structured", "excel", "nlp"
-
         if "edition_parsed_data" not in st.session_state:
             st.session_state.edition_parsed_data = None
-
         if "edition_show_summary" not in st.session_state:
             st.session_state.edition_show_summary = False
-
         if "edition_edit_mode" not in st.session_state:
             st.session_state.edition_edit_mode = False
-
         if "edition_to_edit" not in st.session_state:
             st.session_state.edition_to_edit = None
-
         if "edition_nlp_input" not in st.session_state:
             st.session_state.edition_nlp_input = ""
-
         if "edition_nlp_clear_requested" not in st.session_state:
             st.session_state.edition_nlp_clear_requested = False
 
@@ -512,6 +510,10 @@ class CourseView:
                 self.edition_output_placeholder = st.empty()
                 if st.session_state.edition_message:
                     self.show_message("edition", st.session_state.edition_message, show_clear_button=True)
+        # Handle RUNNING_BATCH_EDITION state
+        # if st.session_state.app_state == "RUNNING_BATCH_EDITION":
+        #     st.info("🔄 Avvio creazione batch edizioni...")
+
 
         # --- Tab3:Student Form Container ---
         with tab3:
@@ -1603,7 +1605,7 @@ class CourseView:
             if text_length > 0:
                 st.caption(f"✏️ {text_length} caratteri inseriti")
             else:
-                st.warning("⚠️ Inserisci del testo per abilitare l'analisi", icon="⚠️")
+                st.warning("⚠️Inserisci del testo per abilitare l'analisi")
 
             col1, col2 = st.columns([1, 1])
 
@@ -1678,7 +1680,7 @@ class CourseView:
 
             if has_editions_sheet and has_activities_sheet:
                 st.success("✅ Rilevato formato: Due fogli separati (Edizioni + Attività)")
-                return self._parse_two_sheet_format(excel_file)
+                return self._parse_two_sheet_edition_excel(excel_file)
 
             # Single sheet - check for TIPO column or detect pattern
             df = pd.read_excel(excel_file, sheet_name=0, header=None)
@@ -2562,70 +2564,83 @@ class CourseView:
                 st.session_state.edition_input_method = "structured"
                 st.rerun()
 
-    def _render_multiple_editions_preview(self, data: Dict[str, Any]):
-        """Preview for multiple editions from Excel"""
+    def _render_multiple_editions_preview(self, batch_data: Dict[str, Any]):
+        """
+        Preview multiple editions from Excel with batch creation support.
+        """
+        editions = batch_data.get('editions', [])
+        total_editions = len(editions)
+        total_activities = sum(len(e.get('activities', [])) for e in editions)
 
-        editions = data.get('editions', [])
+        st.subheader("📁 Anteprima Edizioni")
 
-        st.success(f"✅ {len(editions)} edizioni trovate con {data.get('total_activities', 0)} attività totali!")
-
-        st.subheader("📋 Anteprima Edizioni")
-
-        # Show each edition
+        # Display each edition in an expander
         for idx, edition in enumerate(editions):
+            activities = edition.get('activities', [])
             with st.expander(
-                    f"📚 Edizione {idx + 1}: {edition.get('course_name', '')} - {edition.get('edition_title', 'Default')}",
-                    expanded=(idx == 0)):
+                    f"📚 Edizione {idx + 1}: {edition.get('course_name', 'N/A')} - {edition.get('edition_title', 'N/A')}",
+                    expanded=(idx == 0)  # First one expanded by default
+            ):
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.write(f"**Corso:** {edition.get('course_name', '-')}")
-                    st.write(f"**Titolo:** {edition.get('edition_title', '-') or 'Default'}")
-                    st.write(f"**Date:** {edition.get('start_date', '-')} → {edition.get('end_date', '-')}")
+                    st.write(f"**Corso:** {edition.get('course_name', 'N/A')}")
+                    st.write(f"**Titolo:** {edition.get('edition_title', 'N/A')}")
+                    st.write(f"**Date:** {edition.get('start_date', 'N/A')} → {edition.get('end_date', 'N/A')}")
                 with col2:
-                    st.write(f"**Aula:** {edition.get('location', '-') or 'N/A'}")
-                    st.write(f"**Fornitore:** {edition.get('supplier', '-') or 'N/A'}")
-                    st.write(f"**Costo:** €{edition.get('price', '0')}")
+                    st.write(f"**Aula:** {edition.get('location', 'N/A')}")
+                    st.write(f"**Fornitore:** {edition.get('supplier', 'N/A')}")
+                    st.write(f"**Costo:** €{edition.get('price', 'N/A')}")
 
-                # Activities for this edition
-                activities = edition.get('activities', [])
+                # Activities table
                 if activities:
-                    st.markdown("**Attività:**")
-                    act_df = pd.DataFrame([{
-                        '#': i + 1,
-                        'Titolo': a.get('title', ''),
-                        'Data': a.get('date', ''),
-                        'Orario': f"{a.get('start_time', '')} - {a.get('end_time', '')}"
-                    } for i, a in enumerate(activities)])
-                    st.dataframe(act_df, use_container_width=True, hide_index=True)
+                    st.write("**Attività:**")
+                    activity_data = []
+                    for i, act in enumerate(activities):
+                        activity_data.append({
+                            '#': i + 1,
+                            'Titolo': act.get('title', ''),
+                            'Data': act.get('date', ''),
+                            'Orario': f"{act.get('start_time', '')} - {act.get('end_time', '')}"
+                        })
+                    st.dataframe(pd.DataFrame(activity_data), use_container_width=True, hide_index=True)
                 else:
                     st.warning("⚠️ Nessuna attività per questa edizione")
 
         st.divider()
 
+        # === INFO MESSAGE ===
         st.info(
-            "ℹ️ **Nota:** Le edizioni verranno create una alla volta. Questo processo potrebbe richiedere alcuni minuti.")
+            f"ℹ️ **Nota:** Le edizioni verranno create una alla volta. Questo processo potrebbe richiedere alcuni minuti.")
 
-        # For now, only support creating first edition (batch would need presenter changes)
+        # === BUTTONS ===
         col1, col2, col3 = st.columns([2, 1, 1])
 
         with col1:
-            if st.button(f"✅ Crea Prima Edizione ({editions[0].get('course_name', '')})",
-                         type="primary", use_container_width=True, key="edition_multi_confirm_btn"):
-                # Create only the first edition
-                self._start_edition_creation(editions[0])
+            # === UPDATED BUTTON TEXT ===
+            button_text = f"✅ Crea {total_editions} Edizioni con {total_activities} Attività"
+
+            if st.button(button_text, type="primary", use_container_width=True, key="batch_edition_create_btn"):
+                # Store ALL editions for batch processing
+                st.session_state.batch_edition_data = {
+                    'editions': editions,
+                    'total_editions': total_editions,
+                    'total_activities': total_activities,
+                    'current_index': 0,  # Track progress
+                    'results': []  # Store results for each edition
+                }
+                st.session_state.app_state = "RUNNING_BATCH_EDITION"
+                st.session_state.edition_message = ""
+                st.rerun()
 
         with col2:
-            if st.button("✏️ Modifica Prima", use_container_width=True, key="edition_multi_edit_btn"):
+            if st.button("✏️ Modifica", use_container_width=True, key="batch_edition_edit_btn"):
                 st.session_state.edition_edit_mode = True
-                st.session_state.edition_to_edit = editions[0].copy()
-                st.session_state.edition_show_summary = False
                 st.rerun()
 
         with col3:
-            if st.button("❌ Annulla", use_container_width=True, key="edition_multi_cancel_btn"):
+            if st.button("❌ Annulla", use_container_width=True, key="batch_edition_cancel_btn"):
                 st.session_state.edition_parsed_data = None
                 st.session_state.edition_show_summary = False
-                st.session_state.edition_input_method = "structured"
                 st.rerun()
 
     def _start_edition_creation(self, edition_data: Dict[str, Any]):

@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 import time
 from datetime import datetime
@@ -170,6 +171,145 @@ class CoursePresenter:
             print("Presenter: Batch automation finished. Cleaning up.")
             self.model.close_driver()
             st.session_state.app_state = "IDLE"
+            st.rerun()
+
+    def run_batch_edition_creation(self):
+        """
+        Execute batch creation of multiple editions with their activities.
+        """
+        st.title("🔄 Creazione Batch Edizioni + Attività")
+
+        try:
+            # Get credentials from secrets
+            oracle_url = st.secrets['ORACLE_URL']
+            oracle_user = st.secrets['ORACLE_USER']
+            oracle_pass = st.secrets['ORACLE_PASS']
+
+            batch_data = st.session_state.batch_edition_data
+            if not batch_data:
+                st.error("❌ Nessun dato batch trovato")
+                st.session_state.app_state = "IDLE"
+                st.rerun()
+                return
+
+            editions = batch_data['editions']
+            total_editions = len(editions)
+            total_activities = sum(len(e.get('activities', [])) for e in editions)
+
+            # Progress display
+            st.info(f"📊 Creazione di **{total_editions} edizioni** con **{total_activities} attività** totali...")
+
+            progress_bar = st.progress(0)
+            status_container = st.container()
+            results_container = st.container()
+
+            # Initialize results list
+            results = []
+
+            # Login once for all editions
+            with status_container:
+                st.write("🔐 Effettuando login...")
+
+            if not self.model.login(oracle_url, oracle_user, oracle_pass):
+                raise Exception("Login fallito. Controlla le credenziali.")
+
+            with status_container:
+                st.success("✅ Login effettuato!")
+
+            # Process each edition
+            for idx, edition in enumerate(editions):
+                edition_num = idx + 1
+                course_name = edition.get('course_name', 'Unknown')
+                edition_title = edition.get('edition_title', 'Unknown')
+                activities = edition.get('activities', [])
+
+                with status_container:
+                    st.write(f"")
+                    st.write(f"### 📚 Edizione {edition_num}/{total_editions}: {course_name} - {edition_title}")
+                    st.write(f"   Attività da creare: {len(activities)}")
+
+                # Update progress
+                progress_bar.progress((idx) / total_editions)
+
+                try:
+                    # === CREATE EDITION WITH ACTIVITIES ===
+                    success = self.model.create_edition_with_activities_batch(
+                        course_name=course_name,
+                        edition_title=edition_title,
+                        start_date=edition.get('start_date'),
+                        end_date=edition.get('end_date'),
+                        location=edition.get('location', ''),
+                        supplier=edition.get('supplier', ''),
+                        price=edition.get('price', ''),
+                        activities=activities,
+                        return_to_editions_page=True  # Important for batch!
+                    )
+
+                    if success:
+                        results.append({
+                            'edition': f"{course_name} - {edition_title}",
+                            'status': '✅ Successo',
+                            'activities_created': len(activities)
+                        })
+                        with status_container:
+                            st.success(f"   ✅ Edizione '{edition_title}' creata con {len(activities)} attività!")
+                    else:
+                        results.append({
+                            'edition': f"{course_name} - {edition_title}",
+                            'status': '❌ Fallito',
+                            'activities_created': 0
+                        })
+                        with status_container:
+                            st.error(f"   ❌ Errore nella creazione di '{edition_title}'")
+
+                except Exception as e:
+                    results.append({
+                        'edition': f"{course_name} - {edition_title}",
+                        'status': f'❌ Errore: {str(e)[:50]}',
+                        'activities_created': 0
+                    })
+                    with status_container:
+                        st.error(f"   ❌ Eccezione: {str(e)}")
+
+            # Final progress
+            progress_bar.progress(1.0)
+
+            # Cleanup
+            self.model.close()
+
+        except Exception as e:
+            st.error(f"❌ Errore generale: {str(e)}")
+            import traceback
+            with st.expander("🔍 Dettagli errore"):
+                st.code(traceback.format_exc())
+
+        # === SHOW RESULTS SUMMARY ===
+        with results_container:
+            st.divider()
+            st.subheader("📋 Riepilogo Creazione")
+
+            success_count = sum(1 for r in results if '✅' in r['status'])
+            fail_count = len(results) - success_count
+            total_activities_created = sum(r['activities_created'] for r in results)
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Edizioni Create", f"{success_count}/{total_editions}")
+            with col2:
+                st.metric("Attività Create", total_activities_created)
+            with col3:
+                st.metric("Errori", fail_count)
+
+            # Results table
+            if results:
+                st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+
+        # === DONE BUTTON ===
+        if st.button("✅ Fatto - Torna alla Home", type="primary", use_container_width=True):
+            st.session_state.app_state = "IDLE"
+            st.session_state.batch_edition_data = None
+            st.session_state.edition_parsed_data = None
+            st.session_state.edition_show_summary = False
             st.rerun()
 
     def run_create_edition_and_activities(self, edition_details):
