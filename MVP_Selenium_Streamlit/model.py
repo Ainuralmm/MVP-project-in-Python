@@ -1824,6 +1824,11 @@ class OracleAutomator:
                 print(f"Could not save screenshot: {ss_e}")
             return False  # Indicate failure
 
-    def close_driver(self):
-        print("Model: Closing driver.")
-        self.driver.quit()
+    def close(self):
+        """Close the WebDriver and clean up resources."""
+        try:
+            if self.driver:
+                self.driver.quit()
+                print("Model: Closing driver.")
+        except Exception as e:
+            print(f"Model: Error closing driver: {e}")

@@ -34,7 +34,7 @@ class CoursePresenter:
 
         finally:
             print("Presenter: Automation finished. Cleaning up.")
-            self.model.close_driver()
+            self.model.close()
             st.session_state.app_state = "IDLE"
             st.rerun()
 
@@ -169,7 +169,7 @@ class CoursePresenter:
 
         finally:
             print("Presenter: Batch automation finished. Cleaning up.")
-            self.model.close_driver()
+            self.model.close()
             st.session_state.app_state = "IDLE"
             st.rerun()
 
@@ -331,6 +331,8 @@ class CoursePresenter:
             st.session_state.edition_show_summary = False
             st.rerun()
 
+
+
     def run_create_edition_and_activities(self, edition_details):
         try:
             oracle_url = st.secrets['ORACLE_URL']
@@ -373,7 +375,7 @@ class CoursePresenter:
 
         finally:
             print("Presenter (Edition+Activity): Automation finished. Cleaning up.")
-            self.model.close_driver()
+            self.model.close()
             st.session_state.app_state = "IDLE"
             st.rerun()
 
@@ -442,6 +444,6 @@ class CoursePresenter:
             print("Presenter (Student Add): Automation finished. Cleaning up.")
             # Ensure model driver is closed even if login happens inside model method
             if hasattr(self.model, 'driver') and self.model.driver:
-                self.model.close_driver()
+                self.model.close()
             st.session_state.app_state = "IDLE"
             st.rerun()
