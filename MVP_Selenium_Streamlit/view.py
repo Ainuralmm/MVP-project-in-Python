@@ -697,7 +697,7 @@ class CourseView:
 
         st.dataframe(
             preview_df,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config={
                 '#': st.column_config.NumberColumn('#', width='small'),
@@ -728,7 +728,7 @@ class CourseView:
             if st.button(
                     f"✅ Conferma e Crea {len(batch_data['courses'])} Corsi",
                     type="primary",
-                    use_container_width=True,
+                    width='stretch',
                     key="batch_confirm_btn"
             ):
                 # Convert string dates to date objects
@@ -752,7 +752,7 @@ class CourseView:
         with col2:
             if st.button(
                     "✏️ Modifica",
-                    use_container_width=True,
+                    width='stretch',
                     key="batch_edit_btn"
             ):
                 # Transfer data to edit mode
@@ -765,7 +765,7 @@ class CourseView:
         with col3:
             if st.button(
                     "❌ Annulla",
-                    use_container_width=True,
+                    width='stretch',
                     key="batch_cancel_btn"
             ):
                 st.session_state.course_parsed_data = None
@@ -868,19 +868,19 @@ class CourseView:
                 submit = st.form_submit_button(
                     f"✅ Crea Tutti i {len(courses)} Corsi",
                     type="primary",
-                    use_container_width=True
+                    width='stretch'
                 )
 
             with col2:
                 back_to_preview = st.form_submit_button(
                     "👁️ Anteprima",
-                    use_container_width=True
+                    width='stretch'
                 )
 
             with col3:
                 cancel = st.form_submit_button(
                     "❌ Annulla",
-                    use_container_width=True
+                    width='stretch'
                 )
 
         # Handle form actions
@@ -1367,13 +1367,13 @@ class CourseView:
             col1, col2, col3 = st.columns([2, 1, 1])
 
             with col1:
-                confirm = st.form_submit_button("✅ Conferma e Crea Corso", type="primary", use_container_width=True)
+                confirm = st.form_submit_button("✅ Conferma e Crea Corso", type="primary", width='stretch')
 
             with col2:
-                edit = st.form_submit_button("✏️ Modifica", use_container_width=True)
+                edit = st.form_submit_button("✏️ Modifica", width='stretch')
 
             with col3:
-                cancel = st.form_submit_button("❌ Annulla", use_container_width=True)
+                cancel = st.form_submit_button("❌ Annulla", width='stretch')
 
         # ### HASHTAG: HANDLE FORM ACTIONS ###
         if confirm:
@@ -1466,9 +1466,9 @@ class CourseView:
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled,
-                                                      use_container_width=True)
+                                                      width='stretch')
                 with col2:
-                    st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                    st.form_submit_button("Pulisci 🧹", width='stretch',
                                           on_click=self._clear_course_form_callback)
 
             if submitted:
@@ -1541,7 +1541,7 @@ class CourseView:
                 col1, col2 = st.columns([1, 1])
 
                 with col1:
-                    if st.button("📊 Analizza File Excel", type="primary", use_container_width=True):
+                    if st.button("📊 Analizza File Excel", type="primary", width='stretch'):
                         # ### HASHTAG: PARSE EXCEL AND SHOW PREVIEW ###
                         with st.spinner("🔍 Lettura file Excel..."):
                             parsed_data = self._parse_excel_file(uploaded_file)
@@ -1554,7 +1554,7 @@ class CourseView:
                             st.error("❌ Impossibile estrarre i dati dal file. Verifica il formato.")
 
                 with col2:
-                    if st.button("🧹 Cancella File", use_container_width=True):
+                    if st.button("🧹 Cancella File", width='stretch'):
                         st.rerun()
 
         # ========== METHOD 3: NATURAL LANGUAGE PROCESSING ==========
@@ -1613,7 +1613,7 @@ class CourseView:
                 analyze_clicked = st.button(
                     "🤖 Analizza Testo (NLP)",
                     type="primary",
-                    use_container_width=True,
+                    width='stretch',
                     key="analyze_nlp_button"  # Add unique key
                 )
 
@@ -1652,7 +1652,7 @@ class CourseView:
                             """)
             with col2:
                 # ### HASHTAG: CLEAR BUTTON WITH CALLBACK ###
-                if st.button("🧹 Cancella Testo", use_container_width=True,
+                if st.button("🧹 Cancella Testo", width='stretch',
                              on_click=self._clear_nlp_input_callback,
                              key="clear_nlp_text_button"):
                     pass  #callback handles the clearing
@@ -1883,7 +1883,7 @@ class CourseView:
                 'date': ['data_attivita', "data attivita'", 'data'],
                 'start_time': ['ora_inizio', 'ora inizio'],
                 'end_time': ['ora_fine', 'ora fine'],
-                'hours': ['impegno_ore', 'impegno in ore', 'ore']
+                'hours': ['impegno in ore', 'impegno_in_ore', 'impegno_ore', 'impegno ore', 'ore', 'impegno']
             }
 
             # Find actual column names
@@ -2277,9 +2277,9 @@ class CourseView:
             col1, col2 = st.columns([3, 1])
             with col1:
                 submitted = st.form_submit_button("Crea Edizione e Attività", type="primary",
-                                                  disabled=is_disabled, use_container_width=True)
+                                                  disabled=is_disabled, width='stretch')
             with col2:
-                st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                st.form_submit_button("Pulisci 🧹", width='stretch',
                                       on_click=self._clear_edition_activity_form_callback)
 
         if submitted:
@@ -2326,7 +2326,7 @@ class CourseView:
         col1, col2 = st.columns([1, 1])
 
         with col1:
-            if st.button("🤖 Analizza Testo (NLP)", type="primary", use_container_width=True,
+            if st.button("🤖 Analizza Testo (NLP)", type="primary", width='stretch',
                          key="analyze_edition_nlp_btn"):
                 if not nlp_text or not nlp_text.strip():
                     st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
@@ -2359,7 +2359,7 @@ class CourseView:
                     """)
 
         with col2:
-            if st.button("🧹 Cancella Testo", use_container_width=True,
+            if st.button("🧹 Cancella Testo", width='stretch',
                          on_click=self._clear_edition_nlp_callback,
                          key="clear_edition_nlp_btn"):
                 pass
@@ -2468,7 +2468,7 @@ class CourseView:
             col1, col2 = st.columns([1, 1])
 
             with col1:
-                if st.button("📊 Analizza File Excel", type="primary", use_container_width=True,
+                if st.button("📊 Analizza File Excel", type="primary", width='stretch',
                              key="analyze_edition_excel_btn"):
                     with st.spinner("🔍 Lettura file Excel..."):
                         parsed_data = self._parse_edition_excel_file(uploaded_file)
@@ -2481,7 +2481,7 @@ class CourseView:
                         st.error("❌ Impossibile estrarre i dati dal file. Verifica il formato.")
 
             with col2:
-                if st.button("🧹 Cancella File", use_container_width=True, key="clear_edition_excel_btn"):
+                if st.button("🧹 Cancella File", width='stretch', key="clear_edition_excel_btn"):
                     st.session_state.edition_parsed_data = None
                     st.session_state.edition_show_summary = False
                     st.rerun()
@@ -2536,7 +2536,7 @@ class CourseView:
                 })
 
             activities_df = pd.DataFrame(activities_preview)
-            st.dataframe(activities_df, use_container_width=True, hide_index=True)
+            st.dataframe(activities_df, width='stretch', hide_index=True)
         else:
             st.warning("⚠️ Nessuna attività trovata. Aggiungi attività nella modalità Modifica.")
 
@@ -2546,19 +2546,19 @@ class CourseView:
         col1, col2, col3 = st.columns([2, 1, 1])
 
         with col1:
-            if st.button("✅ Conferma e Crea Edizione", type="primary", use_container_width=True,
+            if st.button("✅ Conferma e Crea Edizione", type="primary", width='stretch',
                          key="edition_preview_confirm_btn"):
                 self._start_edition_creation(edition_data)
 
         with col2:
-            if st.button("✏️ Modifica", use_container_width=True, key="edition_preview_edit_btn"):
+            if st.button("✏️ Modifica", width='stretch', key="edition_preview_edit_btn"):
                 st.session_state.edition_edit_mode = True
                 st.session_state.edition_to_edit = edition_data.copy()
                 st.session_state.edition_show_summary = False
                 st.rerun()
 
         with col3:
-            if st.button("❌ Annulla", use_container_width=True, key="edition_preview_cancel_btn"):
+            if st.button("❌ Annulla", width='stretch', key="edition_preview_cancel_btn"):
                 st.session_state.edition_parsed_data = None
                 st.session_state.edition_show_summary = False
                 st.session_state.edition_input_method = "structured"
@@ -2602,7 +2602,7 @@ class CourseView:
                             'Data': act.get('date', ''),
                             'Orario': f"{act.get('start_time', '')} - {act.get('end_time', '')}"
                         })
-                    st.dataframe(pd.DataFrame(activity_data), use_container_width=True, hide_index=True)
+                    st.dataframe(pd.DataFrame(activity_data), width='stretch', hide_index=True)
                 else:
                     st.warning("⚠️ Nessuna attività per questa edizione")
 
@@ -2619,7 +2619,7 @@ class CourseView:
             # === UPDATED BUTTON TEXT ===
             button_text = f"✅ Crea {total_editions} Edizioni con {total_activities} Attività"
 
-            if st.button(button_text, type="primary", use_container_width=True, key="batch_edition_create_btn"):
+            if st.button(button_text, type="primary", width='stretch', key="batch_edition_create_btn"):
                 # Store ALL editions for batch processing
                 st.session_state.batch_edition_data = {
                     'editions': editions,
@@ -2633,12 +2633,12 @@ class CourseView:
                 st.rerun()
 
         with col2:
-            if st.button("✏️ Modifica", use_container_width=True, key="batch_edition_edit_btn"):
+            if st.button("✏️ Modifica", width='stretch', key="batch_edition_edit_btn"):
                 st.session_state.edition_edit_mode = True
                 st.rerun()
 
         with col3:
-            if st.button("❌ Annulla", use_container_width=True, key="batch_edition_cancel_btn"):
+            if st.button("❌ Annulla", width='stretch', key="batch_edition_cancel_btn"):
                 st.session_state.edition_parsed_data = None
                 st.session_state.edition_show_summary = False
                 st.rerun()
@@ -2853,19 +2853,19 @@ class CourseView:
                 submit = st.form_submit_button(
                     "✅ Crea Edizione e Attività",
                     type="primary",
-                    use_container_width=True
+                    width='stretch'
                 )
 
             with col2:
                 preview = st.form_submit_button(
                     "👁️ Anteprima",
-                    use_container_width=True
+                    width='stretch'
                 )
 
             with col3:
                 cancel = st.form_submit_button(
                     "❌ Annulla",
-                    use_container_width=True
+                    width='stretch'
                 )
 
         # Handle form actions
@@ -3081,9 +3081,9 @@ class CourseView:
             col1, col2 = st.columns([3, 1])
             with col1:
                 submitted = st.form_submit_button("Aggiungi Allievi", type="primary",
-                                                  disabled=is_disabled, use_container_width=True)
+                                                  disabled=is_disabled, width='stretch')
             with col2:
-                st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                st.form_submit_button("Pulisci 🧹", width='stretch',
                                       on_click=self._clear_student_form_callback)
 
         if submitted:
