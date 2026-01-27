@@ -206,7 +206,7 @@ class CoursePresenter:
             # Initialize results list
             results = []
 
-            # Login once for all editions
+            # === LOGIN ===
             with status_container:
                 st.write("🔐 Effettuando login...")
 
@@ -216,20 +216,32 @@ class CoursePresenter:
             with status_container:
                 st.success("✅ Login effettuato!")
 
-            # Process each edition
+            # === NAVIGATE TO COURSES PAGE (ONCE) ===
+            with status_container:
+                st.write("📍 Navigazione alla pagina Corsi...")
+
+            if not self.model.navigate_to_courses_page():
+                raise Exception("Impossibile navigare alla pagina Corsi.")
+
+            with status_container:
+                st.success("✅ Pagina Corsi raggiunta!")
+
+            # === PROCESS EACH EDITION ===
             for idx, edition in enumerate(editions):
                 edition_num = idx + 1
                 course_name = edition.get('course_name', 'Unknown')
-                edition_title = edition.get('edition_title', 'Unknown')
+                edition_title = edition.get('edition_title', '')
                 activities = edition.get('activities', [])
 
                 with status_container:
                     st.write(f"")
-                    st.write(f"### 📚 Edizione {edition_num}/{total_editions}: {course_name} - {edition_title}")
+                    st.write(f"### 📚 Edizione {edition_num}/{total_editions}: {course_name}")
+                    if edition_title:
+                        st.write(f"   Titolo: {edition_title}")
                     st.write(f"   Attività da creare: {len(activities)}")
 
                 # Update progress
-                progress_bar.progress((idx) / total_editions)
+                progress_bar.progress(idx / total_editions)
 
                 try:
                     # === CREATE EDITION WITH ACTIVITIES ===
@@ -241,30 +253,31 @@ class CoursePresenter:
                         location=edition.get('location', ''),
                         supplier=edition.get('supplier', ''),
                         price=edition.get('price', ''),
+                        description=edition.get('description', ''),
                         activities=activities,
-                        return_to_editions_page=True  # Important for batch!
+                        return_to_courses_page=True  # Important for batch!
                     )
 
                     if success:
                         results.append({
-                            'edition': f"{course_name} - {edition_title}",
+                            'edition': f"{course_name} - {edition_title}" if edition_title else course_name,
                             'status': '✅ Successo',
                             'activities_created': len(activities)
                         })
                         with status_container:
-                            st.success(f"   ✅ Edizione '{edition_title}' creata con {len(activities)} attività!")
+                            st.success(f"   ✅ Edizione creata con {len(activities)} attività!")
                     else:
                         results.append({
-                            'edition': f"{course_name} - {edition_title}",
+                            'edition': f"{course_name} - {edition_title}" if edition_title else course_name,
                             'status': '❌ Fallito',
                             'activities_created': 0
                         })
                         with status_container:
-                            st.error(f"   ❌ Errore nella creazione di '{edition_title}'")
+                            st.error(f"   ❌ Errore nella creazione")
 
                 except Exception as e:
                     results.append({
-                        'edition': f"{course_name} - {edition_title}",
+                        'edition': f"{course_name} - {edition_title}" if edition_title else course_name,
                         'status': f'❌ Errore: {str(e)[:50]}',
                         'activities_created': 0
                     })
@@ -282,6 +295,12 @@ class CoursePresenter:
             import traceback
             with st.expander("🔍 Dettagli errore"):
                 st.code(traceback.format_exc())
+
+            # Try to close model
+            try:
+                self.model.close()
+            except:
+                pass
 
         # === SHOW RESULTS SUMMARY ===
         with results_container:
