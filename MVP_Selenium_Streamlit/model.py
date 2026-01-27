@@ -988,7 +988,7 @@ class OracleAutomator:
                     activity_date_obj=activity['date'],
                     start_time_str=activity['start_time'],
                     end_time_str=activity['end_time'],
-                    impegno_previsto_in_ore=activity.get('impegno_previsto_in_ore', '')  # Safely get future value
+                    impegno_previsto_in_ore=activity.get('impegno_ore', '')  # Safely get future value
                 )
                 if not success:
                     # If one activity fails, report the error and stop
@@ -1346,18 +1346,19 @@ class OracleAutomator:
                 print(f"\n[8] Navigating back to courses search page...")
 
                 # --- BACK BUTTON 1: From Activity page to Edition page ---
-                # XPath based on your HTML: contains "clDtSp1" in the id
+                # The SVG has id containing "clDtSp1" and "SPdonei"
+                # We need to click the parent <a> element
                 back_from_activity_xpaths = [
-                    '//svg[contains(@id, "clDtSp1") and @aria-label="Indietro"]/ancestor::a',
-                    '//svg[contains(@id, "clDtSp1")]/parent::*',
-                    '//a[.//svg[@aria-label="Indietro" and contains(@id, "clDtSp1")]]',
-                    '//svg[@aria-label="Indietro" and contains(@id, "SPdonei")]/ancestor::a[1]',
+                    '//svg[contains(@id, "clDtSp1") and contains(@id, "SPdonei")]/parent::a',
+                    '//a[./svg[contains(@id, "clDtSp1")]]',
+                    '//*[contains(@id, "clDtSp1:UPsp1:SPdonei::icon")]/parent::a',  # FIXED: Added ] and /parent::a
+                    '//svg[@aria-label="Indietro" and contains(@id, "clDtSp1")]/parent::a',
                 ]
 
                 back_button_1 = None
                 for xpath in back_from_activity_xpaths:
                     try:
-                        back_button_1 = WebDriverWait(self.driver, 5).until(
+                        back_button_1 = WebDriverWait(self.driver, 10).until(
                             EC.element_to_be_clickable((By.XPATH, xpath)))
                         print(f"   Found back button (activity→edition) with: {xpath}")
                         break
@@ -1366,28 +1367,37 @@ class OracleAutomator:
 
                 if back_button_1:
                     back_button_1.click()
-                    time.sleep(2)
+                    time.sleep(3)
                     print(f"   ✅ Clicked back (from activity page to edition page)")
                 else:
-                    print(f"   ⚠️ Back button not found, using browser back")
-                    self.driver.back()
-                    time.sleep(2)
+                    # Try clicking the SVG directly
+                    try:
+                        svg_element = self.driver.find_element(By.XPATH,
+                                                               '//svg[contains(@id, "clDtSp1") and contains(@id, "SPdonei")]')
+                        self.driver.execute_script("arguments[0].parentElement.click();", svg_element)
+                        time.sleep(3)
+                        print(f"   ✅ Clicked back via JavaScript (activity→edition)")
+                    except Exception as e:
+                        print(f"   ⚠️ Back button not found: {e}")
+                        print(f"   Using browser back...")
+                        self.driver.back()
+                        time.sleep(3)
 
                 self._pause_for_visual_check()
 
                 # --- BACK BUTTON 2: From Edition page to Course search ---
-                # XPath based on your HTML: contains "lsCrDtl" in the id
+                # The SVG has id containing "lsCrDtl" and "SPdonei"
                 back_from_edition_xpaths = [
-                    '//svg[contains(@id, "lsCrDtl") and @aria-label="Indietro"]/ancestor::a',
-                    '//svg[contains(@id, "lsCrDtl")]/parent::*',
-                    '//a[.//svg[@aria-label="Indietro" and contains(@id, "lsCrDtl")]]',
-                    '//svg[@aria-label="Indietro"]/ancestor::a[1]',
+                    '//svg[contains(@id, "lsCrDtl") and contains(@id, "SPdonei")]/parent::a',
+                    '//a[./svg[contains(@id, "lsCrDtl")]]',
+                    '//*[contains(@id, "lsCrDtl:UPsp1:SPdonei::icon")]/parent::a',  # FIXED: Added ] and /parent::a
+                    '//svg[@aria-label="Indietro" and contains(@id, "lsCrDtl")]/parent::a',
                 ]
 
                 back_button_2 = None
                 for xpath in back_from_edition_xpaths:
                     try:
-                        back_button_2 = WebDriverWait(self.driver, 5).until(
+                        back_button_2 = WebDriverWait(self.driver, 10).until(
                             EC.element_to_be_clickable((By.XPATH, xpath)))
                         print(f"   Found back button (edition→courses) with: {xpath}")
                         break
@@ -1396,22 +1406,46 @@ class OracleAutomator:
 
                 if back_button_2:
                     back_button_2.click()
-                    time.sleep(2)
+                    time.sleep(3)
                     print(f"   ✅ Clicked back (from edition page to courses search)")
                 else:
-                    print(f"   ⚠️ Back button not found, using browser back")
-                    self.driver.back()
-                    time.sleep(2)
+                    # Try clicking the SVG directly
+                    try:
+                        svg_element = self.driver.find_element(By.XPATH,
+                                                               '//svg[contains(@id, "lsCrDtl") and contains(@id, "SPdonei")]')
+                        self.driver.execute_script("arguments[0].parentElement.click();", svg_element)
+                        time.sleep(3)
+                        print(f"   ✅ Clicked back via JavaScript (edition→courses)")
+                    except Exception as e:
+                        print(f"   ⚠️ Back button not found: {e}")
+                        print(f"   Using browser back...")
+                        self.driver.back()
+                        time.sleep(3)
 
                 self._pause_for_visual_check()
 
-                # Verify we're back on courses search page
+                # Wait for courses page to load - look for the search box
                 try:
-                    search_box_locator = (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')
-                    WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(search_box_locator))
+                    search_box_locator = (By.NAME,
+                                          'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')
+                    WebDriverWait(self.driver, 15).until(EC.presence_of_element_located(search_box_locator))
                     print(f"   ✅ Back on courses search page!")
                 except:
-                    print(f"   ⚠️ May not be on courses search page, but continuing...")
+                    print(f"   ⚠️ May not be on courses search page")
+                    # Try to navigate there manually
+                    try:
+                        print(f"   Attempting to navigate to courses page...")
+                        self.navigate_to_courses_page()
+                        print(f"   ✅ Navigated to courses page manually")
+                    except Exception as nav_error:
+                        print(f"   ❌ Navigation failed: {nav_error}")
+            # Verify we're back on courses search page
+            try:
+                search_box_locator = (By.NAME, 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00')
+                WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(search_box_locator))
+                print(f"   ✅ Back on courses search page!")
+            except:
+                print(f"   ⚠️ May not be on courses search page, but continuing...")
 
             print(f"\n{'=' * 60}")
             print(f"✅ BATCH: Edition '{edition_title}' for '{course_name}' completed!")
