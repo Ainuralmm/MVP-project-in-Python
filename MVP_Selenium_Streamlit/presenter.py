@@ -207,24 +207,24 @@ class CoursePresenter:
             results = []
 
             # === LOGIN ===
-            with status_container:
-                st.write("🔐 Effettuando login...")
-
-            if not self.model.login(oracle_url, oracle_user, oracle_pass):
-                raise Exception("Login fallito. Controlla le credenziali.")
-
-            with status_container:
-                st.success("✅ Login effettuato!")
-
-            # === NAVIGATE TO COURSES PAGE (ONCE) ===
-            with status_container:
-                st.write("📍 Navigazione alla pagina Corsi...")
+            # with status_container:
+            #     st.write("🔐 Effettuando login...")
+            #
+            # if not self.model.login(oracle_url, oracle_user, oracle_pass):
+            #     raise Exception("Login fallito. Controlla le credenziali.")
+            #
+            # with status_container:
+            #     st.success("✅ Login effettuato!")
+            #
+            # # === NAVIGATE TO COURSES PAGE (ONCE) ===
+            # with status_container:
+            #     st.write("📍 Navigazione alla pagina Corsi...")
 
             if not self.model.navigate_to_courses_page():
                 raise Exception("Impossibile navigare alla pagina Corsi.")
 
-            with status_container:
-                st.success("✅ Pagina Corsi raggiunta!")
+            # with status_container:
+            #     st.success("✅ Pagina Corsi raggiunta!")
 
             # === PROCESS EACH EDITION ===
             for idx, edition in enumerate(editions):
@@ -321,15 +321,19 @@ class CoursePresenter:
 
             # Results table
             if results:
-                st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(results), width='stretch', hide_index=True)
 
         # === DONE BUTTON ===
-        if st.button("✅ Fatto - Torna alla Home", type="primary", use_container_width=True):
+        if st.button("✅ Fatto - Torna alla Home", type="primary", width='stretch'):
+            # Clear ALL batch-related session states FIRST
             st.session_state.app_state = "IDLE"
             st.session_state.batch_edition_data = None
             st.session_state.edition_parsed_data = None
             st.session_state.edition_show_summary = False
-            st.rerun()
+            st.session_state.edition_input_method = "structured"
+            st.session_state.edition_edit_mode = False
+            st.session_state.edition_to_edit = None
+            #st.switch_page
 
 
 
