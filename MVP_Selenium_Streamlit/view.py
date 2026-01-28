@@ -2600,7 +2600,8 @@ class CourseView:
                             '#': i + 1,
                             'Titolo': act.get('title', ''),
                             'Data': act.get('date', ''),
-                            'Orario': f"{act.get('start_time', '')} - {act.get('end_time', '')}"
+                            'Orario': f"{act.get('start_time', '')} - {act.get('end_time', '')}",
+                            'Ore': act.get('impegno_ore', '-')  # ADD THIS LINE
                         })
                     st.dataframe(pd.DataFrame(activity_data), width='stretch', hide_index=True)
                 else:
