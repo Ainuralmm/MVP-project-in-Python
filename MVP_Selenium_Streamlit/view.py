@@ -2633,13 +2633,13 @@ class CourseView:
                 st.session_state.edition_message = ""
                 st.rerun()
 
-        with col2:
-            if st.button("✏️ Modifica", use_container_width=True, key="batch_edition_edit_btn"):
-                # Store data for editing
-                st.session_state.edition_edit_mode = True
-                st.session_state.edition_to_edit = batch_data  # Store all editions data
-                st.session_state.edition_show_summary = False  # Hide preview
-                st.rerun()
+        # with col2:
+        #     if st.button("✏️ Modifica", use_container_width=True, key="batch_edition_edit_btn"):
+        #         # Store data for editing
+        #         st.session_state.edition_edit_mode = True
+        #         st.session_state.edition_to_edit = batch_data  # Store all editions data
+        #         st.session_state.edition_show_summary = False  # Hide preview
+        #         st.rerun()
 
         with col3:
             if st.button("❌ Annulla", width='stretch', key="batch_edition_cancel_btn"):
