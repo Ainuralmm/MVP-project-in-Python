@@ -17,11 +17,14 @@ if __name__ == "__main__":
     view = CourseView()
     headless, debug_mode, debug_pause = view.get_user_options()
 
+    # 2. Get current state BEFORE rendering UI
+    current_state = st.session_state.get('app_state', 'IDLE')
+
     # 2. Let the View render the entire user interface.
-    view.render_ui()
+    #view.render_ui()
 
     # 3. Controller Logic: Only run this block if an automation has been started.
-    if st.session_state.app_state != "IDLE":
+    if current_state != "IDLE":
         model = OracleAutomator(driver_path=DRIVER_PATH,
                                 debug_mode=debug_mode,
                                 debug_pause=debug_pause,
@@ -44,3 +47,7 @@ if __name__ == "__main__":
 
         elif st.session_state.app_state == "RUNNING_STUDENTS":
             presenter.run_add_students(st.session_state.get("student_details"))
+        # After automation completes, the presenter sets state to IDLE
+        # and the page naturally refreshes showing the UI
+    else: # 4. Only render UI when NOT running automation
+        view.render_ui()
