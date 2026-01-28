@@ -2179,7 +2179,7 @@ class CourseView:
                 st.session_state[f"impegno_previsto_in_ore_{i}"] = \
                     st.session_state.preserved_activity_data[f"{key_prefix}_ore"]
 
-    def _render_edition_form(self, is_disabled):
+    def _render_edition_form(self, is_disabled=False):
         """
         Enhanced edition form with three input methods:
         1. Structured input (original form)
@@ -2634,8 +2634,11 @@ class CourseView:
                 st.rerun()
 
         with col2:
-            if st.button("✏️ Modifica", width='stretch', key="batch_edition_edit_btn"):
+            if st.button("✏️ Modifica", use_container_width=True, key="batch_edition_edit_btn"):
+                # Store data for editing
                 st.session_state.edition_edit_mode = True
+                st.session_state.edition_to_edit = batch_data  # Store all editions data
+                st.session_state.edition_show_summary = False  # Hide preview
                 st.rerun()
 
         with col3:
