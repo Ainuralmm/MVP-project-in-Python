@@ -438,6 +438,11 @@ class CourseView:
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
 
+        #  Initialize placeholders as None
+        self.course_output_placeholder = None
+        self.edition_output_placeholder = None
+        self.student_output_placeholder = None
+
     def _update_nlp_text(self):
         """
         Callback function for NLP text area.
@@ -492,7 +497,8 @@ class CourseView:
         # --- Tab1:Course Form Container ---
         with tab1:
             st.header("Creazione Nuovo Corso")
-            if st.session_state.app_state == "RUNNING_COURSE":
+            # FIX: Include RUNNING_BATCH_COURSE in the condition
+            if st.session_state.app_state in ["RUNNING_COURSE", "RUNNING_BATCH_COURSE"]:
                 self.course_output_placeholder = st.empty()
             else:
                 self._render_course_form(is_disabled=is_running)
@@ -503,17 +509,14 @@ class CourseView:
         # --- Tab2: Combined Edition + Activity Form Container ---
         with tab2:
             st.header("Creazione Nuova Edizione + Attività")
-            if st.session_state.app_state == "RUNNING_EDITION":
+            # FIX: Include RUNNING_BATCH_EDITION in the condition (for future)
+            if st.session_state.app_state in ["RUNNING_EDITION", "RUNNING_BATCH_EDITION"]:
                 self.edition_output_placeholder = st.empty()
             else:
                 self._render_edition_form(is_disabled=is_running)
                 self.edition_output_placeholder = st.empty()
                 if st.session_state.edition_message:
                     self.show_message("edition", st.session_state.edition_message, show_clear_button=True)
-        # Handle RUNNING_BATCH_EDITION state
-        # if st.session_state.app_state == "RUNNING_BATCH_EDITION":
-        #     st.info("🔄 Avvio creazione batch edizioni...")
-
 
         # --- Tab3:Student Form Container ---
         with tab3:
@@ -3142,35 +3145,43 @@ class CourseView:
     def update_progress(self, form_type, message, percentage):
         placeholder = None
         if form_type == "course":
-            placeholder = self.course_output_placeholder
+            # Use getattr to safely get the attribute
+            placeholder = getattr(self, 'course_output_placeholder', None)
         elif form_type == "edition":
-            placeholder = self.edition_output_placeholder
+            placeholder = getattr(self, 'edition_output_placeholder', None)
         elif form_type == "student":
-            placeholder = self.student_output_placeholder
+            placeholder = getattr(self, 'student_output_placeholder', None)
 
-        if placeholder and hasattr(self, f"{form_type}_output_placeholder"):
+        # Only try to use placeholder if it exists and is not None
+        if placeholder is not None:
             with placeholder.container():
                 st.info(f"⏳ {message}")
                 st.progress(percentage)
+        else:
+            # Fallback: just show the message directly
+            st.info(f"⏳ {message}")
+            st.progress(percentage)
 
     def show_message(self, form_type, message, show_clear_button=False):
         placeholder = None
         message_key = ""
         if form_type == "course":
-            placeholder = self.course_output_placeholder
+            placeholder = getattr(self, 'course_output_placeholder', None)
             message_key = "course_message"
         elif form_type == "edition":
-            placeholder = self.edition_output_placeholder
+            placeholder = getattr(self, 'edition_output_placeholder', None)
             message_key = "edition_message"
         elif form_type == "student":
-            placeholder = self.student_output_placeholder
+            placeholder = getattr(self, 'student_output_placeholder', None)
             message_key = "student_message"
 
-        if not placeholder or not message_key:
+        if not message_key:
             return
 
         st.session_state[message_key] = message
-        if placeholder and hasattr(self, f"{form_type}_output_placeholder"):
+
+        # Use placeholder if available, otherwise show directly
+        if placeholder is not None:
             with placeholder.container():
                 if "✅" in message:
                     st.success(message)
@@ -3180,3 +3191,13 @@ class CourseView:
                     if st.button(f"🧹 Cancella Messaggio", key=f"clear_{form_type}"):
                         st.session_state[message_key] = ""
                         st.rerun()
+        else:
+            # Fallback: show directly without placeholder
+            if "✅" in message:
+                st.success(message)
+            else:
+                st.error(message)
+            if show_clear_button:
+                if st.button(f"🧹 Cancella Messaggio", key=f"clear_{form_type}"):
+                    st.session_state[message_key] = ""
+                    st.rerun()
