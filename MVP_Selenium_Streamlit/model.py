@@ -1182,26 +1182,65 @@ class OracleAutomator:
                     (By.XPATH, "//button[text()='Cerca' and contains(@id, 'primaryClassroomName1Id')]")))
                 button_parole_chiave_cerca.click()
 
+                # Wait for results table to appear
                 results_table_xpath = '//div[contains(@id, "primaryClassroomName1Id_afrLovInternalTableId::db")]'
                 self.wait.until(EC.presence_of_element_located((By.XPATH, results_table_xpath)))
+                time.sleep(1)  # Small wait for table to fully populate
 
                 try:
+                    # Check for "No results" message
                     short_wait = WebDriverWait(self.driver, 3)
                     short_wait.until(EC.presence_of_element_located((By.XPATH,
                                                                      f'{results_table_xpath}//tr[.//text()[contains(., "Nessuna riga da visualizzare")]]')))
-                    print(f"   ⚠️ Location '{location}' not found")
+                    print(f"   ⚠️ Location '{location}' not found.")
                 except TimeoutException:
-                    location_lower = location.lower()
-                    case_insensitive_xpath = f"//td[contains(@class, 'xen') and .//span[translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{location_lower}']]"
-                    list_aula_option_row = self.wait.until(
-                        EC.element_to_be_clickable((By.XPATH, case_insensitive_xpath)))
-                    list_aula_option_row.click()
-                    self._pause_for_visual_check()
+                    # Results found - select the EXACT match
+                    location_lower = location.lower().strip()
 
+                    # FIXED: Use normalize-space() for exact match like in course selection
+                    # This XPath finds a table cell where the text EXACTLY matches the location
+                    exact_match_xpaths = [
+                        # Try 1: Exact match on span text in Nome column
+                        f"//div[contains(@id, 'primaryClassroomName1Id_afrLovInternalTableId')]//tr[.//td[1]//span[translate(normalize-space(text()), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{location_lower}']]",
+                        # Try 2: Exact match on any td with class xen
+                        f"//div[contains(@id, 'primaryClassroomName1Id_afrLovInternalTableId')]//td[contains(@class, 'xen')][translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{location_lower}']",
+                        # Try 3: Match on first column text
+                        f"//div[contains(@id, 'primaryClassroomName1Id_afrLovInternalTableId')]//tr//td[1][translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='{location_lower}']",
+                        # Try 4: Fallback - contains match if exact fails (for partial names)
+                        f"//div[contains(@id, 'primaryClassroomName1Id_afrLovInternalTableId')]//tr[.//td[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{location_lower}')]]//td[1]",
+                    ]
+
+                    aula_row = None
+                    for xpath in exact_match_xpaths:
+                        try:
+                            aula_row = WebDriverWait(self.driver, 3).until(
+                                EC.element_to_be_clickable((By.XPATH, xpath)))
+                            print(f"   Found location with XPath: {xpath[:50]}...")
+                            break
+                        except:
+                            continue
+
+                    if aula_row:
+                        aula_row.click()
+                        print(f"   ✅ Selected location: {location}")
+                        self._pause_for_visual_check()
+                    else:
+                        print(f"   ⚠️ Could not find exact match for '{location}', trying first result...")
+                        # Fallback: click first row if no exact match
+                        try:
+                            first_row = self.driver.find_element(By.XPATH,
+                                                                 f"//div[contains(@id, 'primaryClassroomName1Id_afrLovInternalTableId')]//tbody//tr[1]//td[1]")
+                            first_row.click()
+                            print(f"   ⚠️ Selected first available location")
+                            self._pause_for_visual_check()
+                        except Exception as e:
+                            print(f"   ❌ Failed to select any location: {e}")
+
+                # Click OK button
                 ok_button = self.wait.until(EC.element_to_be_clickable(
                     (By.XPATH, "//button[text()='OK' and contains(@id, 'primaryClassroomName1Id')]")))
                 ok_button.click()
-                print(f"   ✅ Location set: {location}")
+                print(f"   ✅ Confirmed location selection")
                 self._pause_for_visual_check()
 
             # --- Language ---
