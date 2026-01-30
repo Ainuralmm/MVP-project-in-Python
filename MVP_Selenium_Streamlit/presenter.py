@@ -333,7 +333,6 @@ class CoursePresenter:
             st.session_state.edition_input_method = "structured"
             st.session_state.edition_edit_mode = False
             st.session_state.edition_to_edit = None
-            st.switch_page
 
 
 
