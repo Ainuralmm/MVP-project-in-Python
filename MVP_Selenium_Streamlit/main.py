@@ -13,7 +13,7 @@ from presenter import CoursePresenter
 # and presenter only when needed.
 
 if __name__ == "__main__":
-    DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
+    DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1 /msedgedriver"
 
     # 1. Initialize the View. It handles all state setup.
     view = CourseView()
