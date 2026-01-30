@@ -206,19 +206,19 @@ class CoursePresenter:
             # Initialize results list
             results = []
 
-            # === LOGIN ===
-            # with status_container:
-            #     st.write("🔐 Effettuando login...")
-            #
-            # if not self.model.login(oracle_url, oracle_user, oracle_pass):
-            #     raise Exception("Login fallito. Controlla le credenziali.")
-            #
-            # with status_container:
-            #     st.success("✅ Login effettuato!")
-            #
-            # # === NAVIGATE TO COURSES PAGE (ONCE) ===
-            # with status_container:
-            #     st.write("📍 Navigazione alla pagina Corsi...")
+            #=== LOGIN ===
+            with status_container:
+                st.write("🔐 Effettuando login...")
+
+            if not self.model.login(oracle_url, oracle_user, oracle_pass):
+                raise Exception("Login fallito. Controlla le credenziali.")
+
+            with status_container:
+                st.success("✅ Login effettuato!")
+
+            # === NAVIGATE TO COURSES PAGE (ONCE) ===
+            with status_container:
+                st.write("📍 Navigazione alla pagina Corsi...")
 
             if not self.model.navigate_to_courses_page():
                 raise Exception("Impossibile navigare alla pagina Corsi.")
@@ -333,7 +333,7 @@ class CoursePresenter:
             st.session_state.edition_input_method = "structured"
             st.session_state.edition_edit_mode = False
             st.session_state.edition_to_edit = None
-            #st.switch_page
+            st.switch_page
 
 
 
