@@ -14,23 +14,39 @@ class CoursePresenter:
             oracle_user = st.secrets['ORACLE_USER']
             oracle_pass = st.secrets['ORACLE_PASS']
 
-            ### HASHTAG: DECOUPLED UI COMMANDS (MVP PATTERN)
-            # The presenter now TELLS the view what to show, instead of creating UI itself.
+            # === STEP 1: LOGIN ===
             self.view.update_progress("course", "Accesso a Oracle in corso...", 10)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito. Controlla le credenziali.")
 
-            self.view.update_progress("course", "Creazione del corso...", 50)
+            # === STEP 2: NAVIGATE TO COURSES PAGE ===  ✅ ADDED THIS!
+            self.view.update_progress("course", "Navigazione alla pagina corsi...", 30)
+            if not self.model.navigate_to_courses_page():
+                raise Exception("Navigazione alla pagina corsi fallita.")
+
+            # === STEP 3: CHECK IF COURSE ALREADY EXISTS ===  ✅ ADDED THIS!
+            course_title = course_details.get('title', '')
+            self.view.update_progress("course", f"Verifica se il corso '{course_title}' esiste già...", 50)
+
+            if self.model.search_course(course_title):
+                # Course already exists
+                result_message = f"⚠️ Il corso '{course_title}' esiste già nel sistema. Nessuna azione eseguita."
+                self.view.show_message("course", result_message, show_clear_button=True)
+                return
+
+            # === STEP 4: CREATE THE COURSE ===
+            self.view.update_progress("course", f"Creazione del corso '{course_title}'...", 70)
             result_message = self.model.create_course(course_details)
             time.sleep(1)
 
+            # === STEP 5: SHOW RESULT ===
             self.view.update_progress("course", "Processo completato!", 100)
-            self.view.show_message("course", result_message)
+            self.view.show_message("course", result_message, show_clear_button=True)
 
         except Exception as e:
             error_message = f"‼️ Si è verificato un errore: {str(e)}"
             print(f"Presenter Error: {error_message}")
-            self.view.show_message("course", error_message)
+            self.view.show_message("course", error_message, show_clear_button=True)
 
         finally:
             print("Presenter: Automation finished. Cleaning up.")
