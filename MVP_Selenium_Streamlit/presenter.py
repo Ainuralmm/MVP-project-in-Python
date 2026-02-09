@@ -176,55 +176,49 @@ class CoursePresenter:
     def run_batch_edition_creation(self):
         """
         Execute batch creation of multiple editions with their activities.
+
+        FIXED:
+        - Uses single progress placeholder
+        - Shows results with clear button
+        - Automatically returns to IDLE state
         """
-        st.title("🔄 Creazione Batch Edizioni + Attività")
+        results = []
+
+        # === CREATE SINGLE PROGRESS PLACEHOLDER AT START ===
+        progress_placeholder = st.empty()
+        status_placeholder = st.empty()
+
+        def update_batch_progress(message, percentage):
+            """Helper to update single progress bar"""
+            with progress_placeholder.container():
+                st.progress(percentage / 100)
+            with status_placeholder.container():
+                st.info(f"⏳ {message}")
 
         try:
-            # Get credentials from secrets
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.secrets['ORACLE_USER']
             oracle_pass = st.secrets['ORACLE_PASS']
 
             batch_data = st.session_state.batch_edition_data
             if not batch_data:
-                st.error("❌ Nessun dato batch trovato")
-                st.session_state.app_state = "IDLE"
-                st.rerun()
-                return
+                raise Exception("Nessun dato batch trovato.")
 
-            editions = batch_data['editions']
+            editions = batch_data.get('editions', [])
             total_editions = len(editions)
-            total_activities = sum(len(e.get('activities', [])) for e in editions)
 
-            # Progress display
-            st.info(f"📊 Creazione di **{total_editions} edizioni** con **{total_activities} attività** totali...")
+            if total_editions == 0:
+                raise Exception("Nessuna edizione da creare.")
 
-            progress_bar = st.progress(0)
-            status_container = st.container()
-            results_container = st.container()
-
-            # Initialize results list
-            results = []
-
-            #=== LOGIN ===
-            with status_container:
-                st.write("🔐 Effettuando login...")
-
+            # === LOGIN ===
+            update_batch_progress("Accesso a Oracle...", 5)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito. Controlla le credenziali.")
 
-            with status_container:
-                st.success("✅ Login effettuato!")
-
-            # === NAVIGATE TO COURSES PAGE (ONCE) ===
-            with status_container:
-                st.write("📍 Navigazione alla pagina Corsi...")
-
+            # === NAVIGATE TO COURSES PAGE ===
+            update_batch_progress("Navigazione alla pagina Corsi...", 10)
             if not self.model.navigate_to_courses_page():
                 raise Exception("Impossibile navigare alla pagina Corsi.")
-
-            # with status_container:
-            #     st.success("✅ Pagina Corsi raggiunta!")
 
             # === PROCESS EACH EDITION ===
             for idx, edition in enumerate(editions):
@@ -233,18 +227,16 @@ class CoursePresenter:
                 edition_title = edition.get('edition_title', '')
                 activities = edition.get('activities', [])
 
-                with status_container:
-                    st.write(f"")
-                    st.write(f"### 📚 Edizione {edition_num}/{total_editions}: {course_name}")
-                    if edition_title:
-                        st.write(f"   Titolo: {edition_title}")
-                    st.write(f"   Attività da creare: {len(activities)}")
+                # Calculate progress percentage (10% to 95%)
+                progress_pct = int((idx / total_editions) * 85) + 10
 
-                # Update progress
-                progress_bar.progress(idx / total_editions)
+                display_name = f"{course_name} - {edition_title}" if edition_title else course_name
+                update_batch_progress(
+                    f"Creazione edizione {edition_num}/{total_editions}: {display_name}...",
+                    progress_pct
+                )
 
                 try:
-                    # === CREATE EDITION WITH ACTIVITIES ===
                     success = self.model.create_edition_with_activities_batch(
                         course_name=course_name,
                         edition_title=edition_title,
@@ -255,86 +247,86 @@ class CoursePresenter:
                         price=edition.get('price', ''),
                         description=edition.get('description', ''),
                         activities=activities,
-                        return_to_courses_page=True  # Important for batch!
+                        return_to_courses_page=True
                     )
 
                     if success:
                         results.append({
-                            'edition': f"{course_name} - {edition_title}" if edition_title else course_name,
+                            'edition': display_name,
                             'status': '✅ Successo',
-                            'activities_created': len(activities)
+                            'activities': len(activities)
                         })
-                        with status_container:
-                            st.success(f"   ✅ Edizione creata con {len(activities)} attività!")
                     else:
                         results.append({
-                            'edition': f"{course_name} - {edition_title}" if edition_title else course_name,
-                            'status': '❌ Fallito',
-                            'activities_created': 0
+                            'edition': display_name,
+                            'status': '❌ Creazione fallita',
+                            'activities': 0
                         })
-                        with status_container:
-                            st.error(f"   ❌ Errore nella creazione")
 
                 except Exception as e:
                     results.append({
-                        'edition': f"{course_name} - {edition_title}" if edition_title else course_name,
+                        'edition': display_name,
                         'status': f'❌ Errore: {str(e)[:50]}',
-                        'activities_created': 0
+                        'activities': 0
                     })
-                    with status_container:
-                        st.error(f"   ❌ Eccezione: {str(e)}")
 
-            # Final progress
-            progress_bar.progress(1.0)
-
-            # Cleanup
-            self.model.close()
+            # === FINAL PROGRESS ===
+            update_batch_progress("Processo completato!", 100)
 
         except Exception as e:
-            st.error(f"❌ Errore generale: {str(e)}")
-            import traceback
-            with st.expander("🔍 Dettagli errore"):
-                st.code(traceback.format_exc())
+            error_message = f"‼️ Errore durante la creazione batch edizioni: {str(e)}"
+            print(f"Presenter Error: {error_message}")
+            results.append({
+                'edition': 'ERRORE GENERALE',
+                'status': error_message,
+                'activities': 0
+            })
 
-            # Try to close model
-            try:
-                self.model.close()
-            except:
-                pass
+        finally:
+            # === CLEANUP ===
+            print("Presenter: Batch edition automation finished. Cleaning up.")
+            self.model.close()
 
-        # === SHOW RESULTS SUMMARY ===
-        with results_container:
-            st.divider()
-            st.subheader("📋 Riepilogo Creazione")
+            # Clear progress placeholders
+            progress_placeholder.empty()
+            status_placeholder.empty()
 
-            success_count = sum(1 for r in results if '✅' in r['status'])
+            # === BUILD SUMMARY MESSAGE ===
+            success_count = sum(1 for r in results if '✅' in r.get('status', ''))
             fail_count = len(results) - success_count
-            total_activities_created = sum(r['activities_created'] for r in results)
+            total_activities_created = sum(r.get('activities', 0) for r in results)
+            total_editions = len(
+                st.session_state.batch_edition_data.get('editions', [])) if st.session_state.batch_edition_data else 0
 
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Edizioni Create", f"{success_count}/{total_editions}")
-            with col2:
-                st.metric("Attività Create", total_activities_created)
-            with col3:
-                st.metric("Errori", fail_count)
+            summary_parts = [
+                f"## 📊 Riepilogo Creazione Batch Edizioni\n",
+                f"- **Edizioni create:** {success_count}/{total_editions}",
+                f"- **Attività totali create:** {total_activities_created}",
+                f"- **Errori:** {fail_count}\n",
+                "### Dettagli per edizione:"
+            ]
 
-            # Results table
-            if results:
-                st.dataframe(pd.DataFrame(results), width='stretch', hide_index=True)
+            for r in results:
+                summary_parts.append(
+                    f"- **{r['edition']}**: {r['status']} ({r['activities']} attività)"
+                )
 
-        # === DONE BUTTON ===
-        if st.button("✅ Fatto - Torna alla Home", type="primary", width='stretch'):
-            # Clear ALL batch-related session states FIRST
-            st.session_state.app_state = "IDLE"
+            final_message = "\n".join(summary_parts)
+
+            # Store message in session state for display
+            st.session_state.edition_message = final_message
+
+            # Clear batch-specific states
             st.session_state.batch_edition_data = None
             st.session_state.edition_parsed_data = None
             st.session_state.edition_show_summary = False
-            st.session_state.edition_input_method = "structured"
-            st.session_state.edition_edit_mode = False
-            st.session_state.edition_to_edit = None
 
+            # Set flag to show results on Edition tab
+            st.session_state.show_edition_results = True
 
+            # Return to IDLE
+            st.session_state.app_state = "IDLE"
+            st.rerun()
 
     def run_create_edition_and_activities(self, edition_details):
         try:

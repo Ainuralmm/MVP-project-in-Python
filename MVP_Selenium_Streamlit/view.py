@@ -360,6 +360,8 @@ class CourseView:
             st.session_state.batch_edition_data = None
         if "batch_edition_results" not in st.session_state:
             st.session_state.batch_edition_results = []
+        if "show_edition_results" not in st.session_state:
+            st.session_state.show_edition_results = False
 
         # INITIALIZE SPACY MODEL
         if "nlp_clear_requested" not in st.session_state:
@@ -486,6 +488,22 @@ class CourseView:
 
     def render_ui(self):
         is_running = st.session_state.app_state != "IDLE"
+
+        # === SHOW BATCH EDITION RESULTS PROMINENTLY (if any) ===
+        if st.session_state.get('show_edition_results', False) and st.session_state.get('edition_message', ''):
+            st.markdown("---")
+            # Show the result message with success/error styling
+            if "✅" in st.session_state.edition_message or "Successo" in st.session_state.edition_message:
+                st.success(st.session_state.edition_message)
+            else:
+                st.error(st.session_state.edition_message)
+
+            # Clear button
+            if st.button("🧹 Cancella Messaggio Risultati", key="clear_batch_edition_results"):
+                st.session_state.edition_message = ""
+                st.session_state.show_edition_results = False
+                st.rerun()
+            st.markdown("---")
 
         # Create three tabs
         tab1, tab2, tab3 = st.tabs([

@@ -800,19 +800,61 @@ class OracleAutomator:
                 select_aula_principale.click()
                 self._pause_for_visual_check()
 
-                cerca_aula_button = self.wait.until(
-                    EC.visibility_of_element_located((By.XPATH, "//a[text()='Cerca...']")))
-                cerca_aula_button.click()
-                self._pause_for_visual_check()
+                # NEW CODE
+                cerca_aula_xpaths = [
+                    "//a[contains(@id, 'primaryClassroomName1Id') and contains(@id, 'popupsearch')]",
+                    "//a[text()='Cerca...']",
+                    "//a[text()='Search...']",
+                ]
+
+                cerca_aula_button = None
+                for xpath in cerca_aula_xpaths:
+                    try:
+                        cerca_aula_button = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        print(f"   Found 'Cerca/Search' button with: {xpath}")
+                        break
+                    except:
+                        continue
+
+                if not cerca_aula_button:
+                    print(f"   ⚠️ Could not find 'Cerca/Search' button, skipping location")
+                else:
+                    cerca_aula_button.click()
+                    self._pause_for_visual_check()
 
                 box_cerca_aula_parole_chiave = self.wait.until(EC.presence_of_element_located((By.XPATH,
                                                                                                '//input[contains(@id, "primaryClassroomName1Id::_afrLovInternalQueryId:value00::content")]')))
                 box_cerca_aula_parole_chiave.send_keys(location)
                 self._pause_for_visual_check()
 
-                button_parole_chiave_cerca = self.wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[text()='Cerca' and contains(@id, 'primaryClassroomName1Id')]")))
-                button_parole_chiave_cerca.click()
+                # NEW CODE - Robust XPath using ID pattern (works for both Cerca/Search)
+                search_button_xpaths = [
+                    # Best: ID-based (most stable) - contains 'search' at the end of ID
+                    "//button[contains(@id, 'primaryClassroomName1Id') and contains(@id, '::search')]",
+                    # Fallback 1: ID + Italian text
+                    "//button[contains(@id, 'primaryClassroomName1Id') and text()='Cerca']",
+                    # Fallback 2: ID + English text
+                    "//button[contains(@id, 'primaryClassroomName1Id') and text()='Search']",
+                    # Fallback 3: Just text (less specific)
+                    "//button[text()='Cerca' or text()='Search']",
+                ]
+
+                search_button = None
+                for xpath in search_button_xpaths:
+                    try:
+                        search_button = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        print(f"   Found Aula search button with: {xpath}")
+                        break
+                    except:
+                        continue
+
+                if not search_button:
+                    raise Exception("Could not find Search/Cerca button in Aula popup")
+
+                search_button.click()
+                print("   Clicked Aula search button")
 
                 ### HASHTAG: FIX  - ADDED EXPLICIT WAIT FOR RESULTS
                 # Instead of a fixed pause,  now explicitly wait for the results table to appear after searching.
@@ -858,72 +900,104 @@ class OracleAutomator:
             self._pause_for_visual_check()
 
             # supplier lookup & select
+            # --- Supplier ---
             if supplier:
-                # Set moderator type to 'Fornitore formazione' first
+                print(f"   Setting supplier: {supplier}")
                 moderator_type = 'Fornitore formazione'
                 choose_tipo_moderatore = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, ':lsVwCls:socFaciType::drop')]"))
-                )
+                    EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, ':lsVwCls:socFaciType::drop')]")))
                 choose_tipo_moderatore.click()
                 find_tipo_moderatore = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, f'//li[text()="{moderator_type}"]'))
-                    # More specific than contains()
-                )
+                    EC.element_to_be_clickable((By.XPATH, f'//li[text()="{moderator_type}"]')))
                 find_tipo_moderatore.click()
-                print(f"Set moderator type to: {moderator_type}")
 
-                # Now, handle the supplier lookup
-                # 1. Click the icon to open the search popup.
+                # Click supplier lookup icon
                 self.wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::lovIconId')]"))
                 ).click()
 
-                # 2. Inside the popup, click the 'Search...' link to reveal the input field.
-                self.wait.until(
-                    EC.element_to_be_clickable(
-                        (By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::dropdownPopup::popupsearch')]"))
-                ).click()
+                # === ROBUST: Click "Cerca.../Search..." link ===
+                supplier_cerca_link_xpaths = [
+                    "//a[contains(@id, 'supplierNameId') and contains(@id, 'popupsearch')]",
+                    "//a[contains(@id, ':lsVwCls:supplierNameId::dropdownPopup::popupsearch')]",
+                    "//a[text()='Cerca...']",
+                    "//a[text()='Search...']",
+                ]
 
-                # 3. Wait for the search box, enter the supplier name, and click the search button.
-                # We combine these actions as they happen quickly.
-                box = self.wait.until(EC.visibility_of_element_located((By.XPATH,
-                                                                        "//input[contains(@id, ':lsVwCls:supplierNameId::_afrLovInternalQueryId:value00::content')]")))
-                box.send_keys(supplier)
+                supplier_cerca_link = None
+                for xpath in supplier_cerca_link_xpaths:
+                    try:
+                        supplier_cerca_link = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        print(f"   Found supplier 'Cerca/Search' link with: {xpath}")
+                        break
+                    except:
+                        continue
 
-                self.driver.find_element(By.XPATH,
-                                         "//button[text()='Cerca' and contains(@id, 'supplierNameId')]").click()
-
-                # 4. CRITICAL STEP: Now wait for the result using the robust, case-insensitive XPath.
-                # This single wait checks for either the desired result or a "no results" message.
-                print(f"Searching for supplier '{supplier}'...")
-                try:
-                    # Use the new case-insensitive XPath to find the correct row
-                    supplier_row_xpath = (
-                        f'//div[contains(@id, "lsVwCls:supplierNameId_afrLovInternalTableId::db")]'
-                        f'//tr[contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "{supplier.lower()}")]'
-                    )
-
-                    find_nome_fornitore_in_list = self.wait.until(
-                        EC.element_to_be_clickable((By.XPATH, supplier_row_xpath))
-                    )
-
-                    print(f"Found supplier '{supplier}'. Clicking...")
-                    find_nome_fornitore_in_list.click()
-
-                    # 5. Finally, click the 'OK' button to confirm the selection.
-                    self.wait.until(
-                        EC.element_to_be_clickable(
-                            (By.XPATH, "//button[text()='OK' and contains(@id, 'supplierNameId')]"))
-                    ).click()
-                    print(f"Successfully selected supplier: {supplier}")
+                if supplier_cerca_link:
+                    supplier_cerca_link.click()
                     self._pause_for_visual_check()
 
-                except TimeoutException:
-                    # This block runs only if the case-insensitive search fails to find the row.
-                    print(f"⚠️ The supplier '{supplier}' was not found after search.")
-                    # Optional: Click a 'Cancel' button here to close the popup gracefully
-                    # self.driver.find_element(By.XPATH, "//button[text()='Annulla']").click()
+                    # Enter supplier name in search box
+                    box = self.wait.until(EC.visibility_of_element_located((By.XPATH,
+                                                                            "//input[contains(@id, 'supplierNameId') and contains(@id, 'value00::content')]")))
+                    box.send_keys(supplier)
 
+                    # === ROBUST: Click Search/Cerca button ===
+                    supplier_search_xpaths = [
+                        "//button[contains(@id, 'supplierNameId') and contains(@id, '::search')]",
+                        "//button[contains(@id, 'supplierNameId') and text()='Cerca']",
+                        "//button[contains(@id, 'supplierNameId') and text()='Search']",
+                    ]
+
+                    supplier_search_btn = None
+                    for xpath in supplier_search_xpaths:
+                        try:
+                            supplier_search_btn = WebDriverWait(self.driver, 5).until(
+                                EC.element_to_be_clickable((By.XPATH, xpath)))
+                            print(f"   Found supplier search button with: {xpath}")
+                            break
+                        except:
+                            continue
+
+                    if supplier_search_btn:
+                        supplier_search_btn.click()
+                        print("   Clicked supplier search button")
+
+                        # Wait for results and select
+                        try:
+                            supplier_row_xpath = (
+                                f'//div[contains(@id, "supplierNameId_afrLovInternalTableId::db")]'
+                                f'//tr[contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "{supplier.lower()}")]'
+                            )
+                            find_nome_fornitore_in_list = self.wait.until(
+                                EC.element_to_be_clickable((By.XPATH, supplier_row_xpath)))
+                            find_nome_fornitore_in_list.click()
+
+                            # === ROBUST: Click OK button ===
+                            ok_button_xpaths = [
+                                "//button[contains(@id, 'supplierNameId') and text()='OK']",
+                                "//button[text()='OK' and contains(@id, 'supplierNameId')]",
+                            ]
+
+                            for xpath in ok_button_xpaths:
+                                try:
+                                    ok_btn = WebDriverWait(self.driver, 5).until(
+                                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                                    ok_btn.click()
+                                    print(f"   ✅ Supplier set: {supplier}")
+                                    break
+                                except:
+                                    continue
+
+                            self._pause_for_visual_check()
+
+                        except TimeoutException:
+                            print(f"   ⚠️ Supplier '{supplier}' not found in results")
+                    else:
+                        print(f"   ⚠️ Could not find supplier Search button")
+                else:
+                    print(f"   ⚠️ Could not find supplier Cerca/Search link")
 
 
             # add price
@@ -1168,8 +1242,26 @@ class OracleAutomator:
                 select_aula_principale.click()
                 self._pause_for_visual_check()
 
-                cerca_aula_button = self.wait.until(
-                    EC.visibility_of_element_located((By.XPATH, "//a[text()='Cerca...']")))
+                # Robust XPath using ID pattern (works for both Cerca/Search)
+                cerca_aula_xpaths = [
+                    "//a[contains(@id, 'primaryClassroomName1Id') and contains(@id, 'popupsearch')]",
+                    "//a[text()='Cerca...']",
+                    "//a[text()='Search...']",
+                ]
+
+                cerca_aula_button = None
+                for xpath in cerca_aula_xpaths:
+                    try:
+                        cerca_aula_button = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        print(f"   Found 'Cerca/Search' button with: {xpath}")
+                        break
+                    except:
+                        continue
+
+                if not cerca_aula_button:
+                    raise Exception("Could not find 'Cerca/Search' button for Aula")
+
                 cerca_aula_button.click()
                 self._pause_for_visual_check()
 
@@ -1178,9 +1270,33 @@ class OracleAutomator:
                 box_cerca_aula_parole_chiave.send_keys(location)
                 self._pause_for_visual_check()
 
-                button_parole_chiave_cerca = self.wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[text()='Cerca' and contains(@id, 'primaryClassroomName1Id')]")))
-                button_parole_chiave_cerca.click()
+                # NEW CODE - Robust XPath using ID pattern (works for both Cerca/Search)
+                search_button_xpaths = [
+                    # Best: ID-based (most stable) - contains 'search' at the end of ID
+                    "//button[contains(@id, 'primaryClassroomName1Id') and contains(@id, '::search')]",
+                    # Fallback 1: ID + Italian text
+                    "//button[contains(@id, 'primaryClassroomName1Id') and text()='Cerca']",
+                    # Fallback 2: ID + English text
+                    "//button[contains(@id, 'primaryClassroomName1Id') and text()='Search']",
+                    # Fallback 3: Just text (less specific)
+                    "//button[text()='Cerca' or text()='Search']",
+                ]
+
+                search_button = None
+                for xpath in search_button_xpaths:
+                    try:
+                        search_button = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        print(f"   Found Aula search button with: {xpath}")
+                        break
+                    except:
+                        continue
+
+                if not search_button:
+                    raise Exception("Could not find Search/Cerca button in Aula popup")
+
+                search_button.click()
+                print("   Clicked Aula search button")
 
                 # Wait for results table to appear
                 results_table_xpath = '//div[contains(@id, "primaryClassroomName1Id_afrLovInternalTableId::db")]'
@@ -1256,6 +1372,7 @@ class OracleAutomator:
             print(f"   ✅ Language: {language}")
             self._pause_for_visual_check()
 
+
             # --- Supplier ---
             if supplier:
                 print(f"   Setting supplier: {supplier}")
@@ -1267,39 +1384,93 @@ class OracleAutomator:
                     EC.element_to_be_clickable((By.XPATH, f'//li[text()="{moderator_type}"]')))
                 find_tipo_moderatore.click()
 
+                # Click supplier lookup icon
                 self.wait.until(
                     EC.element_to_be_clickable((By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::lovIconId')]"))
                 ).click()
 
-                self.wait.until(
-                    EC.element_to_be_clickable(
-                        (By.XPATH, "//a[contains(@id, ':lsVwCls:supplierNameId::dropdownPopup::popupsearch')]"))
-                ).click()
+                # === ROBUST: Click "Cerca.../Search..." link ===
+                supplier_cerca_link_xpaths = [
+                    "//a[contains(@id, 'supplierNameId') and contains(@id, 'popupsearch')]",
+                    "//a[contains(@id, ':lsVwCls:supplierNameId::dropdownPopup::popupsearch')]",
+                    "//a[text()='Cerca...']",
+                    "//a[text()='Search...']",
+                ]
 
-                box = self.wait.until(EC.visibility_of_element_located((By.XPATH,
-                                                                        "//input[contains(@id, ':lsVwCls:supplierNameId::_afrLovInternalQueryId:value00::content')]")))
-                box.send_keys(supplier)
+                supplier_cerca_link = None
+                for xpath in supplier_cerca_link_xpaths:
+                    try:
+                        supplier_cerca_link = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        print(f"   Found supplier 'Cerca/Search' link with: {xpath}")
+                        break
+                    except:
+                        continue
 
-                self.driver.find_element(By.XPATH,
-                                         "//button[text()='Cerca' and contains(@id, 'supplierNameId')]").click()
-
-                try:
-                    supplier_row_xpath = (
-                        f'//div[contains(@id, "lsVwCls:supplierNameId_afrLovInternalTableId::db")]'
-                        f'//tr[contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "{supplier.lower()}")]'
-                    )
-                    find_nome_fornitore_in_list = self.wait.until(
-                        EC.element_to_be_clickable((By.XPATH, supplier_row_xpath)))
-                    find_nome_fornitore_in_list.click()
-
-                    self.wait.until(
-                        EC.element_to_be_clickable(
-                            (By.XPATH, "//button[text()='OK' and contains(@id, 'supplierNameId')]"))
-                    ).click()
-                    print(f"   ✅ Supplier set: {supplier}")
+                if supplier_cerca_link:
+                    supplier_cerca_link.click()
                     self._pause_for_visual_check()
-                except TimeoutException:
-                    print(f"   ⚠️ Supplier '{supplier}' not found")
+
+                    # Enter supplier name in search box
+                    box = self.wait.until(EC.visibility_of_element_located((By.XPATH,
+                                                                            "//input[contains(@id, 'supplierNameId') and contains(@id, 'value00::content')]")))
+                    box.send_keys(supplier)
+
+                    # === ROBUST: Click Search/Cerca button ===
+                    supplier_search_xpaths = [
+                        "//button[contains(@id, 'supplierNameId') and contains(@id, '::search')]",
+                        "//button[contains(@id, 'supplierNameId') and text()='Cerca']",
+                        "//button[contains(@id, 'supplierNameId') and text()='Search']",
+                    ]
+
+                    supplier_search_btn = None
+                    for xpath in supplier_search_xpaths:
+                        try:
+                            supplier_search_btn = WebDriverWait(self.driver, 5).until(
+                                EC.element_to_be_clickable((By.XPATH, xpath)))
+                            print(f"   Found supplier search button with: {xpath}")
+                            break
+                        except:
+                            continue
+
+                    if supplier_search_btn:
+                        supplier_search_btn.click()
+                        print("   Clicked supplier search button")
+
+                        # Wait for results and select
+                        try:
+                            supplier_row_xpath = (
+                                f'//div[contains(@id, "supplierNameId_afrLovInternalTableId::db")]'
+                                f'//tr[contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "{supplier.lower()}")]'
+                            )
+                            find_nome_fornitore_in_list = self.wait.until(
+                                EC.element_to_be_clickable((By.XPATH, supplier_row_xpath)))
+                            find_nome_fornitore_in_list.click()
+
+                            # === ROBUST: Click OK button ===
+                            ok_button_xpaths = [
+                                "//button[contains(@id, 'supplierNameId') and text()='OK']",
+                                "//button[text()='OK' and contains(@id, 'supplierNameId')]",
+                            ]
+
+                            for xpath in ok_button_xpaths:
+                                try:
+                                    ok_btn = WebDriverWait(self.driver, 5).until(
+                                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                                    ok_btn.click()
+                                    print(f"   ✅ Supplier set: {supplier}")
+                                    break
+                                except:
+                                    continue
+
+                            self._pause_for_visual_check()
+
+                        except TimeoutException:
+                            print(f"   ⚠️ Supplier '{supplier}' not found in results")
+                    else:
+                        print(f"   ⚠️ Could not find supplier Search button")
+                else:
+                    print(f"   ⚠️ Could not find supplier Cerca/Search link")
 
             # --- Price ---
             if price:
