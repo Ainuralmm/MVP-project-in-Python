@@ -453,27 +453,18 @@ class CourseView:
         # ### HASHTAG: CALLBACK TO ENSURE TEXT AREA UPDATES ARE CAPTURED ###
         pass  # No action needed, key parameter handles state update
 
-    # NEW METHOD - CLEAR NLP INPUT SAFELY
     def _clear_nlp_input_callback(self):
-        """
-        Safely clear NLP input and ALL related states.
+        """Safely clear NLP input and ALL related states."""
+        # If using key in text_area, clear that key
+        if "course_nlp_text_key" in st.session_state:
+            st.session_state.course_nlp_text_key = ""
 
-        WHY: When user clicks "clear", we must reset:
-        - The text input itself
-        - Any parsed data from previous analysis
-        - The summary display flag
-        - The clear request flag
-
-        This ensures a clean slate for the next analysis.
-        """
-        #COMPREHENSIVE STATE RESET
+        # Clear tracking variables
         st.session_state.nlp_clear_requested = True
+        st.session_state.course_nlp_input = ""
         st.session_state.course_parsed_data = None
         st.session_state.course_show_summary = False
-
-        # OPTIONAL - ADD DEBUG LOG
-        # Uncomment this to debug state issues:
-        print("DEBUG: NLP cleared - all states reset")
+        print("NLP cleared - all states reset")
 
     def get_user_options(self):
         st.sidebar.header("Impostazioni")
@@ -1322,8 +1313,12 @@ class CourseView:
                 st.session_state[f"impegno_previsto_in_ore_{i}"] = ""
 
     def _clear_edition_nlp_callback(self):
-        """Clear NLP input for edition"""
-        st.session_state.edition_nlp_clear_requested = True
+        """Clear NLP input for edition - must clear the KEY-based state"""
+        # Clear the widget's key-based state (this is what Streamlit uses internally)
+        st.session_state.edition_nlp_text_area = ""  # ✅ Clear the KEY!
+
+        # Also clear our tracking variables
+        st.session_state.edition_nlp_input = ""
         st.session_state.edition_parsed_data = None
         st.session_state.edition_show_summary = False
         print("DEBUG: Edition NLP cleared")
@@ -2319,23 +2314,18 @@ class CourseView:
         secondo giorno 13/02/2026 ore 10.00-12.00"
         """, icon="💡")
 
-        # Handle clear request
-        if st.session_state.get('edition_nlp_clear_requested', False):
-            st.session_state.edition_nlp_input = ""
-            st.session_state.edition_nlp_clear_requested = False
-            st.rerun()
+        # ✅ Initialize the key-based state if not exists
+        if "edition_nlp_text_area" not in st.session_state:
+            st.session_state.edition_nlp_text_area = ""
 
+        # ✅ Use key parameter - Streamlit manages state at this key
         nlp_text = st.text_area(
             "Descrivi l'edizione in linguaggio naturale:",
             height=200,
-            value=st.session_state.edition_nlp_input,
             placeholder="Crea edizione per corso [nome corso] data inizio [data] data fine [data]...",
             help="Scrivi una frase completa con i dettagli dell'edizione e delle attività",
-
+            key="edition_nlp_text_area"  # ✅ USE KEY - Streamlit stores value here
         )
-
-        # Update session state
-        st.session_state.edition_nlp_input = nlp_text
 
         # Show character count
         text_length = len(nlp_text.strip()) if nlp_text else 0
@@ -2383,7 +2373,8 @@ class CourseView:
             if st.button("🧹 Cancella Testo", width='stretch',
                          on_click=self._clear_edition_nlp_callback,
                          key="clear_edition_nlp_btn"):
-                pass
+                pass  # Callback handles the clearing
+
 
     def _process_structured_edition_submission(self, num_activities):
         """Process the structured form submission"""
