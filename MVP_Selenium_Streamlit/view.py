@@ -2331,7 +2331,7 @@ class CourseView:
             value=st.session_state.edition_nlp_input,
             placeholder="Crea edizione per corso [nome corso] data inizio [data] data fine [data]...",
             help="Scrivi una frase completa con i dettagli dell'edizione e delle attività",
-            key="edition_nlp_text_area"
+
         )
 
         # Update session state
@@ -2342,7 +2342,7 @@ class CourseView:
         if text_length > 0:
             st.caption(f"✏️ {text_length} caratteri inseriti")
         else:
-            st.warning("⚠️ Inserisci del testo per abilitare l'analisi", icon="⚠️")
+            st.warning("Inserisci del testo per abilitare l'analisi", icon="⚠️")
 
         col1, col2 = st.columns([1, 1])
 
