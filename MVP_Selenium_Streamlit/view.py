@@ -360,6 +360,8 @@ class CourseView:
             st.session_state.batch_edition_data = None
         if "batch_edition_results" not in st.session_state:
             st.session_state.batch_edition_results = []
+        if "show_edition_results" not in st.session_state:
+            st.session_state.show_edition_results = False
 
         # INITIALIZE SPACY MODEL
         if "nlp_clear_requested" not in st.session_state:
@@ -451,27 +453,18 @@ class CourseView:
         # ### HASHTAG: CALLBACK TO ENSURE TEXT AREA UPDATES ARE CAPTURED ###
         pass  # No action needed, key parameter handles state update
 
-    # NEW METHOD - CLEAR NLP INPUT SAFELY
     def _clear_nlp_input_callback(self):
-        """
-        Safely clear NLP input and ALL related states.
+        """Safely clear NLP input and ALL related states."""
+        # If using key in text_area, clear that key
+        if "course_nlp_text_key" in st.session_state:
+            st.session_state.course_nlp_text_key = ""
 
-        WHY: When user clicks "clear", we must reset:
-        - The text input itself
-        - Any parsed data from previous analysis
-        - The summary display flag
-        - The clear request flag
-
-        This ensures a clean slate for the next analysis.
-        """
-        #COMPREHENSIVE STATE RESET
+        # Clear tracking variables
         st.session_state.nlp_clear_requested = True
+        st.session_state.course_nlp_input = ""
         st.session_state.course_parsed_data = None
         st.session_state.course_show_summary = False
-
-        # OPTIONAL - ADD DEBUG LOG
-        # Uncomment this to debug state issues:
-        print("DEBUG: NLP cleared - all states reset")
+        print("NLP cleared - all states reset")
 
     def get_user_options(self):
         st.sidebar.header("Impostazioni")
@@ -486,6 +479,22 @@ class CourseView:
 
     def render_ui(self):
         is_running = st.session_state.app_state != "IDLE"
+
+        # === SHOW BATCH EDITION RESULTS PROMINENTLY (if any) ===
+        if st.session_state.get('show_edition_results', False) and st.session_state.get('edition_message', ''):
+            st.markdown("---")
+            # Show the result message with success/error styling
+            if "✅" in st.session_state.edition_message or "Successo" in st.session_state.edition_message:
+                st.success(st.session_state.edition_message)
+            else:
+                st.error(st.session_state.edition_message)
+
+            # Clear button
+            if st.button("🧹 Cancella Messaggio Risultati", key="clear_batch_edition_results"):
+                st.session_state.edition_message = ""
+                st.session_state.show_edition_results = False
+                st.rerun()
+            st.markdown("---")
 
         # Create three tabs
         tab1, tab2, tab3 = st.tabs([
@@ -1277,6 +1286,8 @@ class CourseView:
             return None
 
     def _clear_edition_activity_form_callback(self):
+        """Clear all edition and activity form fields"""
+        # Clear edition fields
         st.session_state.edition_course_name_key = ""
         st.session_state.edition_title_key = ""
         st.session_state.edition_start_date_str_key = ""
@@ -1287,8 +1298,10 @@ class CourseView:
         st.session_state.edition_price_key = ""
         st.session_state.num_activities = 1
 
-        # Clear ALL activity fields AND preserved data
+        # ✅ Clear preserved data to prevent restoration of old values
         st.session_state.preserved_activity_data = {}
+
+        # Clear ALL activity fields
         for i in range(30):
             if f"activity_title_{i}" in st.session_state:
                 st.session_state[f"activity_title_{i}"] = ""
@@ -1303,9 +1316,15 @@ class CourseView:
             if f"impegno_previsto_in_ore_{i}" in st.session_state:
                 st.session_state[f"impegno_previsto_in_ore_{i}"] = ""
 
+        print("Edition+Activity form cleared")
+
     def _clear_edition_nlp_callback(self):
-        """Clear NLP input for edition"""
-        st.session_state.edition_nlp_clear_requested = True
+        """Clear NLP input for edition - must clear the KEY-based state"""
+        # Clear the widget's key-based state (this is what Streamlit uses internally)
+        st.session_state.edition_nlp_text_area = ""  # ✅ Clear the KEY!
+
+        # Also clear our tracking variables
+        st.session_state.edition_nlp_input = ""
         st.session_state.edition_parsed_data = None
         st.session_state.edition_show_summary = False
         print("DEBUG: Edition NLP cleared")
@@ -2228,9 +2247,9 @@ class CourseView:
     def _render_edition_structured_form(self, is_disabled):
         """Original structured form for edition + activities"""
 
-        # Restore data BEFORE rendering the form
-        if st.session_state.preserved_activity_data:
-            self._restore_activity_data(st.session_state.num_activities)
+        # # Restore data BEFORE rendering the form
+        # if st.session_state.preserved_activity_data:
+        #     self._restore_activity_data(st.session_state.num_activities)
 
         num_activities = st.number_input(
             "Quanti giorni di attività?",
@@ -2259,6 +2278,9 @@ class CourseView:
 
             st.divider()
             st.subheader("Dettagli Attività")
+
+            # ✅ Add note about mandatory fields
+            st.caption("* I campi Titolo, Descrizione e Data sono obbligatori per ogni attività")
 
             for i in range(num_activities):
                 st.markdown(f"**Giorno {i + 1}**")
@@ -2301,30 +2323,25 @@ class CourseView:
         secondo giorno 13/02/2026 ore 10.00-12.00"
         """, icon="💡")
 
-        # Handle clear request
-        if st.session_state.get('edition_nlp_clear_requested', False):
-            st.session_state.edition_nlp_input = ""
-            st.session_state.edition_nlp_clear_requested = False
-            st.rerun()
+        # ✅ Initialize the key-based state if not exists
+        if "edition_nlp_text_area" not in st.session_state:
+            st.session_state.edition_nlp_text_area = ""
 
+        # ✅ Use key parameter - Streamlit manages state at this key
         nlp_text = st.text_area(
             "Descrivi l'edizione in linguaggio naturale:",
             height=200,
-            value=st.session_state.edition_nlp_input,
             placeholder="Crea edizione per corso [nome corso] data inizio [data] data fine [data]...",
             help="Scrivi una frase completa con i dettagli dell'edizione e delle attività",
-            key="edition_nlp_text_area"
+            key="edition_nlp_text_area"  # ✅ USE KEY - Streamlit stores value here
         )
-
-        # Update session state
-        st.session_state.edition_nlp_input = nlp_text
 
         # Show character count
         text_length = len(nlp_text.strip()) if nlp_text else 0
         if text_length > 0:
             st.caption(f"✏️ {text_length} caratteri inseriti")
         else:
-            st.warning("⚠️ Inserisci del testo per abilitare l'analisi", icon="⚠️")
+            st.warning("Inserisci del testo per abilitare l'analisi", icon="⚠️")
 
         col1, col2 = st.columns([1, 1])
 
@@ -2365,13 +2382,15 @@ class CourseView:
             if st.button("🧹 Cancella Testo", width='stretch',
                          on_click=self._clear_edition_nlp_callback,
                          key="clear_edition_nlp_btn"):
-                pass
+                pass  # Callback handles the clearing
 
     def _process_structured_edition_submission(self, num_activities):
-        """Process the structured form submission"""
-        # PRESERVE DATA BEFORE PROCESSING
-        self._preserve_activity_data(num_activities)
+        """Process the structured form submission with specific error messages"""
 
+        # ❌ REMOVE THIS LINE - Don't preserve data before validation
+        # self._preserve_activity_data(num_activities)
+
+        # Get edition details
         course_name = st.session_state.edition_course_name_key
         edition_title = st.session_state.edition_title_key
         start_date_str = st.session_state.edition_start_date_str_key
@@ -2381,53 +2400,129 @@ class CourseView:
         supplier = st.session_state.edition_supplier_key
         price = st.session_state.edition_price_key
 
-        if not all([course_name.strip(), start_date_str.strip(), end_date_str.strip()]):
-            st.error("I campi 'Nome Corso', 'Data Inizio Edizione' e 'Data Fine Edizione' sono obbligatori.")
+        # ✅ SPECIFIC ERROR MESSAGES FOR EDITION FIELDS
+        has_errors = False
+
+        if not course_name.strip():
+            st.error("❌ **Nome del Corso** è obbligatorio.")
+            has_errors = True
+
+        if not start_date_str.strip():
+            st.error("❌ **Data Inizio Edizione** è obbligatoria.")
+            has_errors = True
+
+        if not end_date_str.strip():
+            st.error("❌ **Data Fine Edizione** è obbligatoria.")
+            has_errors = True
+
+        if has_errors:
+            st.stop()
+
+        # ✅ VALIDATE DATE FORMATS WITH SPECIFIC ERRORS
+        try:
+            edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
+        except ValueError:
+            st.error(
+                f"❌ **Data Inizio Edizione** formato non valido: '{start_date_str}'. Usa GG/MM/AAAA (es: 01/03/2026)")
             st.stop()
 
         try:
-            edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
             edition_end = datetime.strptime(end_date_str, "%d/%m/%Y").date()
-
-            if edition_end < edition_start:
-                st.error("La data di fine edizione non può essere precedente alla data di inizio.")
-                st.stop()
-
-            activities_list = []
-            for i in range(num_activities):
-                title = st.session_state.get(f"activity_title_{i}", "")
-                act_desc = st.session_state.get(f"activity_desc_{i}", "")
-                act_date_str = st.session_state.get(f"activity_date_{i}", "")
-                start_time = st.session_state.get(f"activity_start_time_{i}", "09.00")
-                end_time = st.session_state.get(f"activity_end_time_{i}", "11.00")
-                impegno_previsto_in_ore = st.session_state.get(f"impegno_previsto_in_ore_{i}", "")
-
-                if not all([title.strip(), act_desc.strip(), act_date_str.strip()]):
-                    st.error(f"Titolo, Descrizione e Data sono obbligatori per l'attività del Giorno {i + 1}.")
-                    st.stop()
-
-                act_date = datetime.strptime(act_date_str, "%d/%m/%Y").date()
-                datetime.strptime(start_time, "%H.%M")
-                datetime.strptime(end_time, "%H.%M")
-
-                if act_date < edition_start or act_date > edition_end:
-                    st.error(
-                        f"La data dell'attività (Giorno {i + 1}: {act_date_str}) deve essere compresa tra l'inizio ({start_date_str}) e la fine ({end_date_str}) dell'edizione.")
-                    st.stop()
-
-                activities_list.append({
-                    "title": title,
-                    "description": act_desc,
-                    "date": act_date,
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "impegno_previsto_in_ore": impegno_previsto_in_ore
-                })
-
         except ValueError:
-            st.error("Formato data o ora non valido. Usa GG/MM/AAAA e HH.MM (con il punto).")
+            st.error(f"❌ **Data Fine Edizione** formato non valido: '{end_date_str}'. Usa GG/MM/AAAA (es: 15/03/2026)")
             st.stop()
 
+        if edition_end < edition_start:
+            st.error("❌ La **Data Fine Edizione** non può essere precedente alla **Data Inizio Edizione**.")
+            st.stop()
+
+        # ✅ VALIDATE EACH ACTIVITY WITH SPECIFIC ERRORS
+        activities_list = []
+        all_valid = True
+
+        for i in range(num_activities):
+            activity_errors = []
+
+            title = st.session_state.get(f"activity_title_{i}", "").strip()
+            act_desc = st.session_state.get(f"activity_desc_{i}", "").strip()
+            act_date_str = st.session_state.get(f"activity_date_{i}", "").strip()
+            start_time = st.session_state.get(f"activity_start_time_{i}", "09.00").strip()
+            end_time = st.session_state.get(f"activity_end_time_{i}", "11.00").strip()
+            impegno_previsto_in_ore = st.session_state.get(f"impegno_previsto_in_ore_{i}", "").strip()
+
+            # Check each field specifically
+            if not title:
+                activity_errors.append("**Titolo** è obbligatorio")
+
+            if not act_desc:
+                activity_errors.append("**Descrizione** è obbligatoria")
+
+            if not act_date_str:
+                activity_errors.append("**Data** è obbligatoria")
+
+            # Show activity-specific errors
+            if activity_errors:
+                error_list = ", ".join(activity_errors)
+                st.error(f"❌ **Attività Giorno {i + 1}**: {error_list}")
+                all_valid = False
+                continue  # Check other activities too
+
+            # Validate date format
+            try:
+                act_date = datetime.strptime(act_date_str, "%d/%m/%Y").date()
+            except ValueError:
+                st.error(f"❌ **Attività Giorno {i + 1}**: Formato data non valido '{act_date_str}'. Usa GG/MM/AAAA")
+                all_valid = False
+                continue
+
+            # Validate time format
+            try:
+                if start_time:
+                    datetime.strptime(start_time, "%H.%M")
+                else:
+                    start_time = "09.00"
+            except ValueError:
+                st.error(
+                    f"❌ **Attività Giorno {i + 1}**: Formato ora inizio non valido '{start_time}'. Usa HH.MM (es: 09.00)")
+                all_valid = False
+                continue
+
+            try:
+                if end_time:
+                    datetime.strptime(end_time, "%H.%M")
+                else:
+                    end_time = "11.00"
+            except ValueError:
+                st.error(
+                    f"❌ **Attività Giorno {i + 1}**: Formato ora fine non valido '{end_time}'. Usa HH.MM (es: 11.00)")
+                all_valid = False
+                continue
+
+            # Validate activity date is within edition range
+            if act_date < edition_start or act_date > edition_end:
+                st.error(
+                    f"❌ **Attività Giorno {i + 1}**: La data ({act_date_str}) deve essere compresa tra "
+                    f"l'inizio ({start_date_str}) e la fine ({end_date_str}) dell'edizione."
+                )
+                all_valid = False
+                continue
+
+            # Activity is valid - add to list
+            activities_list.append({
+                "title": title,
+                "description": act_desc,
+                "date": act_date,
+                "start_time": start_time,
+                "end_time": end_time,
+                "impegno_previsto_in_ore": impegno_previsto_in_ore
+            })
+
+        # Stop if any activity had errors
+        if not all_valid:
+            st.info("💡 Correggi gli errori sopra e riprova.")
+            st.stop()
+
+        # ✅ ALL VALIDATION PASSED - Now start automation
         st.session_state.edition_details = {
             "course_name": course_name,
             "edition_title": edition_title,
