@@ -1,8 +1,12 @@
 import streamlit as st
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import pandas as pd
 import spacy
 from typing import Optional, Dict, Any, Tuple, List
+
+import presenter
+from presenter import CoursePresenter
+
 
 # NEW UTILITY FUNCTIONS FOR ENHANCED NLP PARSING
 #========== UTILITY 1: SAFE TEXT EXTRACTION ==========
@@ -323,6 +327,7 @@ def extract_with_spacy_matcher(text: str, nlp_model) -> Dict[str, str]:
 
 class CourseView:
     def __init__(self):
+        self.presenter = presenter
         st.set_page_config(layout='centered')
         # --- Basic App State ---
         if "app_state" not in st.session_state:
@@ -331,40 +336,55 @@ class CourseView:
         # --- Message States: COURSE ---
         if "course_message" not in st.session_state:
             st.session_state.course_message = ""
+
         # NEW STATE VARIABLES FOR COURSE INPUT METHOD
         if "course_input_method" not in st.session_state:
             st.session_state.course_input_method = "structured"  # Options: "structured", "excel", "nlp"
         if "course_edit_mode" not in st.session_state:
             st.session_state.course_edit_mode = False
-
         if "courses_to_edit" not in st.session_state:
             st.session_state.courses_to_edit = []
-
         if "course_parsed_data" not in st.session_state:
             st.session_state.course_parsed_data = None  # Stores parsed data from Excel/NLP
-
         if "course_show_summary" not in st.session_state:
             st.session_state.course_show_summary = False  # Controls summary display
-
         if "course_nlp_input" not in st.session_state:
             st.session_state.course_nlp_input = ""  # Stores NLP text input
 
-        # ### HASHTAG: BATCH PROCESSING STATE VARIABLES ###
+        # BATCH PROCESSING STATE VARIABLES ###
         if "batch_course_data" not in st.session_state:
             st.session_state.batch_course_data = None
-
         if "batch_continue_on_error" not in st.session_state:
             st.session_state.batch_continue_on_error = True
-        #add clear flag
+        if "batch_edition_data" not in st.session_state:
+            st.session_state.batch_edition_data = None
+        if "batch_edition_results" not in st.session_state:
+            st.session_state.batch_edition_results = []
+
+        # INITIALIZE SPACY MODEL
         if "nlp_clear_requested" not in st.session_state:
             st.session_state.nlp_clear_requested = False
-
-        # INITIALIZE SPACY MODEL #
         if "nlp_model" not in st.session_state:
             try:
                 st.session_state.nlp_model = spacy.load("it_core_news_sm")  # Italian model
             except OSError:
                 st.session_state.nlp_model = None  # Will show error in UI if not loaded
+
+        # === EDITION INPUT METHOD STATES ===
+        if "edition_input_method" not in st.session_state:
+            st.session_state.edition_input_method = "structured" # "structured", "excel", "nlp"
+        if "edition_parsed_data" not in st.session_state:
+            st.session_state.edition_parsed_data = None
+        if "edition_show_summary" not in st.session_state:
+            st.session_state.edition_show_summary = False
+        if "edition_edit_mode" not in st.session_state:
+            st.session_state.edition_edit_mode = False
+        if "edition_to_edit" not in st.session_state:
+            st.session_state.edition_to_edit = None
+        if "edition_nlp_input" not in st.session_state:
+            st.session_state.edition_nlp_input = ""
+        if "edition_nlp_clear_requested" not in st.session_state:
+            st.session_state.edition_nlp_clear_requested = False
 
         # --- Message States: EDITION and STUDENTS ---
         if "edition_message" not in st.session_state:
@@ -417,6 +437,11 @@ class CourseView:
 
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
+
+        #  Initialize placeholders as None
+        self.course_output_placeholder = None
+        self.edition_output_placeholder = None
+        self.student_output_placeholder = None
 
     def _update_nlp_text(self):
         """
@@ -472,7 +497,8 @@ class CourseView:
         # --- Tab1:Course Form Container ---
         with tab1:
             st.header("Creazione Nuovo Corso")
-            if st.session_state.app_state == "RUNNING_COURSE":
+            # FIX: Include RUNNING_BATCH_COURSE in the condition
+            if st.session_state.app_state in ["RUNNING_COURSE", "RUNNING_BATCH_COURSE"]:
                 self.course_output_placeholder = st.empty()
             else:
                 self._render_course_form(is_disabled=is_running)
@@ -483,7 +509,8 @@ class CourseView:
         # --- Tab2: Combined Edition + Activity Form Container ---
         with tab2:
             st.header("Creazione Nuova Edizione + Attività")
-            if st.session_state.app_state == "RUNNING_EDITION":
+            # FIX: Include RUNNING_BATCH_EDITION in the condition (for future)
+            if st.session_state.app_state in ["RUNNING_EDITION", "RUNNING_BATCH_EDITION"]:
                 self.edition_output_placeholder = st.empty()
             else:
                 self._render_edition_form(is_disabled=is_running)
@@ -673,7 +700,7 @@ class CourseView:
 
         st.dataframe(
             preview_df,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config={
                 '#': st.column_config.NumberColumn('#', width='small'),
@@ -704,7 +731,7 @@ class CourseView:
             if st.button(
                     f"✅ Conferma e Crea {len(batch_data['courses'])} Corsi",
                     type="primary",
-                    use_container_width=True,
+                    width='stretch',
                     key="batch_confirm_btn"
             ):
                 # Convert string dates to date objects
@@ -728,7 +755,7 @@ class CourseView:
         with col2:
             if st.button(
                     "✏️ Modifica",
-                    use_container_width=True,
+                    width='stretch',
                     key="batch_edit_btn"
             ):
                 # Transfer data to edit mode
@@ -741,7 +768,7 @@ class CourseView:
         with col3:
             if st.button(
                     "❌ Annulla",
-                    use_container_width=True,
+                    width='stretch',
                     key="batch_cancel_btn"
             ):
                 st.session_state.course_parsed_data = None
@@ -844,19 +871,19 @@ class CourseView:
                 submit = st.form_submit_button(
                     f"✅ Crea Tutti i {len(courses)} Corsi",
                     type="primary",
-                    use_container_width=True
+                    width='stretch'
                 )
 
             with col2:
                 back_to_preview = st.form_submit_button(
                     "👁️ Anteprima",
-                    use_container_width=True
+                    width='stretch'
                 )
 
             with col3:
                 cancel = st.form_submit_button(
                     "❌ Annulla",
-                    use_container_width=True
+                    width='stretch'
                 )
 
         # Handle form actions
@@ -1276,6 +1303,13 @@ class CourseView:
             if f"impegno_previsto_in_ore_{i}" in st.session_state:
                 st.session_state[f"impegno_previsto_in_ore_{i}"] = ""
 
+    def _clear_edition_nlp_callback(self):
+        """Clear NLP input for edition"""
+        st.session_state.edition_nlp_clear_requested = True
+        st.session_state.edition_parsed_data = None
+        st.session_state.edition_show_summary = False
+        print("DEBUG: Edition NLP cleared")
+
     def _clear_student_form_callback(self):
         st.session_state.student_course_name_key = ""
         st.session_state.student_edition_name_key = ""
@@ -1291,6 +1325,7 @@ class CourseView:
                 st.session_state[f"student_name_{i}"] = ""
 
     # NEW HELPER METHOD - DISPLAY SUMMARY WITH EDIT/CONFIRM
+    #---COURSE---
     def _render_course_summary(self):
         """
         Display parsed course data in a summary format with Edit/Confirm buttons.
@@ -1335,13 +1370,13 @@ class CourseView:
             col1, col2, col3 = st.columns([2, 1, 1])
 
             with col1:
-                confirm = st.form_submit_button("✅ Conferma e Crea Corso", type="primary", use_container_width=True)
+                confirm = st.form_submit_button("✅ Conferma e Crea Corso", type="primary", width='stretch')
 
             with col2:
-                edit = st.form_submit_button("✏️ Modifica", use_container_width=True)
+                edit = st.form_submit_button("✏️ Modifica", width='stretch')
 
             with col3:
-                cancel = st.form_submit_button("❌ Annulla", use_container_width=True)
+                cancel = st.form_submit_button("❌ Annulla", width='stretch')
 
         # ### HASHTAG: HANDLE FORM ACTIONS ###
         if confirm:
@@ -1434,9 +1469,9 @@ class CourseView:
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     submitted = st.form_submit_button("Crea Corso", type="primary", disabled=is_disabled,
-                                                      use_container_width=True)
+                                                      width='stretch')
                 with col2:
-                    st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                    st.form_submit_button("Pulisci 🧹", width='stretch',
                                           on_click=self._clear_course_form_callback)
 
             if submitted:
@@ -1509,7 +1544,7 @@ class CourseView:
                 col1, col2 = st.columns([1, 1])
 
                 with col1:
-                    if st.button("📊 Analizza File Excel", type="primary", use_container_width=True):
+                    if st.button("📊 Analizza File Excel", type="primary", width='stretch'):
                         # ### HASHTAG: PARSE EXCEL AND SHOW PREVIEW ###
                         with st.spinner("🔍 Lettura file Excel..."):
                             parsed_data = self._parse_excel_file(uploaded_file)
@@ -1522,7 +1557,7 @@ class CourseView:
                             st.error("❌ Impossibile estrarre i dati dal file. Verifica il formato.")
 
                 with col2:
-                    if st.button("🧹 Cancella File", use_container_width=True):
+                    if st.button("🧹 Cancella File", width='stretch'):
                         st.rerun()
 
         # ========== METHOD 3: NATURAL LANGUAGE PROCESSING ==========
@@ -1573,7 +1608,7 @@ class CourseView:
             if text_length > 0:
                 st.caption(f"✏️ {text_length} caratteri inseriti")
             else:
-                st.warning("⚠️ Inserisci del testo per abilitare l'analisi", icon="⚠️")
+                st.warning("⚠️Inserisci del testo per abilitare l'analisi")
 
             col1, col2 = st.columns([1, 1])
 
@@ -1581,7 +1616,7 @@ class CourseView:
                 analyze_clicked = st.button(
                     "🤖 Analizza Testo (NLP)",
                     type="primary",
-                    use_container_width=True,
+                    width='stretch',
                     key="analyze_nlp_button"  # Add unique key
                 )
 
@@ -1620,10 +1655,485 @@ class CourseView:
                             """)
             with col2:
                 # ### HASHTAG: CLEAR BUTTON WITH CALLBACK ###
-                if st.button("🧹 Cancella Testo", use_container_width=True,
+                if st.button("🧹 Cancella Testo", width='stretch',
                              on_click=self._clear_nlp_input_callback,
                              key="clear_nlp_text_button"):
                     pass  #callback handles the clearing
+
+    def _parse_edition_excel_file(self, uploaded_file) -> Optional[Dict[str, Any]]:
+        """
+        Universal parser that auto-detects Excel format:
+
+        Format 1: Two sheets (Edizioni + Attivita) with ID linking
+        Format 2: Single sheet with TIPO column (EDIZIONE/ATTIVITA markers)
+        Format 3: Single sheet with edition headers followed by activity rows
+        """
+        try:
+            excel_file = pd.ExcelFile(uploaded_file, engine='openpyxl')
+            sheet_names = excel_file.sheet_names
+            sheet_names_lower = [s.lower() for s in sheet_names]
+
+            st.info(f"📊 Fogli trovati: {', '.join(sheet_names)}")
+
+            # === DETECT FORMAT ===
+
+            # Check for two-sheet format
+            has_editions_sheet = any('edizion' in s for s in sheet_names_lower)
+            has_activities_sheet = any('attivit' in s for s in sheet_names_lower)
+
+            if has_editions_sheet and has_activities_sheet:
+                st.success("✅ Rilevato formato: Due fogli separati (Edizioni + Attività)")
+                return self._parse_two_sheet_edition_excel(excel_file)
+
+            # Single sheet - check for TIPO column or detect pattern
+            df = pd.read_excel(excel_file, sheet_name=0, header=None)
+
+            # Check first column for "TIPO" or "EDIZIONE"/"ATTIVITA" markers
+            first_col_values = df.iloc[:, 0].astype(str).str.lower().tolist()
+
+            if 'tipo' in first_col_values or any('edizione' in v for v in first_col_values):
+                st.success("✅ Rilevato formato: Foglio singolo con marcatori TIPO")
+                return self._parse_single_sheet_with_markers(excel_file)
+
+            # Check for your original format (header pattern detection)
+            if self._detect_original_format(df):
+                st.success("✅ Rilevato formato: Foglio singolo con intestazioni ripetute")
+                return self._parse_original_format(excel_file)
+
+            st.error("❌ Formato Excel non riconosciuto")
+            return None
+
+        except Exception as e:
+            st.error(f"❌ Errore: {str(e)}")
+            return None
+
+    def _parse_single_sheet_with_markers(self, excel_file) -> Optional[Dict[str, Any]]:
+        """Parse single sheet with TIPO column (EDIZIONE/ATTIVITA markers)"""
+        df = pd.read_excel(excel_file, sheet_name=0)
+        df.columns = df.columns.str.strip().str.lower()
+
+        editions_list = []
+        current_edition = None
+
+        for idx, row in df.iterrows():
+            row_type = str(row.get('tipo', '')).strip().lower()
+
+            if 'edizione' in row_type:
+                # Save previous edition if exists
+                if current_edition:
+                    editions_list.append(current_edition)
+
+                # Start new edition
+                current_edition = {
+                    'course_name': str(row.get('nome_corso', '')).strip(),
+                    'edition_title': str(row.get('titolo', '')).strip(),
+                    'start_date': normalize_date(row.get('data_inizio', '')),
+                    'end_date': normalize_date(row.get('data_fine', '')),
+                    'location': str(row.get('aula', '')).strip(),
+                    'supplier': str(row.get('fornitore', '')).strip(),
+                    'price': str(row.get('costo', '')).strip(),
+                    'description': '',
+                    'activities': []
+                }
+
+            elif 'attivita' in row_type and current_edition:
+                # Add activity to current edition
+                activity = {
+                    'title': str(row.get('titolo', '')).strip(),
+                    'description': str(row.get('descrizione', '')).strip(),
+                    'date': normalize_date(row.get('data', '')),
+                    'start_time': str(row.get('ora_inizio', '09.00')).replace(':', '.'),
+                    'end_time': str(row.get('ora_fine', '11.00')).replace(':', '.'),
+                    'impegno_ore': str(row.get('impegno', '')).strip()
+                }
+                current_edition['activities'].append(activity)
+
+        # Don't forget the last edition
+        if current_edition:
+            editions_list.append(current_edition)
+
+        return {
+            'editions': editions_list,
+            'total_editions': len(editions_list),
+            'total_activities': sum(len(e['activities']) for e in editions_list)
+        }
+
+    def _detect_original_format(self, df) -> bool:
+        """Detect if Excel uses original format with repeating headers"""
+        # Look for "Nome del Corso Esistente" appearing multiple times
+        first_col = df.iloc[:, 0].astype(str).str.lower()
+        header_count = sum(1 for v in first_col if 'nome del corso' in v or 'titolo del attivita' in v)
+        return header_count >= 2
+
+    def _parse_original_format(self, excel_file) -> Optional[Dict[str, Any]]:
+        """Parse your original format with edition headers followed by activities"""
+        df = pd.read_excel(excel_file, sheet_name=0, header=None)
+
+        editions_list = []
+        current_edition = None
+        reading_activities = False
+        activity_header_row = None
+
+        for idx, row in df.iterrows():
+            first_cell = str(row.iloc[0]).strip().lower() if pd.notna(row.iloc[0]) else ''
+
+            # Detect edition header row
+            if 'nome del corso' in first_cell:
+                # Next row will have edition data
+                if current_edition:
+                    editions_list.append(current_edition)
+                current_edition = None
+                reading_activities = False
+                continue
+
+            # Detect activity header row
+            if 'titolo del attivita' in first_cell or 'titolo attivita' in first_cell:
+                reading_activities = True
+                activity_header_row = idx
+                continue
+
+            # Skip empty rows
+            if row.isna().all() or first_cell == '' or first_cell == 'nan':
+                continue
+
+            # Parse edition data (row after edition header)
+            if current_edition is None and not reading_activities:
+                current_edition = {
+                    'course_name': str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else '',
+                    'edition_title': str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else '',
+                    'start_date': normalize_date(row.iloc[2]) if len(row) > 2 else '',
+                    'end_date': normalize_date(row.iloc[3]) if len(row) > 3 else '',
+                    'location': str(row.iloc[4]).strip() if len(row) > 4 and pd.notna(row.iloc[4]) else '',
+                    'supplier': str(row.iloc[5]).strip() if len(row) > 5 and pd.notna(row.iloc[5]) else '',
+                    'price': str(row.iloc[6]).strip() if len(row) > 6 and pd.notna(row.iloc[6]) else '',
+                    'description': '',
+                    'activities': []
+                }
+                continue
+
+            # Parse activity data
+            if reading_activities and current_edition:
+                activity = {
+                    'title': str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else '',
+                    'description': str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else '',
+                    'date': normalize_date(row.iloc[2]) if len(row) > 2 else '',
+                    'start_time': str(row.iloc[3]).replace(':', '.') if len(row) > 3 and pd.notna(
+                        row.iloc[3]) else '09.00',
+                    'end_time': str(row.iloc[4]).replace(':', '.') if len(row) > 4 and pd.notna(
+                        row.iloc[4]) else '11.00',
+                    'impegno_ore': str(row.iloc[6]).strip() if len(row) > 6 and pd.notna(row.iloc[6]) else ''
+                }
+                if activity['title']:  # Only add if has title
+                    current_edition['activities'].append(activity)
+
+        # Don't forget the last edition
+        if current_edition:
+            editions_list.append(current_edition)
+
+        return {
+            'editions': editions_list,
+            'total_editions': len(editions_list),
+            'total_activities': sum(len(e['activities']) for e in editions_list)
+        }
+
+    #---EDITION + ACTIVITY---
+    def _parse_two_sheet_edition_excel(self, excel_file) -> Optional[Dict[str, Any]]:
+        """Parse two-sheet format (Edizioni + Attivita sheets)"""
+        try:
+            # Find sheet names (case-insensitive)
+            edizioni_sheet = None
+            attivita_sheet = None
+
+            for sheet_name in excel_file.sheet_names:
+                if 'edizion' in sheet_name.lower():
+                    edizioni_sheet = sheet_name
+                elif 'attivit' in sheet_name.lower():
+                    attivita_sheet = sheet_name
+
+            if not edizioni_sheet or not attivita_sheet:
+                st.error("❌ File deve contenere fogli 'Edizioni' e 'Attivita'")
+                return None
+
+            # Read both sheets
+            df_edizioni = pd.read_excel(excel_file, sheet_name=edizioni_sheet, header=0)
+            df_attivita = pd.read_excel(excel_file, sheet_name=attivita_sheet, header=0)
+
+            # Normalize column names
+            df_edizioni.columns = df_edizioni.columns.str.strip().str.lower()
+            df_attivita.columns = df_attivita.columns.str.strip().str.lower()
+
+            st.info(f"📊 Colonne Edizioni: {', '.join(df_edizioni.columns)}")
+            st.info(f"📊 Colonne Attività: {', '.join(df_attivita.columns)}")
+
+            # Column mappings for editions
+            edition_mappings = {
+                'id': ['id_edizione', 'id', 'edizione_id'],
+                'course_name': ['nome_corso', 'nome del corso esistente', 'corso'],
+                'title': ['titolo_edizione', 'titolo (optionale)', 'titolo'],
+                'start_date': ['data_inizio', 'data inizio edizione', 'data_inizio_edizione'],
+                'end_date': ['data_fine', 'data fine edizione', 'data_fine_edizione'],
+                'location': ['aula', 'aula principale', 'aula_principale'],
+                'supplier': ['fornitore', 'fornitore formazione'],
+                'price': ['costo', 'prezzo'],
+                'description': ['descrizione', 'desc']
+            }
+
+            # Column mappings for activities
+            activity_mappings = {
+                'edition_id': ['id_edizione', 'edizione_id', 'id'],
+                'title': ['titolo_attivita', 'titolo del attivita', 'titolo'],
+                'description': ['descrizione', 'descrizione per elen', 'desc'],
+                'date': ['data_attivita', "data attivita'", 'data'],
+                'start_time': ['ora_inizio', 'ora inizio'],
+                'end_time': ['ora_fine', 'ora fine'],
+                'hours': ['impegno in ore', 'impegno_in_ore', 'impegno_ore', 'impegno ore', 'ore', 'impegno']
+            }
+
+            # Find actual column names
+            def find_column(df, possible_names):
+                for name in possible_names:
+                    if name in df.columns:
+                        return name
+                return None
+
+            edition_cols = {k: find_column(df_edizioni, v) for k, v in edition_mappings.items()}
+            activity_cols = {k: find_column(df_attivita, v) for k, v in activity_mappings.items()}
+
+            # Parse editions
+            editions_list = []
+            for idx, row in df_edizioni.iterrows():
+                edition_id = str(row[edition_cols['id']]) if edition_cols['id'] else f"E{idx + 1}"
+
+                # Validate required fields
+                course_name = row[edition_cols['course_name']] if edition_cols['course_name'] else None
+                start_date = row[edition_cols['start_date']] if edition_cols['start_date'] else None
+                end_date = row[edition_cols['end_date']] if edition_cols['end_date'] else None
+
+                if pd.isna(course_name) or pd.isna(start_date) or pd.isna(end_date):
+                    continue
+
+                # Normalize dates
+                start_date_str = normalize_date(start_date)
+                end_date_str = normalize_date(end_date)
+
+                if not start_date_str or not end_date_str:
+                    st.warning(f"⚠️ Riga {idx + 2}: Formato data non valido")
+                    continue
+
+                edition = {
+                    'id': edition_id,
+                    'course_name': str(course_name).strip(),
+                    'edition_title': str(row[edition_cols['title']]).strip() if edition_cols['title'] and pd.notna(
+                        row[edition_cols['title']]) else '',
+                    'start_date': start_date_str,
+                    'end_date': end_date_str,
+                    'location': str(row[edition_cols['location']]).strip() if edition_cols['location'] and pd.notna(
+                        row[edition_cols['location']]) else '',
+                    'supplier': str(row[edition_cols['supplier']]).strip() if edition_cols['supplier'] and pd.notna(
+                        row[edition_cols['supplier']]) else '',
+                    'price': str(row[edition_cols['price']]).strip() if edition_cols['price'] and pd.notna(
+                        row[edition_cols['price']]) else '',
+                    'description': str(row[edition_cols['description']]).strip() if edition_cols[
+                                                                                        'description'] and pd.notna(
+                        row[edition_cols['description']]) else '',
+                    'activities': []
+                }
+                editions_list.append(edition)
+
+            # Parse activities and link to editions
+            for idx, row in df_attivita.iterrows():
+                edition_id = str(row[activity_cols['edition_id']]) if activity_cols['edition_id'] else None
+
+                if not edition_id:
+                    continue
+
+                # Find the edition this activity belongs to
+                for edition in editions_list:
+                    if edition['id'] == edition_id:
+                        activity_date = row[activity_cols['date']] if activity_cols['date'] else None
+                        date_str = normalize_date(activity_date) if activity_date else ''
+
+                        # Format times
+                        start_time = row[activity_cols['start_time']] if activity_cols['start_time'] else '09.00'
+                        end_time = row[activity_cols['end_time']] if activity_cols['end_time'] else '11.00'
+
+                        # Convert time format if needed
+                        if isinstance(start_time, (int, float)):
+                            hours = int(start_time)
+                            minutes = int((start_time - hours) * 60)
+                            start_time = f"{hours:02d}.{minutes:02d}"
+                        else:
+                            start_time = str(start_time).replace(':', '.')
+
+                        if isinstance(end_time, (int, float)):
+                            hours = int(end_time)
+                            minutes = int((end_time - hours) * 60)
+                            end_time = f"{hours:02d}.{minutes:02d}"
+                        else:
+                            end_time = str(end_time).replace(':', '.')
+
+                        activity = {
+                            'title': str(row[activity_cols['title']]).strip() if activity_cols['title'] and pd.notna(
+                                row[activity_cols['title']]) else f'Attività {len(edition["activities"]) + 1}',
+                            'description': str(row[activity_cols['description']]).strip() if activity_cols[
+                                                                                                 'description'] and pd.notna(
+                                row[activity_cols['description']]) else '',
+                            'date': date_str,
+                            'start_time': start_time,
+                            'end_time': end_time,
+                            'impegno_ore': str(row[activity_cols['hours']]).strip() if activity_cols[
+                                                                                           'hours'] and pd.notna(
+                                row[activity_cols['hours']]) else ''
+                        }
+                        edition['activities'].append(activity)
+                        break
+
+            if not editions_list:
+                st.error("❌ Nessuna edizione valida trovata")
+                return None
+
+            st.success(f"✅ Trovate {len(editions_list)} edizioni con le loro attività!")
+
+            return {
+                'editions': editions_list,
+                'total_editions': len(editions_list),
+                'total_activities': sum(len(e['activities']) for e in editions_list),
+                'file_name': excel_file.io.name if hasattr(excel_file.io, 'name') else 'Excel'
+            }
+
+        except Exception as e:
+            st.error(f"❌ Errore parsing: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+            return None
+
+    def _parse_edition_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse natural language input to extract edition and activities.
+
+        Example input:
+        "Crea edizione per corso Data Science01 titolo Winter Edition
+         data inizio 12/02/2026 data fine 20/02/2026
+         aula Aula de carli fornitore Aeit costo 1000
+         attività: primo giorno 12/02/2026 ore 09.00-11.00,
+         secondo giorno 13/02/2026 ore 10.00-12.00"
+        """
+        import re
+
+        parsed = {
+            'course_name': '',
+            'edition_title': '',
+            'start_date': '',
+            'end_date': '',
+            'location': '',
+            'supplier': '',
+            'price': '',
+            'description': '',
+            'activities': []
+        }
+
+        text_lower = text.lower()
+        original_text = text
+
+        # Extract course name
+        course_patterns = [
+            r'(?:corso|per corso|del corso)\s+["\']?([^"\']+?)["\']?\s+(?:titolo|data|edizione)',
+            r'corso\s+([A-Za-z0-9\s]+?)(?:\s+titolo|\s+data|\s+edizione|,|$)',
+        ]
+        for pattern in course_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                parsed['course_name'] = match.group(1).strip().title()
+                break
+
+        # Extract edition title
+        title_patterns = [
+            r'titolo\s+["\']?([^"\']+?)["\']?\s+(?:data|aula|fornitore|attività)',
+            r'titolo\s+([^,]+?)(?:,|\s+data)',
+        ]
+        for pattern in title_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                parsed['edition_title'] = match.group(1).strip().title()
+                break
+
+        # Extract dates
+        date_pattern = r'(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})'
+        dates = re.findall(date_pattern, text)
+
+        # Try to identify start and end dates
+        start_match = re.search(r'(?:data\s+)?inizio\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})', text_lower)
+        end_match = re.search(r'(?:data\s+)?fine\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})', text_lower)
+
+        if start_match:
+            parsed['start_date'] = normalize_date(start_match.group(1)) or ''
+        elif dates:
+            parsed['start_date'] = normalize_date(dates[0]) or ''
+
+        if end_match:
+            parsed['end_date'] = normalize_date(end_match.group(1)) or ''
+        elif len(dates) > 1:
+            parsed['end_date'] = normalize_date(dates[1]) or ''
+
+        # Extract location
+        location_match = re.search(r'aula\s+([^,]+?)(?:,|\s+fornitore|\s+costo|\s+attività|$)', text_lower)
+        if location_match:
+            parsed['location'] = location_match.group(1).strip().title()
+
+        # Extract supplier
+        supplier_match = re.search(r'fornitore\s+([^,]+?)(?:,|\s+costo|\s+aula|\s+attività|$)', text_lower)
+        if supplier_match:
+            parsed['supplier'] = supplier_match.group(1).strip().title()
+
+        # Extract price
+        price_match = re.search(r'(?:costo|prezzo)\s+(\d+)', text_lower)
+        if price_match:
+            parsed['price'] = price_match.group(1)
+
+        # Extract activities
+        # Pattern: "primo giorno 12/02/2026 ore 09.00-11.00" or similar
+        activity_section = re.search(r'attività[:\s]+(.+)', text_lower, re.DOTALL)
+        if activity_section:
+            activity_text = activity_section.group(1)
+
+            # Find individual activities
+            activity_patterns = [
+                r'(\w+\s+giorno)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})',
+                r'(giorno\s+\d+|day\s+\d+)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})',
+            ]
+
+            for pattern in activity_patterns:
+                matches = re.findall(pattern, activity_text)
+                for match in matches:
+                    title, date_str, start_time, end_time = match
+                    parsed['activities'].append({
+                        'title': title.strip().title(),
+                        'description': '',
+                        'date': normalize_date(date_str) or '',
+                        'start_time': start_time.replace(':', '.'),
+                        'end_time': end_time.replace(':', '.'),
+                        'impegno_ore': ''
+                    })
+
+        # If no activities found, try to detect number of days
+        if not parsed['activities']:
+            days_match = re.search(r'(\d+)\s+(?:giorni|days|attività)', text_lower)
+            if days_match and parsed['start_date']:
+                num_days = int(days_match.group(1))
+                start_date_obj = datetime.strptime(parsed['start_date'], "%d/%m/%Y")
+
+                for i in range(num_days):
+                    activity_date = start_date_obj + timedelta(days=i)
+                    parsed['activities'].append({
+                        'title': f'Giorno {i + 1}',
+                        'description': '',
+                        'date': activity_date.strftime("%d/%m/%Y"),
+                        'start_time': '09.00',
+                        'end_time': '11.00',
+                        'impegno_ore': ''
+                    })
+
+        return parsed
 
     def _preserve_activity_data(self, num_activities):
         """Preserve current activity data before form submission"""
@@ -1672,7 +2182,52 @@ class CourseView:
                 st.session_state[f"impegno_previsto_in_ore_{i}"] = \
                     st.session_state.preserved_activity_data[f"{key_prefix}_ore"]
 
-    def _render_edition_form(self, is_disabled):
+    def _render_edition_form(self, is_disabled=False):
+        """
+        Enhanced edition form with three input methods:
+        1. Structured input (original form)
+        2. Excel file upload
+        3. Natural language processing (NLP)
+        """
+
+        # === CHECK FOR EDIT MODE FIRST ===
+        if st.session_state.get('edition_edit_mode', False) and st.session_state.get('edition_to_edit'):
+            self._render_editable_edition_form()
+            return
+
+        # === CHECK FOR SUMMARY/PREVIEW MODE ===
+        if st.session_state.get('edition_show_summary', False) and st.session_state.get('edition_parsed_data'):
+            self._render_edition_preview(st.session_state.edition_parsed_data)
+            return
+
+        # === INPUT METHOD SELECTION ===
+        st.subheader("Scegli il Metodo di Inserimento")
+
+        input_method = st.radio(
+            "Come vuoi inserire i dati dell'edizione?",
+            options=["structured", "excel", "nlp"],
+            format_func=lambda x: {
+                "structured": "📝 Input Strutturato (Form)",
+                "excel": "📊 Caricamento File Excel",
+                "nlp": "💬 Compilazione con AI"
+            }[x],
+            key="edition_input_method",
+            horizontal=True
+        )
+
+        st.divider()
+
+        # === RENDER BASED ON SELECTED METHOD ===
+        if input_method == "structured":
+            self._render_edition_structured_form(is_disabled)
+        elif input_method == "excel":
+            self._render_edition_excel_ui(is_disabled)
+        elif input_method == "nlp":
+            self._render_edition_nlp_ui(is_disabled)
+
+    def _render_edition_structured_form(self, is_disabled):
+        """Original structured form for edition + activities"""
+
         # Restore data BEFORE rendering the form
         if st.session_state.preserved_activity_data:
             self._restore_activity_data(st.session_state.num_activities)
@@ -1725,86 +2280,745 @@ class CourseView:
             col1, col2 = st.columns([3, 1])
             with col1:
                 submitted = st.form_submit_button("Crea Edizione e Attività", type="primary",
-                                                  disabled=is_disabled, use_container_width=True)
+                                                  disabled=is_disabled, width='stretch')
             with col2:
-                st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                st.form_submit_button("Pulisci 🧹", width='stretch',
                                       on_click=self._clear_edition_activity_form_callback)
 
         if submitted:
-            # PRESERVE DATA BEFORE PROCESSING
-            self._preserve_activity_data(num_activities)
+            self._process_structured_edition_submission(num_activities)
 
-            course_name = st.session_state.edition_course_name_key
-            edition_title = st.session_state.edition_title_key
-            start_date_str = st.session_state.edition_start_date_str_key
-            end_date_str = st.session_state.edition_end_date_str_key
-            description = st.session_state.edition_description_key
-            location = st.session_state.edition_location_key
-            supplier = st.session_state.edition_supplier_key
-            price = st.session_state.edition_price_key
+    def _render_edition_nlp_ui(self, is_disabled):
+        """UI for natural language input for edition + activities"""
 
-            if not all([course_name.strip(), start_date_str.strip(), end_date_str.strip()]):
-                st.error("I campi 'Nome Corso', 'Data Inizio Edizione' e 'Data Fine Edizione' sono obbligatori.")
-                st.stop()
+        st.info("""
+        **Scrivi una frase che descriva l'edizione e le attività**, ad esempio:
 
-            try:
-                edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
-                edition_end = datetime.strptime(end_date_str, "%d/%m/%Y").date()
+        "Crea edizione per corso Data Science01 titolo Winter Edition
+        data inizio 12/02/2026 data fine 20/02/2026
+        aula Aula de carli fornitore Aeit costo 1000
+        attività: primo giorno 12/02/2026 ore 09.00-11.00,
+        secondo giorno 13/02/2026 ore 10.00-12.00"
+        """, icon="💡")
 
-                if edition_end < edition_start:
-                    st.error("La data di fine edizione non può essere precedente alla data di inizio.")
-                    st.stop()
-
-                activities_list = []
-                for i in range(num_activities):
-                    title = st.session_state.get(f"activity_title_{i}", "")
-                    act_desc = st.session_state.get(f"activity_desc_{i}", "")
-                    act_date_str = st.session_state.get(f"activity_date_{i}", "")
-                    start_time = st.session_state.get(f"activity_start_time_{i}", "09.00")
-                    end_time = st.session_state.get(f"activity_end_time_{i}", "11.00")
-                    impegno_previsto_in_ore = st.session_state.get(f"impegno_previsto_in_ore_{i}", "")
-
-                    if not all([title.strip(), act_desc.strip(), act_date_str.strip()]):
-                        st.error(f"Titolo, Descrizione e Data sono obbligatori per l'attività del Giorno {i + 1}.")
-                        st.stop()
-
-                    act_date = datetime.strptime(act_date_str, "%d/%m/%Y").date()
-                    datetime.strptime(start_time, "%H.%M")
-                    datetime.strptime(end_time, "%H.%M")
-
-                    if act_date < edition_start or act_date > edition_end:
-                        st.error(
-                            f"La data dell'attività (Giorno {i + 1}: {act_date_str}) deve essere compresa tra l'inizio ({start_date_str}) e la fine ({end_date_str}) dell'edizione.")
-                        st.stop()
-
-                    activities_list.append({
-                        "title": title,
-                        "description": act_desc,
-                        "date": act_date,
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "impegno_previsto_in_ore": impegno_previsto_in_ore
-                    })
-
-            except ValueError:
-                st.error("Formato data o ora non valido. Usa GG/MM/AAAA e HH.MM (con il punto).")
-                st.stop()
-
-            st.session_state.edition_details = {
-                "course_name": course_name,
-                "edition_title": edition_title,
-                "edition_start_date": edition_start,
-                "edition_end_date": edition_end,
-                "location": location,
-                "supplier": supplier,
-                "price": price,
-                "description": description,
-                "activities": activities_list
-            }
-            st.session_state.app_state = "RUNNING_EDITION"
-            st.session_state.edition_message = ""
+        # Handle clear request
+        if st.session_state.get('edition_nlp_clear_requested', False):
+            st.session_state.edition_nlp_input = ""
+            st.session_state.edition_nlp_clear_requested = False
             st.rerun()
 
+        nlp_text = st.text_area(
+            "Descrivi l'edizione in linguaggio naturale:",
+            height=200,
+            value=st.session_state.edition_nlp_input,
+            placeholder="Crea edizione per corso [nome corso] data inizio [data] data fine [data]...",
+            help="Scrivi una frase completa con i dettagli dell'edizione e delle attività",
+            key="edition_nlp_text_area"
+        )
+
+        # Update session state
+        st.session_state.edition_nlp_input = nlp_text
+
+        # Show character count
+        text_length = len(nlp_text.strip()) if nlp_text else 0
+        if text_length > 0:
+            st.caption(f"✏️ {text_length} caratteri inseriti")
+        else:
+            st.warning("⚠️ Inserisci del testo per abilitare l'analisi", icon="⚠️")
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            if st.button("🤖 Analizza Testo (NLP)", type="primary", width='stretch',
+                         key="analyze_edition_nlp_btn"):
+                if not nlp_text or not nlp_text.strip():
+                    st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
+                    st.stop()
+
+                if text_length < 30:
+                    st.error("⚠️ Il testo è troppo corto. Scrivi una frase più completa.")
+                    st.stop()
+
+                # Clear old data
+                st.session_state.edition_parsed_data = None
+                st.session_state.edition_show_summary = False
+
+                with st.spinner("🤖 Analisi del testo in corso..."):
+                    parsed_data = self._parse_edition_nlp_input(nlp_text)
+
+                if parsed_data and parsed_data.get('course_name'):
+                    st.session_state.edition_parsed_data = parsed_data
+                    st.session_state.edition_show_summary = True
+                    st.rerun()
+                else:
+                    st.error("""
+                    ❌ Impossibile estrarre le informazioni necessarie.
+
+                    Assicurati di includere:
+                    - **Nome del corso** esistente (es: "corso Data Science01")
+                    - **Data inizio** edizione (es: "data inizio 12/02/2026")
+                    - **Data fine** edizione (es: "data fine 20/02/2026")
+                    - **Attività** (es: "attività: primo giorno 12/02/2026 ore 09.00-11.00")
+                    """)
+
+        with col2:
+            if st.button("🧹 Cancella Testo", width='stretch',
+                         on_click=self._clear_edition_nlp_callback,
+                         key="clear_edition_nlp_btn"):
+                pass
+
+    def _process_structured_edition_submission(self, num_activities):
+        """Process the structured form submission"""
+        # PRESERVE DATA BEFORE PROCESSING
+        self._preserve_activity_data(num_activities)
+
+        course_name = st.session_state.edition_course_name_key
+        edition_title = st.session_state.edition_title_key
+        start_date_str = st.session_state.edition_start_date_str_key
+        end_date_str = st.session_state.edition_end_date_str_key
+        description = st.session_state.edition_description_key
+        location = st.session_state.edition_location_key
+        supplier = st.session_state.edition_supplier_key
+        price = st.session_state.edition_price_key
+
+        if not all([course_name.strip(), start_date_str.strip(), end_date_str.strip()]):
+            st.error("I campi 'Nome Corso', 'Data Inizio Edizione' e 'Data Fine Edizione' sono obbligatori.")
+            st.stop()
+
+        try:
+            edition_start = datetime.strptime(start_date_str, "%d/%m/%Y").date()
+            edition_end = datetime.strptime(end_date_str, "%d/%m/%Y").date()
+
+            if edition_end < edition_start:
+                st.error("La data di fine edizione non può essere precedente alla data di inizio.")
+                st.stop()
+
+            activities_list = []
+            for i in range(num_activities):
+                title = st.session_state.get(f"activity_title_{i}", "")
+                act_desc = st.session_state.get(f"activity_desc_{i}", "")
+                act_date_str = st.session_state.get(f"activity_date_{i}", "")
+                start_time = st.session_state.get(f"activity_start_time_{i}", "09.00")
+                end_time = st.session_state.get(f"activity_end_time_{i}", "11.00")
+                impegno_previsto_in_ore = st.session_state.get(f"impegno_previsto_in_ore_{i}", "")
+
+                if not all([title.strip(), act_desc.strip(), act_date_str.strip()]):
+                    st.error(f"Titolo, Descrizione e Data sono obbligatori per l'attività del Giorno {i + 1}.")
+                    st.stop()
+
+                act_date = datetime.strptime(act_date_str, "%d/%m/%Y").date()
+                datetime.strptime(start_time, "%H.%M")
+                datetime.strptime(end_time, "%H.%M")
+
+                if act_date < edition_start or act_date > edition_end:
+                    st.error(
+                        f"La data dell'attività (Giorno {i + 1}: {act_date_str}) deve essere compresa tra l'inizio ({start_date_str}) e la fine ({end_date_str}) dell'edizione.")
+                    st.stop()
+
+                activities_list.append({
+                    "title": title,
+                    "description": act_desc,
+                    "date": act_date,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "impegno_previsto_in_ore": impegno_previsto_in_ore
+                })
+
+        except ValueError:
+            st.error("Formato data o ora non valido. Usa GG/MM/AAAA e HH.MM (con il punto).")
+            st.stop()
+
+        st.session_state.edition_details = {
+            "course_name": course_name,
+            "edition_title": edition_title,
+            "edition_start_date": edition_start,
+            "edition_end_date": edition_end,
+            "location": location,
+            "supplier": supplier,
+            "price": price,
+            "description": description,
+            "activities": activities_list
+        }
+        st.session_state.app_state = "RUNNING_EDITION"
+        st.session_state.edition_message = ""
+        st.rerun()
+
+    def _render_edition_excel_ui(self, is_disabled):
+        """UI for Excel file upload for edition + activities"""
+
+        #st.info("""
+        # **Formato Excel Supportato:**
+        #
+        # **Opzione 1 - Due fogli separati:**
+        # - Foglio "Edizioni": ID_EDIZIONE, NOME_CORSO, TITOLO, DATA_INIZIO, DATA_FINE, AULA, FORNITORE, COSTO
+        # - Foglio "Attivita": ID_EDIZIONE, TITOLO, DESCRIZIONE, DATA, ORA_INIZIO, ORA_FINE, IMPEGNO_ORE
+        #
+        # **Opzione 2 - Foglio singolo con marcatori:**
+        # - Colonna TIPO: "EDIZIONE" o "ATTIVITA" per ogni riga
+        #
+        # **Opzione 3 - Formato originale:**
+        # - Intestazione edizione → dati edizione → intestazione attività → dati attività
+        # """, icon="ℹ️")
+
+        uploaded_file = st.file_uploader(
+            "Carica File Excel (.xlsx, .xls)",
+            type=['xlsx', 'xls'],
+            help="File con edizione e attività",
+            key="edition_excel_uploader"
+        )
+
+        if uploaded_file is not None:
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                if st.button("📊 Analizza File Excel", type="primary", width='stretch',
+                             key="analyze_edition_excel_btn"):
+                    with st.spinner("🔍 Lettura file Excel..."):
+                        parsed_data = self._parse_edition_excel_file(uploaded_file)
+
+                    if parsed_data:
+                        st.session_state.edition_parsed_data = parsed_data
+                        st.session_state.edition_show_summary = True
+                        st.rerun()
+                    else:
+                        st.error("❌ Impossibile estrarre i dati dal file. Verifica il formato.")
+
+            with col2:
+                if st.button("🧹 Cancella File", width='stretch', key="clear_edition_excel_btn"):
+                    st.session_state.edition_parsed_data = None
+                    st.session_state.edition_show_summary = False
+                    st.rerun()
+
+    def _render_edition_preview(self, edition_data: Dict[str, Any]):
+        """Display parsed edition and activities for confirmation"""
+
+        # Check if it's a list of editions (from Excel) or single edition (from NLP)
+        if 'editions' in edition_data:
+            # Multiple editions from Excel
+            self._render_multiple_editions_preview(edition_data)
+        else:
+            # Single edition (from NLP or single Excel row)
+            self._render_single_edition_preview(edition_data)
+
+    def _render_single_edition_preview(self, edition_data: Dict[str, Any]):
+        """Preview for a single edition with activities"""
+
+        st.success("✅ Dati estratti con successo!")
+        st.subheader("📋 Anteprima Edizione + Attività")
+
+        # Edition details card
+        st.markdown("### 📚 Dettagli Edizione")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**Corso:** {edition_data.get('course_name', '-')}")
+            st.write(f"**Titolo Edizione:** {edition_data.get('edition_title', '-') or 'Default (nome corso + data)'}")
+            st.write(f"**Data Inizio:** {edition_data.get('start_date', '-')}")
+            st.write(f"**Data Fine:** {edition_data.get('end_date', '-')}")
+        with col2:
+            st.write(f"**Aula:** {edition_data.get('location', '-') or 'Non specificata'}")
+            st.write(f"**Fornitore:** {edition_data.get('supplier', '-') or 'Non specificato'}")
+            st.write(f"**Costo:** €{edition_data.get('price', '-') or '0'}")
+            if edition_data.get('description'):
+                st.write(f"**Descrizione:** {edition_data.get('description', '')}")
+
+        # Activities table
+        st.markdown("### 📝 Attività")
+        activities = edition_data.get('activities', [])
+
+        if activities:
+            activities_preview = []
+            for idx, act in enumerate(activities):
+                activities_preview.append({
+                    '#': idx + 1,
+                    'Titolo': act.get('title', ''),
+                    'Data': act.get('date', ''),
+                    'Ora Inizio': act.get('start_time', ''),
+                    'Ora Fine': act.get('end_time', ''),
+                    'Impegno (ore)': act.get('impegno_ore', '') or act.get('impegno_previsto_in_ore', '')
+                })
+
+            activities_df = pd.DataFrame(activities_preview)
+            st.dataframe(activities_df, width='stretch', hide_index=True)
+        else:
+            st.warning("⚠️ Nessuna attività trovata. Aggiungi attività nella modalità Modifica.")
+
+        st.divider()
+
+        # Action buttons (NO FORM - regular buttons)
+        col1, col2, col3 = st.columns([2, 1, 1])
+
+        with col1:
+            if st.button("✅ Conferma e Crea Edizione", type="primary", width='stretch',
+                         key="edition_preview_confirm_btn"):
+                self._start_edition_creation(edition_data)
+
+        with col2:
+            if st.button("✏️ Modifica", width='stretch', key="edition_preview_edit_btn"):
+                st.session_state.edition_edit_mode = True
+                st.session_state.edition_to_edit = edition_data.copy()
+                st.session_state.edition_show_summary = False
+                st.rerun()
+
+        with col3:
+            if st.button("❌ Annulla", width='stretch', key="edition_preview_cancel_btn"):
+                st.session_state.edition_parsed_data = None
+                st.session_state.edition_show_summary = False
+                st.session_state.edition_input_method = "structured"
+                st.rerun()
+
+    def _render_multiple_editions_preview(self, batch_data: Dict[str, Any]):
+        """
+        Preview multiple editions from Excel with batch creation support.
+        """
+        editions = batch_data.get('editions', [])
+        total_editions = len(editions)
+        total_activities = sum(len(e.get('activities', [])) for e in editions)
+
+        st.subheader("📁 Anteprima Edizioni")
+
+        # Display each edition in an expander
+        for idx, edition in enumerate(editions):
+            activities = edition.get('activities', [])
+            with st.expander(
+                    f"📚 Edizione {idx + 1}: {edition.get('course_name', 'N/A')} - {edition.get('edition_title', 'N/A')}",
+                    expanded=(idx == 0)  # First one expanded by default
+            ):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**Corso:** {edition.get('course_name', 'N/A')}")
+                    st.write(f"**Titolo:** {edition.get('edition_title', 'N/A')}")
+                    st.write(f"**Date:** {edition.get('start_date', 'N/A')} → {edition.get('end_date', 'N/A')}")
+                with col2:
+                    st.write(f"**Aula:** {edition.get('location', 'N/A')}")
+                    st.write(f"**Fornitore:** {edition.get('supplier', 'N/A')}")
+                    st.write(f"**Costo:** €{edition.get('price', 'N/A')}")
+
+                # Activities table
+                if activities:
+                    st.write("**Attività:**")
+                    activity_data = []
+                    for i, act in enumerate(activities):
+                        activity_data.append({
+                            '#': i + 1,
+                            'Titolo': act.get('title', ''),
+                            'Data': act.get('date', ''),
+                            'Orario': f"{act.get('start_time', '')} - {act.get('end_time', '')}",
+                            'Ore': act.get('impegno_ore', '-')  # ADD THIS LINE
+                        })
+                    st.dataframe(pd.DataFrame(activity_data), width='stretch', hide_index=True)
+                else:
+                    st.warning("⚠️ Nessuna attività per questa edizione")
+
+        st.divider()
+
+        # === INFO MESSAGE ===
+        st.info(
+            f"ℹ️ **Nota:** Le edizioni verranno create una alla volta. Questo processo potrebbe richiedere alcuni minuti.")
+
+        # === BUTTONS ===
+        col1, col2, col3 = st.columns([2, 1, 1])
+
+        with col1:
+            # === UPDATED BUTTON TEXT ===
+            button_text = f"✅ Crea {total_editions} Edizioni con {total_activities} Attività"
+
+            if st.button(button_text, type="primary", width='stretch', key="batch_edition_create_btn"):
+                # Store ALL editions for batch processing
+                st.session_state.batch_edition_data = {
+                    'editions': editions,
+                    'total_editions': total_editions,
+                    'total_activities': total_activities,
+                    'current_index': 0,  # Track progress
+                    'results': []  # Store results for each edition
+                }
+                st.session_state.app_state = "RUNNING_BATCH_EDITION"
+                st.session_state.edition_message = ""
+                st.rerun()
+
+        # with col2:
+        #     if st.button("✏️ Modifica", use_container_width=True, key="batch_edition_edit_btn"):
+        #         # Store data for editing
+        #         st.session_state.edition_edit_mode = True
+        #         st.session_state.edition_to_edit = batch_data  # Store all editions data
+        #         st.session_state.edition_show_summary = False  # Hide preview
+        #         st.rerun()
+
+        with col3:
+            if st.button("❌ Annulla", width='stretch', key="batch_edition_cancel_btn"):
+                st.session_state.edition_parsed_data = None
+                st.session_state.edition_show_summary = False
+                st.rerun()
+
+    def _start_edition_creation(self, edition_data: Dict[str, Any]):
+        """Convert parsed data to model format and start automation"""
+        try:
+            # Convert string dates to date objects
+            start_date = edition_data.get('start_date', '')
+            end_date = edition_data.get('end_date', '')
+
+            if isinstance(start_date, str):
+                start_date_obj = datetime.strptime(start_date, "%d/%m/%Y").date()
+            else:
+                start_date_obj = start_date
+
+            if isinstance(end_date, str):
+                end_date_obj = datetime.strptime(end_date, "%d/%m/%Y").date()
+            else:
+                end_date_obj = end_date
+
+            # Convert activities
+            activities_list = []
+            for act in edition_data.get('activities', []):
+                act_date = act.get('date', '')
+                if isinstance(act_date, str):
+                    act_date_obj = datetime.strptime(act_date, "%d/%m/%Y").date()
+                else:
+                    act_date_obj = act_date
+
+                activities_list.append({
+                    'title': act.get('title', ''),
+                    'description': act.get('description', ''),
+                    'date': act_date_obj,
+                    'start_time': act.get('start_time', '09.00'),
+                    'end_time': act.get('end_time', '11.00'),
+                    'impegno_previsto_in_ore': act.get('impegno_ore', '') or act.get('impegno_previsto_in_ore', '')
+                })
+
+            # Store in session state (format expected by presenter/model)
+            st.session_state.edition_details = {
+                'course_name': edition_data.get('course_name', ''),
+                'edition_title': edition_data.get('edition_title', ''),
+                'edition_start_date': start_date_obj,
+                'edition_end_date': end_date_obj,
+                'location': edition_data.get('location', ''),
+                'supplier': edition_data.get('supplier', ''),
+                'price': edition_data.get('price', ''),
+                'description': edition_data.get('description', ''),
+                'activities': activities_list
+            }
+
+            # Start automation
+            st.session_state.app_state = "RUNNING_EDITION"
+            st.session_state.edition_message = ""
+            st.session_state.edition_parsed_data = None
+            st.session_state.edition_show_summary = False
+            st.session_state.edition_edit_mode = False
+            st.rerun()
+
+        except ValueError as e:
+            st.error(f"❌ Errore conversione dati: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+
+    def _render_editable_edition_form(self):
+        """Editable form for modifying parsed edition data before creation"""
+
+        edition = st.session_state.edition_to_edit
+
+        if not edition:
+            st.warning("Nessun dato da modificare.")
+            if st.button("⬅️ Torna indietro", key="edition_edit_back_btn"):
+                st.session_state.edition_edit_mode = False
+                st.rerun()
+            return
+
+        st.subheader("✏️ Modifica Edizione + Attività")
+        st.info("Modifica i dettagli e clicca 'Crea Edizione' quando pronto.")
+
+        # Activity count management (outside form)
+        activities = edition.get('activities', [])
+
+        col_add, col_remove, col_spacer = st.columns([1, 1, 2])
+        with col_add:
+            if st.button("➕ Aggiungi Attività", key="edition_edit_add_activity"):
+                if 'activities' not in st.session_state.edition_to_edit:
+                    st.session_state.edition_to_edit['activities'] = []
+                st.session_state.edition_to_edit['activities'].append({
+                    'title': '',
+                    'description': '',
+                    'date': edition.get('start_date', ''),
+                    'start_time': '09.00',
+                    'end_time': '11.00',
+                    'impegno_ore': ''
+                })
+                st.rerun()
+
+        with col_remove:
+            if len(activities) > 1:
+                if st.button("➖ Rimuovi Ultima", key="edition_edit_remove_activity"):
+                    st.session_state.edition_to_edit['activities'].pop()
+                    st.rerun()
+
+        st.divider()
+
+        # Main form
+        with st.form(key='edit_edition_form'):
+            # Edition details
+            st.markdown("### 📚 Dettagli Edizione")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                course_name = st.text_input(
+                    "Nome Corso Esistente *",
+                    value=edition.get('course_name', ''),
+                    key="edit_edition_course_name"
+                )
+                edition_title = st.text_input(
+                    "Titolo Edizione (opzionale)",
+                    value=edition.get('edition_title', ''),
+                    key="edit_edition_title"
+                )
+                start_date = st.text_input(
+                    "Data Inizio Edizione (GG/MM/AAAA) *",
+                    value=edition.get('start_date', ''),
+                    key="edit_edition_start_date"
+                )
+                end_date = st.text_input(
+                    "Data Fine Edizione (GG/MM/AAAA) *",
+                    value=edition.get('end_date', ''),
+                    key="edit_edition_end_date"
+                )
+
+            with col2:
+                location = st.text_input(
+                    "Aula Principale",
+                    value=edition.get('location', ''),
+                    key="edit_edition_location"
+                )
+                supplier = st.text_input(
+                    "Fornitore Formazione",
+                    value=edition.get('supplier', ''),
+                    key="edit_edition_supplier"
+                )
+                price = st.text_input(
+                    "Costo (€)",
+                    value=edition.get('price', ''),
+                    key="edit_edition_price"
+                )
+                description = st.text_area(
+                    "Descrizione",
+                    value=edition.get('description', ''),
+                    key="edit_edition_description",
+                    height=100
+                )
+
+            # Activities
+            st.markdown("### 📝 Attività")
+
+            activities = edition.get('activities', [])
+            for idx, activity in enumerate(activities):
+                with st.expander(f"Attività {idx + 1}: {activity.get('title', 'Nuova Attività')}", expanded=True):
+                    col1, col2, col3 = st.columns([2, 1, 1])
+
+                    with col1:
+                        st.text_input(
+                            "Titolo *",
+                            value=activity.get('title', ''),
+                            key=f"edit_act_title_{idx}"
+                        )
+                    with col2:
+                        st.text_input(
+                            "Data (GG/MM/AAAA) *",
+                            value=activity.get('date', ''),
+                            key=f"edit_act_date_{idx}"
+                        )
+                    with col3:
+                        st.text_input(
+                            "Impegno (ore)",
+                            value=activity.get('impegno_ore', '') or activity.get('impegno_previsto_in_ore', ''),
+                            key=f"edit_act_hours_{idx}"
+                        )
+
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.text_input(
+                            "Ora Inizio (HH.MM)",
+                            value=activity.get('start_time', '09.00'),
+                            key=f"edit_act_start_{idx}"
+                        )
+                    with col2:
+                        st.text_input(
+                            "Ora Fine (HH.MM)",
+                            value=activity.get('end_time', '11.00'),
+                            key=f"edit_act_end_{idx}"
+                        )
+
+                    st.text_area(
+                        "Descrizione Attività",
+                        value=activity.get('description', ''),
+                        key=f"edit_act_desc_{idx}",
+                        height=80
+                    )
+
+            st.divider()
+
+            # Submit buttons
+            col1, col2, col3 = st.columns([2, 1, 1])
+
+            with col1:
+                submit = st.form_submit_button(
+                    "✅ Crea Edizione e Attività",
+                    type="primary",
+                    width='stretch'
+                )
+
+            with col2:
+                preview = st.form_submit_button(
+                    "👁️ Anteprima",
+                    width='stretch'
+                )
+
+            with col3:
+                cancel = st.form_submit_button(
+                    "❌ Annulla",
+                    width='stretch'
+                )
+
+        # Handle form actions
+        if submit:
+            self._process_edited_edition(edition)
+        elif preview:
+            self._save_edited_edition_to_preview(edition)
+        elif cancel:
+            st.session_state.edition_edit_mode = False
+            st.session_state.edition_to_edit = None
+            st.session_state.edition_parsed_data = None
+            st.session_state.edition_show_summary = False
+            st.session_state.edition_input_method = "structured"
+            st.rerun()
+
+    def _process_edited_edition(self, original_edition):
+        """Validate and process the edited edition form"""
+
+        # Collect values from form
+        course_name = st.session_state.get('edit_edition_course_name', '').strip()
+        edition_title = st.session_state.get('edit_edition_title', '').strip()
+        start_date = st.session_state.get('edit_edition_start_date', '').strip()
+        end_date = st.session_state.get('edit_edition_end_date', '').strip()
+        location = st.session_state.get('edit_edition_location', '').strip()
+        supplier = st.session_state.get('edit_edition_supplier', '').strip()
+        price = st.session_state.get('edit_edition_price', '').strip()
+        description = st.session_state.get('edit_edition_description', '').strip()
+
+        # Validate required fields
+        if not course_name:
+            st.error("❌ Il nome del corso è obbligatorio.")
+            st.stop()
+        if not start_date:
+            st.error("❌ La data di inizio è obbligatoria.")
+            st.stop()
+        if not end_date:
+            st.error("❌ La data di fine è obbligatoria.")
+            st.stop()
+
+        # Validate dates
+        try:
+            start_date_obj = datetime.strptime(start_date, "%d/%m/%Y").date()
+            end_date_obj = datetime.strptime(end_date, "%d/%m/%Y").date()
+
+            if end_date_obj < start_date_obj:
+                st.error("❌ La data di fine non può essere prima della data di inizio.")
+                st.stop()
+        except ValueError:
+            st.error("❌ Formato data non valido. Usa GG/MM/AAAA.")
+            st.stop()
+
+        # Collect activities
+        activities_list = []
+        activities = original_edition.get('activities', [])
+
+        for idx in range(len(activities)):
+            act_title = st.session_state.get(f'edit_act_title_{idx}', '').strip()
+            act_date = st.session_state.get(f'edit_act_date_{idx}', '').strip()
+            act_start = st.session_state.get(f'edit_act_start_{idx}', '09.00').strip()
+            act_end = st.session_state.get(f'edit_act_end_{idx}', '11.00').strip()
+            act_desc = st.session_state.get(f'edit_act_desc_{idx}', '').strip()
+            act_hours = st.session_state.get(f'edit_act_hours_{idx}', '').strip()
+
+            if not act_title:
+                st.error(f"❌ Attività {idx + 1}: Il titolo è obbligatorio.")
+                st.stop()
+            if not act_date:
+                st.error(f"❌ Attività {idx + 1}: La data è obbligatoria.")
+                st.stop()
+
+            # Validate activity date
+            try:
+                act_date_obj = datetime.strptime(act_date, "%d/%m/%Y").date()
+            except ValueError:
+                st.error(f"❌ Attività {idx + 1}: Formato data non valido.")
+                st.stop()
+
+            activities_list.append({
+                'title': act_title,
+                'description': act_desc,
+                'date': act_date_obj,
+                'start_time': act_start,
+                'end_time': act_end,
+                'impegno_previsto_in_ore': act_hours
+            })
+
+        if not activities_list:
+            st.error("❌ Almeno una attività è richiesta.")
+            st.stop()
+
+        # Store and start automation
+        st.session_state.edition_details = {
+            'course_name': course_name,
+            'edition_title': edition_title,
+            'edition_start_date': start_date_obj,
+            'edition_end_date': end_date_obj,
+            'location': location,
+            'supplier': supplier,
+            'price': price,
+            'description': description,
+            'activities': activities_list
+        }
+
+        st.session_state.app_state = "RUNNING_EDITION"
+        st.session_state.edition_message = ""
+        st.session_state.edition_edit_mode = False
+        st.session_state.edition_to_edit = None
+        st.session_state.edition_parsed_data = None
+        st.session_state.edition_show_summary = False
+        st.rerun()
+
+    def _save_edited_edition_to_preview(self, original_edition):
+        """Save edited data and return to preview"""
+
+        activities = original_edition.get('activities', [])
+        updated_activities = []
+
+        for idx in range(len(activities)):
+            updated_activities.append({
+                'title': st.session_state.get(f'edit_act_title_{idx}', ''),
+                'description': st.session_state.get(f'edit_act_desc_{idx}', ''),
+                'date': st.session_state.get(f'edit_act_date_{idx}', ''),
+                'start_time': st.session_state.get(f'edit_act_start_{idx}', '09.00'),
+                'end_time': st.session_state.get(f'edit_act_end_{idx}', '11.00'),
+                'impegno_ore': st.session_state.get(f'edit_act_hours_{idx}', '')
+            })
+
+        updated_edition = {
+            'course_name': st.session_state.get('edit_edition_course_name', ''),
+            'edition_title': st.session_state.get('edit_edition_title', ''),
+            'start_date': st.session_state.get('edit_edition_start_date', ''),
+            'end_date': st.session_state.get('edit_edition_end_date', ''),
+            'location': st.session_state.get('edit_edition_location', ''),
+            'supplier': st.session_state.get('edit_edition_supplier', ''),
+            'price': st.session_state.get('edit_edition_price', ''),
+            'description': st.session_state.get('edit_edition_description', ''),
+            'activities': updated_activities
+        }
+
+        st.session_state.edition_parsed_data = updated_edition
+        st.session_state.edition_show_summary = True
+        st.session_state.edition_edit_mode = False
+        st.session_state.edition_to_edit = None
+        st.rerun()
+
+    #---STUDENT---
     def _preserve_student_data(self, num_students):
         """Preserve current student data before form submission"""
         # CRITICAL: Also preserve the count itself
@@ -1874,9 +3088,9 @@ class CourseView:
             col1, col2 = st.columns([3, 1])
             with col1:
                 submitted = st.form_submit_button("Aggiungi Allievi", type="primary",
-                                                  disabled=is_disabled, use_container_width=True)
+                                                  disabled=is_disabled, width='stretch')
             with col2:
-                st.form_submit_button("Pulisci 🧹", use_container_width=True,
+                st.form_submit_button("Pulisci 🧹", width='stretch',
                                       on_click=self._clear_student_form_callback)
 
         if submitted:
@@ -1931,35 +3145,43 @@ class CourseView:
     def update_progress(self, form_type, message, percentage):
         placeholder = None
         if form_type == "course":
-            placeholder = self.course_output_placeholder
+            # Use getattr to safely get the attribute
+            placeholder = getattr(self, 'course_output_placeholder', None)
         elif form_type == "edition":
-            placeholder = self.edition_output_placeholder
+            placeholder = getattr(self, 'edition_output_placeholder', None)
         elif form_type == "student":
-            placeholder = self.student_output_placeholder
+            placeholder = getattr(self, 'student_output_placeholder', None)
 
-        if placeholder and hasattr(self, f"{form_type}_output_placeholder"):
+        # Only try to use placeholder if it exists and is not None
+        if placeholder is not None:
             with placeholder.container():
                 st.info(f"⏳ {message}")
                 st.progress(percentage)
+        else:
+            # Fallback: just show the message directly
+            st.info(f"⏳ {message}")
+            st.progress(percentage)
 
     def show_message(self, form_type, message, show_clear_button=False):
         placeholder = None
         message_key = ""
         if form_type == "course":
-            placeholder = self.course_output_placeholder
+            placeholder = getattr(self, 'course_output_placeholder', None)
             message_key = "course_message"
         elif form_type == "edition":
-            placeholder = self.edition_output_placeholder
+            placeholder = getattr(self, 'edition_output_placeholder', None)
             message_key = "edition_message"
         elif form_type == "student":
-            placeholder = self.student_output_placeholder
+            placeholder = getattr(self, 'student_output_placeholder', None)
             message_key = "student_message"
 
-        if not placeholder or not message_key:
+        if not message_key:
             return
 
         st.session_state[message_key] = message
-        if placeholder and hasattr(self, f"{form_type}_output_placeholder"):
+
+        # Use placeholder if available, otherwise show directly
+        if placeholder is not None:
             with placeholder.container():
                 if "✅" in message:
                     st.success(message)
@@ -1969,3 +3191,13 @@ class CourseView:
                     if st.button(f"🧹 Cancella Messaggio", key=f"clear_{form_type}"):
                         st.session_state[message_key] = ""
                         st.rerun()
+        else:
+            # Fallback: show directly without placeholder
+            if "✅" in message:
+                st.success(message)
+            else:
+                st.error(message)
+            if show_clear_button:
+                if st.button(f"🧹 Cancella Messaggio", key=f"clear_{form_type}"):
+                    st.session_state[message_key] = ""
+                    st.rerun()

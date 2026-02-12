@@ -1,7 +1,5 @@
 #import sys
 import streamlit as st
-
-
 from model import OracleAutomator
 from view import CourseView
 from presenter import CoursePresenter
@@ -19,11 +17,14 @@ if __name__ == "__main__":
     view = CourseView()
     headless, debug_mode, debug_pause = view.get_user_options()
 
+    # 2. Get current state BEFORE rendering UI
+    current_state = st.session_state.get('app_state', 'IDLE')
+
     # 2. Let the View render the entire user interface.
-    view.render_ui()
+    #view.render_ui()
 
     # 3. Controller Logic: Only run this block if an automation has been started.
-    if st.session_state.app_state != "IDLE":
+    if current_state != "IDLE":
         model = OracleAutomator(driver_path=DRIVER_PATH,
                                 debug_mode=debug_mode,
                                 debug_pause=debug_pause,
@@ -33,10 +34,20 @@ if __name__ == "__main__":
         # Run the correct process based on the state
         if st.session_state.app_state == "RUNNING_COURSE":
             presenter.run_create_course(st.session_state.get("course_details"))
-        # NEW BATCH PROCESSING STATE ###
+
         elif st.session_state.app_state == "RUNNING_BATCH_COURSE":
             presenter.run_create_batch_courses(st.session_state.get("batch_course_data"))
+
         elif st.session_state.app_state == "RUNNING_EDITION":
             presenter.run_create_edition_and_activities(st.session_state.get("edition_details"))
+
+        # === NEW STATE ===
+        elif st.session_state.app_state == "RUNNING_BATCH_EDITION":
+            presenter.run_batch_edition_creation()
+
         elif st.session_state.app_state == "RUNNING_STUDENTS":
             presenter.run_add_students(st.session_state.get("student_details"))
+        # After automation completes, the presenter sets state to IDLE
+        # and the page naturally refreshes showing the UI
+    else: # 4. Only render UI when NOT running automation
+        view.render_ui()
