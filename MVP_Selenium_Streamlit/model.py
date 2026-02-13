@@ -1720,21 +1720,21 @@ class OracleAutomator:
                     f"Model: Searching for edition '{edition_name}' with publish date {edition_publish_date_obj.strftime('%d/%m/%Y')}")
                 time.sleep(2) #remove it after bugging solved
 
-                # --- Fill Search Form (This part is correct) ---
-                title_input_edizione = self.wait.until(
-                    EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
-                # title_input_edizione.clear()
-                title_input_edizione.send_keys(edition_name)
+                # --- Fill Search Form  ---
+                numero_edizione_dropdown = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//*[contains(@id, ':operator6::drop')]")))
+                numero_edizione_dropdown.click()
 
-                date_input_edizione = self.wait.until(
-                    EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Data inizio pubblicazione']")))
-                date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
-                self.driver.execute_script("arguments[0].value=arguments[1];", date_input_edizione, date_str)
-                date_input_edizione.send_keys(Keys.TAB)
-                time.sleep(2)  # remove it after bugging solved
+
+                numero_edizione_dropdown_contains = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//*[contains(@id, ':operator6::pop']/li[3]')]")))
+                numero_edizione_dropdown_contains.click()
+                numero_edizione_input = self.wait.until(EC.presence_of_element_located((By.XPATH,'//*[contains(@id, ":operator6::input") or ([@aria-label="Numero edizione"])]')))
+                numero_edizione_input.send_keys(numero_edizione)
+                #time.sleep(2)  # remove it after bugging solved
 
                 search_button_edizione = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
+                    EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca' or text()='Search']")))
                 search_button_edizione.click()
                 print("Model: Search submitted. Waiting for results.")
                 #time.sleep(2)  # remove it after bugging solved
@@ -1761,7 +1761,7 @@ class OracleAutomator:
                     print(f"Could not save screenshot: {ss_e}")
                 return False
 
-            # model.py (Corrected function)
+
 
     def _perform_student_addition_steps(self, student_list, conv_online, conv_presenza):
         try:
