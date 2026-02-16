@@ -1331,8 +1331,7 @@ class CourseView:
 
     def _clear_student_form_callback(self):
         st.session_state.student_course_name_key = ""
-        st.session_state.student_edition_name_key = ""
-        st.session_state.student_edition_publish_date_key = ""
+        st.session_state.student_edition_code_key = ""  # NEW: replaces edition_name + publish_date
         st.session_state.num_students = 1
         st.session_state.student_convocazione_online = True
         st.session_state.student_convocazione_presenza = True
@@ -3156,12 +3155,9 @@ class CourseView:
             st.text_input("Nome del Corso Esistente",
                           placeholder="Corso a cui appartiene l'edizione",
                           key="student_course_name_key")
-            st.text_input("Nome Esatto Edizione",
-                          placeholder="Inserisci il nome esatto e completo dell'edizione (non troncato)",
-                          key="student_edition_name_key")
-            st.text_input("Data Pubblicazione Edizione (GG/MM/AAAA)",
-                          placeholder="La 'Publish Start Date' dell'edizione",
-                          key="student_edition_publish_date_key")
+            st.text_input("Codice Edizione (Numero Edizione)",
+                          placeholder="Es: 300000050460129 — il codice numerico dell'edizione",
+                          key="student_edition_code_key")
 
             st.divider()
             st.subheader("2. Dettagli Allievi")
@@ -3193,31 +3189,35 @@ class CourseView:
             self._preserve_student_data(num_students)
 
             course_name = st.session_state.student_course_name_key
-            edition_name = st.session_state.student_edition_name_key
-            edition_publish_date_str = st.session_state.student_edition_publish_date_key
+            edition_code = st.session_state.student_edition_code_key
             conv_online = st.session_state.student_convocazione_online
             conv_presenza = st.session_state.student_convocazione_presenza
 
-            if not all([course_name.strip(), edition_name.strip(), edition_publish_date_str.strip()]):
-                st.error("I campi 'Nome Corso', 'Nome Edizione' e 'Data Pubblicazione' sono obbligatori.")
-                st.stop()
+            # --- Validate required fields ---
+            has_errors = False
+
+            if not course_name.strip():
+                st.error("❌ Il campo **Nome del Corso** è obbligatorio.")
+                has_errors = True
+
+            if not edition_code.strip():
+                st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
+                has_errors = True
 
             if not conv_online and not conv_presenza:
-                st.error("Selezionare almeno un tipo di convocazione (Online o Presenza).")
+                st.error("❌ Selezionare almeno un tipo di convocazione (Online o Presenza).")
+                has_errors = True
+
+            if has_errors:
                 st.stop()
 
-            try:
-                edition_publish_date = datetime.strptime(edition_publish_date_str, "%d/%m/%Y").date()
-            except ValueError:
-                st.error("Formato Data Pubblicazione Edizione non valido. Usa GG/MM/AAAA.")
-                st.stop()
-
+            # --- Validate students ---
             student_list = []
             all_students_valid = True
             for i in range(num_students):
                 name = st.session_state.get(f"student_name_{i}", "").strip()
                 if not name:
-                    st.error(f"Il nome per l'Allievo {i + 1} è obbligatorio.")
+                    st.error(f"❌ Il numero di matricola per l'Allievo {i + 1} è obbligatorio.")
                     all_students_valid = False
                     break
                 student_list.append(name)
@@ -3225,10 +3225,10 @@ class CourseView:
             if not all_students_valid:
                 st.stop()
 
+            # --- All valid — start automation ---
             st.session_state.student_details = {
                 "course_name": course_name,
-                "edition_name": edition_name,
-                "edition_publish_date": edition_publish_date,
+                "edition_code": edition_code,  # NEW: single field instead of name + date
                 "students": student_list,
                 "convocazione_online": conv_online,
                 "convocazione_presenza": conv_presenza
