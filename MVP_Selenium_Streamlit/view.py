@@ -395,6 +395,10 @@ class CourseView:
             st.session_state.student_message = ""
         if "student_convocazione_presenza" not in st.session_state:
             st.session_state.student_convocazione_presenza = True
+        if "student_input_method" not in st.session_state:
+             st.session_state.student_input_method = "manual"  # "manual" or "file"
+        # if "student_edition_start_date_key" not in st.session_state:
+        #        st.session_state.student_edition_start_date_key = ""
 
         # --- Form Specific State ---
         if "num_activities" not in st.session_state:
@@ -1331,10 +1335,12 @@ class CourseView:
 
     def _clear_student_form_callback(self):
         st.session_state.student_course_name_key = ""
-        st.session_state.student_edition_code_key = ""  # NEW: replaces edition_name + publish_date
+        st.session_state.student_edition_code_key = ""
+       # st.session_state.student_edition_start_date_key = ""
         st.session_state.num_students = 1
         st.session_state.student_convocazione_online = True
         st.session_state.student_convocazione_presenza = True
+        st.session_state.student_input_method = "manual"
 
         # Clear ALL student fields AND preserved data
         st.session_state.preserved_student_data = {}
@@ -3139,103 +3145,259 @@ class CourseView:
                     st.session_state.preserved_student_data[f"student_{i}_name"]
 
     def _render_student_form(self, is_disabled):
-        # Restore data BEFORE rendering the form
+        """
+        Student form with two input methods:
+        A) Upload .txt file with matricola numbers
+        B) Enter matricola numbers manually
+
+        Both produce: list of matricola strings → presenter creates temp file → Selenium uploads it
+        """
+        # Restore preserved data before rendering
         if st.session_state.preserved_student_data:
             self._restore_student_data(st.session_state.num_students)
 
-        num_students = st.number_input(
-            "Quanti allievi da aggiungere?",
-            min_value=1,
-            max_value=50,
-            key="num_students"
+        # === INPUT METHOD SELECTION ===
+        student_method = st.radio(
+            "Come vuoi inserire gli allievi?",
+            options=["manual", "file"],
+            format_func=lambda x: {
+                "manual": "📝 Inserimento Manuale (Matricole)",
+                "file": "📄 Caricamento File TXT"
+            }[x],
+            key="student_input_method",
+            horizontal=True
         )
 
-        with st.form(key='student_form'):
-            st.subheader("1. Trova Edizione Esistente")
-            st.text_input("Nome del Corso Esistente",
-                          placeholder="Corso a cui appartiene l'edizione",
-                          key="student_course_name_key")
-            st.text_input("Codice Edizione (Numero Edizione)",
-                          placeholder="Es: 300000050460129 — il codice numerico dell'edizione",
-                          key="student_edition_code_key")
+        st.divider()
 
-            st.divider()
-            st.subheader("2. Dettagli Allievi")
+        # === COMMON FIELDS (always shown) ===
+        # Using a form for the common fields + manual entry
+        # File upload stays outside the form (Streamlit limitation)
+
+        if student_method == "file":
+            # --- FILE UPLOAD MODE ---
             st.info(
-                "**Importante:** Per trovare l'allievo corretto, il metodo più sicuro è "
-                "inserire **Numero di matricola** (es. **2413**). "
-                "Inserire solo il nome o l'email può causare errori se esistono duplicati.",
-                icon="💡"
+                "**Formato file TXT:** Un numero di matricola per riga.\n\n"
+                "Esempio:\n```\n2413\n2414\n2415\n```",
+                icon="📄"
             )
 
-            for i in range(num_students):
-                st.text_input(f"Numero di matricola {i + 1}", key=f"student_name_{i}")
+            uploaded_txt = st.file_uploader(
+                "Carica File TXT con Matricole",
+                type=['txt'],
+                help="File di testo con un numero di matricola per riga",
+                key="student_txt_uploader"
+            )
 
-            st.divider()
-            st.subheader("3. Opzioni Convocazione")
-            st.checkbox("Invia Convocazione Online", key="student_convocazione_online")
-            st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza")
+            # Parse uploaded file to show preview
+            parsed_students = []
+            if uploaded_txt is not None:
+                try:
+                    content = uploaded_txt.read().decode('utf-8')
+                    uploaded_txt.seek(0)  # Reset for potential re-read
 
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                submitted = st.form_submit_button("Aggiungi Allievi", type="primary",
-                                                  disabled=is_disabled, width='stretch')
-            with col2:
-                st.form_submit_button("Pulisci 🧹", width='stretch',
-                                      on_click=self._clear_student_form_callback)
+                    # Parse: one matricola per line, skip empty lines
+                    lines = [line.strip() for line in content.strip().split('\n') if line.strip()]
+                    parsed_students = lines
 
-        if submitted:
-            # PRESERVE DATA BEFORE PROCESSING
-            self._preserve_student_data(num_students)
+                    if parsed_students:
+                        st.success(f"✅ {len(parsed_students)} matricole trovate nel file")
+                        with st.expander("👁️ Anteprima matricole", expanded=False):
+                            # Show first 20
+                            preview = parsed_students[:20]
+                            for i, m in enumerate(preview, 1):
+                                st.write(f"{i}. `{m}`")
+                            if len(parsed_students) > 20:
+                                st.write(f"... e altre {len(parsed_students) - 20} matricole")
+                    else:
+                        st.warning("⚠️ Il file sembra vuoto.")
+                except Exception as e:
+                    st.error(f"❌ Errore lettura file: {str(e)}")
 
-            course_name = st.session_state.student_course_name_key
-            edition_code = st.session_state.student_edition_code_key
-            conv_online = st.session_state.student_convocazione_online
-            conv_presenza = st.session_state.student_convocazione_presenza
+            # Form with remaining fields
+            with st.form(key='student_form_file'):
+                st.subheader("Dettagli Edizione")
+                st.text_input("Nome del Corso Esistente",
+                              placeholder="Corso a cui appartiene l'edizione",
+                              key="student_course_name_key")
+                st.text_input("Codice Edizione (Numero Edizione)",
+                              placeholder="Es: 300000050460129",
+                              key="student_edition_code_key")
+                # st.text_input("Data Inizio Edizione (GG/MM/AAAA)",
+                #               placeholder="Es: 12/02/2026 — per il nome dell'elenco in Oracle",
+                #               key="student_edition_start_date_key")
 
-            # --- Validate required fields ---
-            has_errors = False
+                st.divider()
+                st.subheader("Opzioni Convocazione")
+                st.checkbox("Invia Convocazione Online", key="student_convocazione_online")
+                st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza")
 
-            if not course_name.strip():
-                st.error("❌ Il campo **Nome del Corso** è obbligatorio.")
-                has_errors = True
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    submitted = st.form_submit_button(
+                        f"Aggiungi {len(parsed_students)} Allievi" if parsed_students else "Aggiungi Allievi",
+                        type="primary",
+                        disabled=is_disabled,
+                        width='stretch')
+                with col2:
+                    st.form_submit_button("Pulisci 🧹", width='stretch',
+                                          on_click=self._clear_student_form_callback)
 
-            if not edition_code.strip():
-                st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
-                has_errors = True
+            if submitted:
+                # Validate
+                course_name = st.session_state.student_course_name_key.strip()
+                edition_code = st.session_state.student_edition_code_key.strip()
+                #edition_start_date_str = st.session_state.student_edition_start_date_key.strip()
+                conv_online = st.session_state.student_convocazione_online
+                conv_presenza = st.session_state.student_convocazione_presenza
 
-            if not conv_online and not conv_presenza:
-                st.error("❌ Selezionare almeno un tipo di convocazione (Online o Presenza).")
-                has_errors = True
+                has_errors = False
 
-            if has_errors:
-                st.stop()
+                if not course_name:
+                    st.error("❌ Il campo **Nome del Corso** è obbligatorio.")
+                    has_errors = True
+                if not edition_code:
+                    st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
+                    has_errors = True
+                # if not edition_start_date_str:
+                #     st.error("❌ Il campo **Data Inizio Edizione** è obbligatorio (serve per il nome elenco in Oracle).")
+                #     has_errors = True
+                if not conv_online and not conv_presenza:
+                    st.error("❌ Selezionare almeno un tipo di convocazione.")
+                    has_errors = True
+                if not parsed_students:
+                    st.error("❌ Carica un file TXT con le matricole degli allievi.")
+                    has_errors = True
 
-            # --- Validate students ---
-            student_list = []
-            all_students_valid = True
-            for i in range(num_students):
-                name = st.session_state.get(f"student_name_{i}", "").strip()
-                if not name:
-                    st.error(f"❌ Il numero di matricola per l'Allievo {i + 1} è obbligatorio.")
-                    all_students_valid = False
-                    break
-                student_list.append(name)
+                if has_errors:
+                    st.stop()
 
-            if not all_students_valid:
-                st.stop()
+                # Validate date format
+                # try:
+                #     datetime.strptime(edition_start_date_str, "%d/%m/%Y")
+                # except ValueError:
+                #     st.error("❌ Formato data non valido. Usa GG/MM/AAAA (es: 12/02/2026).")
+                #     st.stop()
 
-            # --- All valid — start automation ---
-            st.session_state.student_details = {
-                "course_name": course_name,
-                "edition_code": edition_code,  # NEW: single field instead of name + date
-                "students": student_list,
-                "convocazione_online": conv_online,
-                "convocazione_presenza": conv_presenza
-            }
-            st.session_state.app_state = "RUNNING_STUDENTS"
-            st.session_state.student_message = ""
-            st.rerun()
+                # All valid — start automation
+                st.session_state.student_details = {
+                    "course_name": course_name,
+                    "edition_code": edition_code,
+                    #"edition_start_date_str": edition_start_date_str,
+                    "students": parsed_students,
+                    "convocazione_online": conv_online,
+                    "convocazione_presenza": conv_presenza
+                }
+                st.session_state.app_state = "RUNNING_STUDENTS"
+                st.session_state.student_message = ""
+                st.rerun()
+
+        else:
+            # --- MANUAL ENTRY MODE ---
+            num_students = st.number_input(
+                "Quanti allievi da aggiungere?",
+                min_value=1,
+                max_value=50,
+                key="num_students"
+            )
+
+            with st.form(key='student_form_manual'):
+                st.subheader("1. Dettagli Edizione")
+                st.text_input("Nome del Corso Esistente",
+                              placeholder="Corso a cui appartiene l'edizione",
+                              key="student_course_name_key")
+                st.text_input("Codice Edizione (Numero Edizione)",
+                              placeholder="Es: 300000050460129",
+                              key="student_edition_code_key")
+                # st.text_input("Data Inizio Edizione (GG/MM/AAAA)",
+                #               placeholder="Es: 12/02/2026 — per il nome dell'elenco in Oracle",
+                #               key="student_edition_start_date_key")
+
+                st.divider()
+                st.subheader("2. Matricole Allievi")
+                st.info(
+                    "**Inserisci il numero di matricola** di ogni allievo (es. **2413**).",
+                    icon="💡"
+                )
+
+                for i in range(num_students):
+                    st.text_input(f"Matricola Allievo {i + 1}", key=f"student_name_{i}")
+
+                st.divider()
+                st.subheader("3. Opzioni Convocazione")
+                st.checkbox("Invia Convocazione Online", key="student_convocazione_online")
+                st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza")
+
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    submitted = st.form_submit_button("Aggiungi Allievi", type="primary",
+                                                      disabled=is_disabled, width='stretch')
+                with col2:
+                    st.form_submit_button("Pulisci 🧹", width='stretch',
+                                          on_click=self._clear_student_form_callback)
+
+            if submitted:
+                # Preserve data
+                self._preserve_student_data(num_students)
+
+                course_name = st.session_state.student_course_name_key.strip()
+                edition_code = st.session_state.student_edition_code_key.strip()
+                #edition_start_date_str = st.session_state.student_edition_start_date_key.strip()
+                conv_online = st.session_state.student_convocazione_online
+                conv_presenza = st.session_state.student_convocazione_presenza
+
+                # Validate
+                has_errors = False
+
+                if not course_name:
+                    st.error("❌ Il campo **Nome del Corso** è obbligatorio.")
+                    has_errors = True
+                if not edition_code:
+                    st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
+                    has_errors = True
+                # if not edition_start_date_str:
+                #     st.error("❌ Il campo **Data Inizio Edizione** è obbligatorio.")
+                #     has_errors = True
+                if not conv_online and not conv_presenza:
+                    st.error("❌ Selezionare almeno un tipo di convocazione.")
+                    has_errors = True
+
+                if has_errors:
+                    st.stop()
+
+                # Validate date format
+                # try:
+                #     datetime.strptime(edition_start_date_str, "%d/%m/%Y")
+                # except ValueError:
+                #     st.error("❌ Formato data non valido. Usa GG/MM/AAAA.")
+                #     st.stop()
+
+                # Collect matricole
+                student_list = []
+                all_valid = True
+                for i in range(num_students):
+                    matricola = st.session_state.get(f"student_name_{i}", "").strip()
+                    if not matricola:
+                        st.error(f"❌ La matricola per l'Allievo {i + 1} è obbligatoria.")
+                        all_valid = False
+                        break
+                    student_list.append(matricola)
+
+                if not all_valid:
+                    st.stop()
+
+                # All valid — start automation
+                st.session_state.student_details = {
+                    "course_name": course_name,
+                    "edition_code": edition_code,
+                    #"edition_start_date_str": edition_start_date_str,
+                    "students": student_list,
+                    "convocazione_online": conv_online,
+                    "convocazione_presenza": conv_presenza
+                }
+                st.session_state.app_state = "RUNNING_STUDENTS"
+                st.session_state.student_message = ""
+                st.rerun()
 
     def update_progress(self, form_type, message, percentage):
         placeholder = None
