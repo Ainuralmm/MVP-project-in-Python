@@ -1,7 +1,9 @@
-import pandas as pd
+#import pandas as pd
 import streamlit as st
 import time
-from datetime import datetime
+#from datetime import datetime
+import os
+import tempfile
 
 class CoursePresenter:
     def __init__(self, model, view):
@@ -392,6 +394,19 @@ class CoursePresenter:
 
     ### METHOD FOR STUDENT FLOW
     def run_add_students(self, student_details):
+        """
+        Execute the student addition automation.
+
+        student_details keys:
+            - course_name (str): Name of the existing course
+            - edition_code (str): Numero edizione code
+            - edition_start_date_str (str): Date string for the list name (DD/MM/YYYY)
+            - students (list[str]): List of matricola numbers
+            - convocazione_online (bool)
+            - convocazione_presenza (bool)
+        """
+        temp_file_path = None  # Track for cleanup
+
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.secrets['ORACLE_USER']
@@ -400,46 +415,82 @@ class CoursePresenter:
             # Unpack details
             course_name = student_details['course_name']
             edition_code = student_details['edition_code']
+            #edition_start_date_str = student_details['edition_start_date_str']
             student_list = student_details['students']
             conv_online = student_details['convocazione_online']
             conv_presenza = student_details['convocazione_presenza']
             num_students = len(student_list)
 
-            # Use "student" placeholder for UI updates
+            # === STEP 1: CREATE TEMP .TXT FILE WITH MATRICOLA NUMBERS ===
+            # One matricola per line — this is what Oracle's 'Elenco numeri persona' expects
+            self.view.update_progress("student", f"Preparazione elenco {num_students} allievi...", 5)
+
+            temp_file = tempfile.NamedTemporaryFile(
+                mode='w',
+                suffix='.txt',
+                prefix='students_',
+                delete=False,  # Keep file until we explicitly delete it
+                encoding='utf-8'
+            )
+            for matricola in student_list:
+                temp_file.write(f"{matricola}\n")
+            temp_file.close()
+            temp_file_path = temp_file.name
+
+            print(f"Presenter: Created temp file with {num_students} students: {temp_file_path}")
+
+            # Build the 'Nome' label for Oracle: "COURSE_NAME + DATA_INIZIO_EDIZIONE"
+            lista_nome = f"{course_name} "
+            print(f"Presenter: Lista nome = '{lista_nome}'")
+
+            # === STEP 2: LOGIN ===
             self.view.update_progress("student", "Accesso a Oracle...", 10)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
 
-            self.view.update_progress("student", f"Navigazione alla pagina dei corsi...", 20)
+            # === STEP 3: NAVIGATE ===
+            self.view.update_progress("student", "Navigazione alla pagina dei corsi...", 20)
             if not self.model.navigate_to_courses_page():
                 raise Exception("Navigazione fallita.")
 
+            # === STEP 4: SEARCH COURSE ===
             self.view.update_progress("student", f"Ricerca del corso '{course_name}'...", 30)
             if not self.model.search_course(course_name):
                 raise Exception(f"Corso '{course_name}' non trovato. Crealo prima.")
 
+            # === STEP 5: OPEN COURSE ===
             self.view.update_progress("student", f"Apertura del corso '{course_name}'...", 40)
             if not self.model.open_course_from_list(course_name):
                 raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
 
+            # === STEP 6: OPEN EDIZIONI TAB ===
             self.view.update_progress("student", "Apertura scheda 'Edizioni'...", 50)
             if not self.model.open_edizioni_tab():
                 raise Exception("Impossibile fare clic sulla scheda 'Edizioni'.")
 
-            self.view.update_progress("student", f"Ricerca dell'edizione codice '{edition_code}'...", 60)
-            # UPDATED: Now using edition_code only (no publish date needed)
+            # === STEP 7: SEARCH EDITION ===
+            self.view.update_progress("student", f"Ricerca edizione codice '{edition_code}'...", 60)
             if not self.model._search_and_open_edition(edition_code):
-                raise Exception(
-                    f"Edizione con codice '{edition_code}' non trovata.")
+                raise Exception(f"Edizione con codice '{edition_code}' non trovata.")
 
-            self.view.update_progress("student", f"Aggiunta di {num_students} allievi...", 75)
-            success = self.model._perform_student_addition_steps(student_list, conv_online, conv_presenza)
+            # === STEP 8: ADD STUDENTS VIA FILE UPLOAD ===
+            self.view.update_progress("student", f"Caricamento elenco {num_students} allievi...", 75)
+            success = self.model._perform_student_addition_steps(
+                student_file_path=temp_file_path,
+                lista_nome=lista_nome,
+                conv_online=conv_online,
+                conv_presenza=conv_presenza
+            )
 
             if not success:
                 raise Exception("Errore durante l'aggiunta degli allievi.")
 
+            # === STEP 9: DONE ===
             self.view.update_progress("student", "Processo completato!", 100)
-            result_message = f"✅🤩 Successo! {len(student_list)} allievi aggiunti all'edizione codice '{edition_code}'."
+            result_message = (
+                f"✅🤩 Successo! {num_students} allievi caricati tramite elenco "
+                f"per edizione codice '{edition_code}'."
+            )
             self.view.show_message("student", result_message)
 
         except Exception as e:
@@ -448,6 +499,14 @@ class CoursePresenter:
             self.view.show_message("student", error_message)
 
         finally:
+            # === CLEANUP: Delete temp file ===
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)
+                    print(f"Presenter: Deleted temp file: {temp_file_path}")
+                except:
+                    pass
+
             print("Presenter (Student Add): Automation finished. Cleaning up.")
             if hasattr(self.model, 'driver') and self.model.driver:
                 self.model.close()
