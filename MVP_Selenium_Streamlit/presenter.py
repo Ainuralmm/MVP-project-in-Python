@@ -450,18 +450,18 @@ class CoursePresenter:
 
             # === STEP 3: NAVIGATE ===
             self.view.update_progress("student", "Navigazione alla pagina dei corsi...", 20)
-            if not self.model.navigate_to_courses_page():
+            if not self.model.navigate_to_edition_page():
                 raise Exception("Navigazione fallita.")
 
-            # === STEP 4: SEARCH COURSE ===
-            self.view.update_progress("student", f"Ricerca del corso '{course_name}'...", 30)
-            if not self.model.search_course(course_name):
-                raise Exception(f"Corso '{course_name}' non trovato. Crealo prima.")
+            # # === STEP 4: SEARCH COURSE ===
+            # self.view.update_progress("student", f"Ricerca del corso '{course_name}'...", 30)
+            # if not self.model.search_course(course_name):
+            #     raise Exception(f"Corso '{course_name}' non trovato. Crealo prima.")
 
-            # === STEP 5: OPEN COURSE ===
-            self.view.update_progress("student", f"Apertura del corso '{course_name}'...", 40)
-            if not self.model.open_course_from_list(course_name):
-                raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
+            # # === STEP 5: OPEN COURSE ===
+            # self.view.update_progress("student", f"Apertura del corso '{course_name}'...", 40)
+            # if not self.model.open_course_from_list(course_name):
+            #     raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
 
             # === STEP 6: OPEN EDIZIONI TAB ===
             self.view.update_progress("student", "Apertura scheda 'Edizioni'...", 50)
