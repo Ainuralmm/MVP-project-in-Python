@@ -57,6 +57,19 @@ class OracleAutomator:
             print(f"Model: Error navigating to 'Corsi' page: {e}")
             return False
 
+    def navigate_to_edition_page(self):
+        try:
+            self.wait.until(
+                EC.presence_of_element_located((By.XPATH, '//*[@id="groupNode_workforce_management"]'))).click()
+            self.wait.until(EC.presence_of_element_located((By.ID, 'WLF_FUSE_LEARN_ADMIN'))).click()
+            self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, '//a[@title="Edizioni" and text()="Edizioni"]'))).click()
+            print("Model: Navigated to 'Corsi' page.")
+            return True
+        except Exception as e:
+            print(f"Model: Error navigating to 'Edizioni' page: {e}")
+            return False
+
     def search_course(self, course_name):
         """
         Search for a course by name.
@@ -2039,7 +2052,7 @@ class OracleAutomator:
             if not file_input:
                 raise Exception("Could not find file input element for upload")
 
-            # KEY TRICK: send_keys on <input type="file"> uploads without opening OS dialog
+            # send_keys on <input type="file"> uploads without opening OS dialog
             file_input.send_keys(student_file_path)
             print(f"   ✅ File uploaded: {student_file_path}")
 
@@ -2236,13 +2249,13 @@ class OracleAutomator:
             print("Step 3.7: Selecting notification types...")
             if conv_online:
                 self.wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//label[contains(@id,':itt1:5:sbc1::Label1')]"))).click()
+                    (By.XPATH, "//label[contains(@id,':itt1:6:sbc1::Label1')]"))).click()
                 print("   ✅ Flagged 'CONVOCAZIONE PARTECIPANTE - ONLINE'")
                 self._pause_for_visual_check()
 
             if conv_presenza:
                 self.wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//label[contains(@id,':itt1:6:sbc1::Label1')]"))).click()
+                    (By.XPATH, "//label[contains(@id,':itt1:7:sbc1::Label1')]"))).click()
                 print("   ✅ Flagged 'CONVOCAZIONE PARTECIPANTE - PRESENTE'")
                 self._pause_for_visual_check()
 
