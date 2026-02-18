@@ -413,7 +413,7 @@ class CoursePresenter:
             oracle_pass = st.secrets['ORACLE_PASS']
 
             # Unpack details
-            course_name = student_details['course_name']
+            #course_name = student_details['course_name']
             edition_code = student_details['edition_code']
             #edition_start_date_str = student_details['edition_start_date_str']
             student_list = student_details['students']
@@ -440,7 +440,7 @@ class CoursePresenter:
             print(f"Presenter: Created temp file with {num_students} students: {temp_file_path}")
 
             # Build the 'Nome' label for Oracle: "COURSE_NAME + DATA_INIZIO_EDIZIONE"
-            lista_nome = f"{course_name} "
+            lista_nome = f"{edition_code} "
             print(f"Presenter: Lista nome = '{lista_nome}'")
 
             # === STEP 2: LOGIN ===
@@ -464,9 +464,9 @@ class CoursePresenter:
             #     raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
 
             # === STEP 6: OPEN EDIZIONI TAB ===
-            self.view.update_progress("student", "Apertura scheda 'Edizioni'...", 50)
-            if not self.model.open_edizioni_tab():
-                raise Exception("Impossibile fare clic sulla scheda 'Edizioni'.")
+            # self.view.update_progress("student", "Apertura scheda 'Edizioni'...", 50)
+            # if not self.model.open_edizioni_tab():
+            #     raise Exception("Impossibile fare clic sulla scheda 'Edizioni'.")
 
             # === STEP 7: SEARCH EDITION ===
             self.view.update_progress("student", f"Ricerca edizione codice '{edition_code}'...", 60)
