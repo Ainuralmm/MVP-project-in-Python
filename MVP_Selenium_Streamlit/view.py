@@ -3217,11 +3217,11 @@ class CourseView:
             # Form with remaining fields
             with st.form(key='student_form_file'):
                 st.subheader("Dettagli Edizione")
-                st.text_input("Nome del Corso Esistente",
-                              placeholder="Corso a cui appartiene l'edizione",
-                              key="student_course_name_key")
+                # st.text_input("Nome del Corso Esistente",
+                #               placeholder="Corso a cui appartiene l'edizione",
+                #               key="student_course_name_key")
                 st.text_input("Codice Edizione (Numero Edizione)",
-                              placeholder="Es: 300000050460129",
+                              placeholder="Es:OLC533195 ",
                               key="student_edition_code_key")
                 # st.text_input("Data Inizio Edizione (GG/MM/AAAA)",
                 #               placeholder="Es: 12/02/2026 — per il nome dell'elenco in Oracle",
@@ -3245,7 +3245,7 @@ class CourseView:
 
             if submitted:
                 # Validate
-                course_name = st.session_state.student_course_name_key.strip()
+                #course_name = st.session_state.student_course_name_key.strip()
                 edition_code = st.session_state.student_edition_code_key.strip()
                 #edition_start_date_str = st.session_state.student_edition_start_date_key.strip()
                 conv_online = st.session_state.student_convocazione_online
@@ -3253,9 +3253,9 @@ class CourseView:
 
                 has_errors = False
 
-                if not course_name:
-                    st.error("❌ Il campo **Nome del Corso** è obbligatorio.")
-                    has_errors = True
+                # if not course_name:
+                #     st.error("❌ Il campo **Nome del Corso** è obbligatorio.")
+                #     has_errors = True
                 if not edition_code:
                     st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
                     has_errors = True
@@ -3281,7 +3281,7 @@ class CourseView:
 
                 # All valid — start automation
                 st.session_state.student_details = {
-                    "course_name": course_name,
+                    #"course_name": course_name,
                     "edition_code": edition_code,
                     #"edition_start_date_str": edition_start_date_str,
                     "students": parsed_students,
@@ -3303,9 +3303,9 @@ class CourseView:
 
             with st.form(key='student_form_manual'):
                 st.subheader("1. Dettagli Edizione")
-                st.text_input("Nome del Corso Esistente",
-                              placeholder="Corso a cui appartiene l'edizione",
-                              key="student_course_name_key")
+                # st.text_input("Nome del Corso Esistente",
+                #               placeholder="Corso a cui appartiene l'edizione",
+                #               key="student_course_name_key")
                 st.text_input("Codice Edizione (Numero Edizione)",
                               placeholder="Es: 300000050460129",
                               key="student_edition_code_key")
@@ -3340,7 +3340,7 @@ class CourseView:
                 # Preserve data
                 self._preserve_student_data(num_students)
 
-                course_name = st.session_state.student_course_name_key.strip()
+                #course_name = st.session_state.student_course_name_key.strip()
                 edition_code = st.session_state.student_edition_code_key.strip()
                 #edition_start_date_str = st.session_state.student_edition_start_date_key.strip()
                 conv_online = st.session_state.student_convocazione_online
@@ -3349,9 +3349,9 @@ class CourseView:
                 # Validate
                 has_errors = False
 
-                if not course_name:
-                    st.error("❌ Il campo **Nome del Corso** è obbligatorio.")
-                    has_errors = True
+                # if not course_name:
+                #     st.error("❌ Il campo **Nome del Corso** è obbligatorio.")
+                #     has_errors = True
                 if not edition_code:
                     st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
                     has_errors = True
@@ -3388,7 +3388,7 @@ class CourseView:
 
                 # All valid — start automation
                 st.session_state.student_details = {
-                    "course_name": course_name,
+                    #"course_name": course_name,
                     "edition_code": edition_code,
                     #"edition_start_date_str": edition_start_date_str,
                     "students": student_list,
