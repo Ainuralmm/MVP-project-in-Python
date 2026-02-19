@@ -1889,14 +1889,14 @@ class OracleAutomator:
             print("Step 1.1: Clicking 'Aggiungi' dropdown on Seleziona allievi page...")
 
             aggiungi_dropdown_xpaths = [
-                # Best: ID-based (most stable)
-                "//a[contains(@id, 'pc1:menuButton')]//span[text()='Aggiungi']/parent::a",
+                #  ID-based (most stable)
+               # "//a[contains(@id, 'pc1:menuButton')]//span[text()='Aggiungi']/parent::a",
                 # Fallback 1: ID fragment with ancestor
                 "//*[contains(@id, 'pc1:menuButton')]//a[@role='button']",
-                # Fallback 2: The specific ID from inspection
-                "//*[contains(@id, ':lsCrDtl:UPsp1:r10:')]//a[@aria-haspopup='true']//span[text()='Aggiungi']/parent::a",
-                # Fallback 3: Role + text match (more generic)
-                "//a[@role='button' and @aria-haspopup='true'][.//span[text()='Aggiungi']]",
+                # # Fallback 2: The specific ID from inspection
+                # "//*[contains(@id, ':lsCrDtl:UPsp1:r10:')]//a[@aria-haspopup='true']//span[text()='Aggiungi']/parent::a",
+                # # Fallback 3: Role + text match (more generic)
+                # "//a[@role='button' and @aria-haspopup='true'][.//span[text()='Aggiungi']]",
             ]
 
             aggiungi_dropdown = None
@@ -1921,14 +1921,14 @@ class OracleAutomator:
 
             elenco_xpaths = [
                 # Best: ID-based
-                "//td[contains(@id, 'pc1:cmi1') and normalize-space()='Elenco numeri persona']",
+                #"//td[contains(@id, 'pc1:cmi1') and normalize-space()='Elenco numeri persona']",
                 "//*[contains(@id, 'pc1:cmi1')]//td[normalize-space()='Elenco numeri persona']",
                 # Fallback 1: Partial ID
-                "//*[contains(@id, 'pc1:cmi1')]/td[2]",
-                # Fallback 2: Text-based
-                "//td[@class='xo2' and normalize-space()='Elenco numeri persona']",
-                # Fallback 3: Contains text
-                "//td[contains(text(), 'Elenco numeri persona')]",
+                # "//*[contains(@id, 'pc1:cmi1')]/td[2]",
+                # # Fallback 2: Text-based
+                # "//td[@class='xo2' and normalize-space()='Elenco numeri persona']",
+                # # Fallback 3: Contains text
+                # "//td[contains(text(), 'Elenco numeri persona')]",
             ]
 
             elenco_option = None
@@ -1954,13 +1954,13 @@ class OracleAutomator:
 
             nome_field_xpaths = [
                 # Best: Exact ID
-                "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r10:1:r5:1:SP2:r1:0:pt1:it2::content']",
+                # "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r10:1:r5:1:SP2:r1:0:pt1:it2::content']",
                 # Fallback 1: ID fragment
                 "//input[contains(@id, ':pt1:it2::content')]",
-                # Fallback 2: Broader ID fragment
-                "//input[contains(@id, 'it2::content') and contains(@id, ':SP2:')]",
-                # Fallback 3: By attributes
-                "//input[@maxlength='250' and @class='x25' and @type='text']",
+                # # Fallback 2: Broader ID fragment
+                # "//input[contains(@id, 'it2::content') and contains(@id, ':SP2:')]",
+                # # Fallback 3: By attributes
+                # "//input[@maxlength='250' and @class='x25' and @type='text']",
             ]
 
             nome_field = None
@@ -1986,16 +1986,16 @@ class OracleAutomator:
 
             plus_button_xpaths = [
                 # Best: Exact ID of the div
-                "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r10:1:r5:1:SP2:r1:0:pt1:slrAv:applicationsTable:_ATp:create']//a[@role='button']",
+                # "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r10:1:r5:1:SP2:r1:0:pt1:slrAv:applicationsTable:_ATp:create']//a[@role='button']",
                 # Fallback 1: ID fragment + role
                 "//div[contains(@id, 'applicationsTable:_ATp:create')]//a[@role='button']",
                 # Fallback 2: div with title Aggiungi inside the attachments area
-                "//div[contains(@id, 'slrAv:applicationsTable') and @title='Aggiungi']//a",
-                # Fallback 3: The div itself (click the div, not the link)
-                "//div[contains(@id, 'applicationsTable:_ATp:create') and @title='Aggiungi']",
-                # Fallback 4: img-based
-                "//img[contains(@id, 'applicationsTable:_ATp:create::icon') and @title='Aggiungi']",
-            ]
+            #     "//div[contains(@id, 'slrAv:applicationsTable') and @title='Aggiungi']//a",
+            #     # Fallback 3: The div itself (click the div, not the link)
+            #     "//div[contains(@id, 'applicationsTable:_ATp:create') and @title='Aggiungi']",
+            #     # Fallback 4: img-based
+            #     "//img[contains(@id, 'applicationsTable:_ATp:create::icon') and @title='Aggiungi']",
+                ]
 
             plus_button = None
             for xpath in plus_button_xpaths:
@@ -2028,15 +2028,15 @@ class OracleAutomator:
 
             file_input_xpaths = [
                 # Best: Exact ID
-                "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r10:1:r5:1:SP2:r1:0:pt1:slrAv:applicationsTable:_ATp:attachmentTable:0:desktopFile::content']",
+                # "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r10:1:r5:1:SP2:r1:0:pt1:slrAv:applicationsTable:_ATp:attachmentTable:0:desktopFile::content']",
                 # Fallback 1: ID fragment
                 "//input[contains(@id, 'attachmentTable:0:desktopFile::content')]",
                 # Fallback 2: Broader ID fragment
-                "//input[contains(@id, 'desktopFile::content')]",
-                # Fallback 3: By type (generic — use only as last resort)
-                "//input[@type='file' and contains(@id, 'desktopFile')]",
-                # Fallback 4: Any file input in the dialog
-                "//input[@type='file']",
+                # "//input[contains(@id, 'desktopFile::content')]",
+                # # Fallback 3: By type (generic — use only as last resort)
+                # "//input[@type='file' and contains(@id, 'desktopFile')]",
+                # # Fallback 4: Any file input in the dialog
+                # "//input[@type='file']",
             ]
 
             file_input = None
@@ -2065,15 +2065,15 @@ class OracleAutomator:
 
             ok_button_xpaths = [
                 # Best: Exact ID
-                "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r10:1:r5:1:SP2:r1:0:pt1:d3::ok']",
+                # "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r10:1:r5:1:SP2:r1:0:pt1:d3::ok']",
                 # Fallback 1: ID fragment
                 "//button[contains(@id, ':pt1:d3::ok')]",
                 # Fallback 2: Broader ID fragment
-                "//button[contains(@id, 'd3::ok') and contains(@id, ':SP2:')]",
-                # Fallback 3: Text-based within dialog area
-                "//button[text()='OK' and contains(@id, ':pt1:')]",
-                # Fallback 4: Generic OK button
-                "//button[text()='OK' and contains(@class, 'xux')]",
+                # "//button[contains(@id, 'd3::ok') and contains(@id, ':SP2:')]",
+                # # Fallback 3: Text-based within dialog area
+                # "//button[text()='OK' and contains(@id, ':pt1:')]",
+                # # Fallback 4: Generic OK button
+                # "//button[text()='OK' and contains(@class, 'xux')]",
             ]
 
             ok_button = None
