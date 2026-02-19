@@ -398,7 +398,7 @@ class CoursePresenter:
         Execute the student addition automation.
 
         student_details keys:
-            - course_name (str): Name of the existing course
+
             - edition_code (str): Numero edizione code
             - edition_start_date_str (str): Date string for the list name (DD/MM/YYYY)
             - students (list[str]): List of matricola numbers
