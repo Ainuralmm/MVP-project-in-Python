@@ -397,8 +397,15 @@ class CourseView:
             st.session_state.student_convocazione_presenza = True
         if "student_input_method" not in st.session_state:
              st.session_state.student_input_method = "manual"  # "manual" or "file"
-        # if "student_edition_start_date_key" not in st.session_state:
-        #        st.session_state.student_edition_start_date_key = ""
+
+        if "student_input_method" not in st.session_state:
+            st.session_state.student_input_method = "manual"
+        if "student_parsed_data" not in st.session_state:
+            st.session_state.student_parsed_data = None
+        if "student_show_summary" not in st.session_state:
+            st.session_state.student_show_summary = False
+        if "batch_student_data" not in st.session_state:
+            st.session_state.batch_student_data = None
 
         # --- Form Specific State ---
         if "num_activities" not in st.session_state:
@@ -1334,13 +1341,13 @@ class CourseView:
         print("DEBUG: Edition NLP cleared")
 
     def _clear_student_form_callback(self):
-        st.session_state.student_course_name_key = ""
         st.session_state.student_edition_code_key = ""
-       # st.session_state.student_edition_start_date_key = ""
         st.session_state.num_students = 1
         st.session_state.student_convocazione_online = True
         st.session_state.student_convocazione_presenza = True
         st.session_state.student_input_method = "manual"
+        st.session_state.student_parsed_data = None
+        st.session_state.student_show_summary = False
 
         # Clear ALL student fields AND preserved data
         st.session_state.preserved_student_data = {}
@@ -3144,6 +3151,135 @@ class CourseView:
                 st.session_state[f"student_name_{i}"] = \
                     st.session_state.preserved_student_data[f"student_{i}_name"]
 
+    def _parse_student_excel_file(self, uploaded_file) -> 'Optional[Dict[str, Any]]':
+        """
+        Parse Excel file with student data.
+
+        SUPPORTED FORMAT:
+        | CODICE EDIZIONE | PERSON NUMBER |
+        |-----------------|---------------|
+        | OLC466201       | 1168          |
+        | OLC466201       | 1189          |
+        | OLC466202       | 1247          |
+
+        Supports multiple editions in one file — groups by edition code.
+
+        Returns:
+            Dictionary with 'editions' list, each containing:
+            - edition_code (str)
+            - students (list[str])
+        """
+        try:
+            df = pd.read_excel(uploaded_file, header=0, engine='openpyxl')
+
+            # Normalize column names
+            df.columns = df.columns.str.strip().str.lower()
+
+            st.info(f"📊 Colonne trovate: {', '.join(df.columns)}")
+
+            # --- Find edition code column ---
+            edition_col_names = [
+                'codice edizione', 'codice_edizione', 'edition code',
+                'edizione', 'codice', 'code'
+            ]
+            edition_col = None
+            for name in edition_col_names:
+                if name in df.columns:
+                    edition_col = name
+                    break
+
+            # --- Find person number column ---
+            person_col_names = [
+                'person number', 'person_number', 'matricola',
+                'numero persona', 'numero_persona', 'number', 'id'
+            ]
+            person_col = None
+            for name in person_col_names:
+                if name in df.columns:
+                    person_col = name
+                    break
+
+            # --- Validate columns found ---
+            if not edition_col:
+                st.error("❌ Colonna 'CODICE EDIZIONE' non trovata nel file.")
+                st.info("**Colonne attese:** CODICE EDIZIONE, PERSON NUMBER")
+                return None
+
+            if not person_col:
+                st.error("❌ Colonna 'PERSON NUMBER' non trovata nel file.")
+                st.info("**Colonne attese:** CODICE EDIZIONE, PERSON NUMBER")
+                return None
+
+            # --- Remove empty rows ---
+            df = df.dropna(subset=[edition_col, person_col])
+
+            if df.empty:
+                st.error("❌ Nessun dato valido trovato nel file.")
+                return None
+
+            # --- Convert person numbers to strings (remove .0 from floats) ---
+            df[person_col] = df[person_col].apply(
+                lambda x: str(int(x)) if isinstance(x, float) and x == int(x) else str(x).strip()
+            )
+
+            # --- Convert edition codes to strings ---
+            df[edition_col] = df[edition_col].apply(
+                lambda x: str(int(x)) if isinstance(x, float) and x == int(x) else str(x).strip()
+            )
+
+            # --- Group by edition code ---
+            editions_list = []
+            skipped_rows = []
+
+            for edition_code, group in df.groupby(edition_col, sort=False):
+                edition_code_str = str(edition_code).strip()
+
+                if not edition_code_str:
+                    skipped_rows.append(f"Righe con codice edizione vuoto")
+                    continue
+
+                students = group[person_col].tolist()
+
+                # Validate each student number
+                valid_students = []
+                for s in students:
+                    s_clean = str(s).strip()
+                    if s_clean and s_clean.lower() != 'nan':
+                        valid_students.append(s_clean)
+
+                if valid_students:
+                    editions_list.append({
+                        'edition_code': edition_code_str,
+                        'students': valid_students
+                    })
+
+            # --- Summary ---
+            if skipped_rows:
+                st.warning(f"⚠️ Righe saltate: {', '.join(skipped_rows)}")
+
+            if not editions_list:
+                st.error("❌ Nessun dato valido trovato.")
+                return None
+
+            total_students = sum(len(e['students']) for e in editions_list)
+            st.success(
+                f"✅ Trovate {len(editions_list)} edizioni con {total_students} allievi totali!"
+            )
+
+            return {
+                'editions': editions_list,
+                'total_editions': len(editions_list),
+                'total_students': total_students,
+                'file_name': uploaded_file.name
+            }
+
+        except Exception as e:
+            st.error(f"❌ Errore lettura Excel: {str(e)}")
+            import traceback
+            with st.expander("🔍 Dettagli errore"):
+                st.code(traceback.format_exc())
+            return None
+
     def _render_student_form(self, is_disabled):
         """
         Student form with two input methods:
@@ -3397,6 +3533,182 @@ class CourseView:
                 }
                 st.session_state.app_state = "RUNNING_STUDENTS"
                 st.session_state.student_message = ""
+                st.rerun()
+
+    def _parse_student_nlp_input(self, text: str) -> 'Optional[Dict[str, Any]]':
+        """
+        Parse natural language input to extract edition code and student matricole.
+
+        SUPPORTED FORMATS:
+        - "Aggiungi studenti 1168, 1189, 1199 all'edizione OLC466201"
+        - "Edizione OLC466201: studenti 1168 1189 1199"
+        - "OLC466201 matricole 1168, 1189, 1199, 1216"
+        - "Per edizione OLC466201 aggiungi 1168 1189 1199"
+
+        Returns:
+            Dictionary with edition_code and students list, or None if parsing fails
+        """
+        import re
+
+        text_clean = text.strip()
+        text_lower = text_clean.lower()
+
+        parsed = {
+            'edition_code': '',
+            'students': []
+        }
+
+        # === STEP 1: Extract edition code ===
+        # Look for a code pattern (letters + numbers, or just a long number)
+        edition_patterns = [
+            # "edizione OLC466201" or "all'edizione OLC466201"
+            r"(?:all['\u2019]?)?edizione\s+([A-Za-z0-9]+)",
+            # "codice OLC466201"
+            r"codice\s+([A-Za-z0-9]+)",
+            # Standalone alphanumeric code (like OLC466201) — at least 5 chars
+            r'\b([A-Z]{2,5}\d{4,})\b',
+            # Long numeric code (like 300000050460129) — at least 8 digits
+            r'\b(\d{8,})\b',
+        ]
+
+        for pattern in edition_patterns:
+            match = re.search(pattern, text_clean, re.IGNORECASE)
+            if match:
+                parsed['edition_code'] = match.group(1).strip()
+                break
+
+        # === STEP 2: Extract matricola numbers ===
+        # Strategy: find ALL numbers that are 3-7 digits (typical matricola range)
+        # but exclude the edition code itself
+
+        # First, remove the edition code from text to avoid confusion
+        text_for_numbers = text_clean
+        if parsed['edition_code']:
+            text_for_numbers = text_for_numbers.replace(parsed['edition_code'], '')
+
+        # Find all numbers (3-7 digits = typical matricola)
+        all_numbers = re.findall(r'\b(\d{3,7})\b', text_for_numbers)
+
+        # Deduplicate while preserving order
+        seen = set()
+        for num in all_numbers:
+            if num not in seen:
+                seen.add(num)
+                parsed['students'].append(num)
+
+        # === STEP 3: Validate results ===
+        missing_fields = []
+
+        if not parsed['edition_code']:
+            missing_fields.append("Codice Edizione")
+
+        if not parsed['students']:
+            missing_fields.append("Matricole Studenti")
+
+        if missing_fields:
+            st.warning(f"⚠️ Campi mancanti: {', '.join(missing_fields)}")
+
+            if parsed['edition_code']:
+                st.write(f"- ✅ **Codice Edizione:** `{parsed['edition_code']}`")
+            else:
+                st.write("- ❌ **Codice Edizione:** non trovato")
+
+            if parsed['students']:
+                st.write(f"- ✅ **Studenti trovati:** {len(parsed['students'])} matricole")
+            else:
+                st.write("- ❌ **Studenti:** nessuna matricola trovata")
+
+            # Return partial data if at least something was found
+            if parsed['edition_code'] or parsed['students']:
+                return parsed
+            return None
+
+        return parsed
+
+    def _render_student_batch_preview(self, batch_data: 'Dict[str, Any]'):
+        """
+        Display preview of parsed student data (from Excel) with confirmation buttons.
+        Supports multiple editions.
+        """
+        editions = batch_data.get('editions', [])
+        total_editions = len(editions)
+        total_students = batch_data.get('total_students', 0)
+
+        st.subheader(f"📋 Anteprima: {total_editions} Edizioni, {total_students} Allievi")
+
+        # Show each edition in an expander
+        for idx, edition in enumerate(editions):
+            students = edition.get('students', [])
+            with st.expander(
+                    f"📚 Edizione {edition['edition_code']} — {len(students)} allievi",
+                    expanded=(idx == 0)
+            ):
+                # Show students in a table
+                student_data = [{'#': i + 1, 'Matricola': s} for i, s in enumerate(students)]
+                st.dataframe(
+                    pd.DataFrame(student_data),
+                    width='stretch',
+                    hide_index=True,
+                    column_config={
+                        '#': st.column_config.NumberColumn('#', width='small'),
+                        'Matricola': st.column_config.TextColumn('Matricola', width='medium')
+                    }
+                )
+
+        st.divider()
+
+        # === CONVOCAZIONE OPTIONS ===
+        st.subheader("📧 Opzioni Convocazione")
+        conv_online = st.checkbox("Invia Convocazione Online", value=True, key="batch_student_conv_online")
+        conv_presenza = st.checkbox("Invia Convocazione Presenza", value=True, key="batch_student_conv_presenza")
+
+        st.divider()
+
+        # === ACTION BUTTONS ===
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            btn_text = (
+                f"✅ Aggiungi {total_students} Allievi a {total_editions} Edizioni"
+                if total_editions > 1
+                else f"✅ Aggiungi {total_students} Allievi"
+            )
+
+            if st.button(btn_text, type="primary", width='stretch', key="batch_student_confirm_btn"):
+                if not conv_online and not conv_presenza:
+                    st.error("❌ Selezionare almeno un tipo di convocazione.")
+                    st.stop()
+
+                # Store data for automation
+                if total_editions == 1:
+                    # Single edition — use normal flow
+                    edition = editions[0]
+                    st.session_state.student_details = {
+                        "edition_code": edition['edition_code'],
+                        "students": edition['students'],
+                        "convocazione_online": conv_online,
+                        "convocazione_presenza": conv_presenza
+                    }
+                    st.session_state.app_state = "RUNNING_STUDENTS"
+                else:
+                    # Multiple editions — use batch flow
+                    st.session_state.batch_student_data = {
+                        'editions': editions,
+                        'convocazione_online': conv_online,
+                        'convocazione_presenza': conv_presenza
+                    }
+                    st.session_state.app_state = "RUNNING_BATCH_STUDENTS"
+
+                st.session_state.student_message = ""
+                st.session_state.student_parsed_data = None
+                st.session_state.student_show_summary = False
+                st.rerun()
+
+        with col2:
+            if st.button("❌ Annulla", width='stretch', key="batch_student_cancel_btn"):
+                st.session_state.student_parsed_data = None
+                st.session_state.student_show_summary = False
+                st.session_state.student_input_method = "manual"
                 st.rerun()
 
     def update_progress(self, form_type, message, percentage):
