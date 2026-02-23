@@ -393,8 +393,12 @@ class CourseView:
             st.session_state.edition_message = ""
         if "student_message" not in st.session_state:
             st.session_state.student_message = ""
+        if "student_convocazione_online" not in st.session_state:
+            st.session_state.student_convocazione_online = True
         if "student_convocazione_presenza" not in st.session_state:
             st.session_state.student_convocazione_presenza = True
+        if st.session_state.get("student_input_method") == "manual":
+            st.session_state.student_input_method = "txt"
         if "student_input_method" not in st.session_state:
             st.session_state.student_input_method = "txt"   # <-- was "manual"
 
@@ -442,11 +446,6 @@ class CourseView:
         for i in range(50):
             if f"student_name_{i}" not in st.session_state:
                 st.session_state[f"student_name_{i}"] = ""
-
-        if "student_convocazione_online" not in st.session_state:
-            st.session_state.student_convocazione_online = True
-        if "student_convocazione_presenza" not in st.session_state:
-            st.session_state.student_convocazione_presenza = True
 
         st.image("logo-agsm.jpg", width=200)
         st.title("Automatore per la Gestione dei Corsi Oracle")
@@ -3362,36 +3361,16 @@ class CourseView:
                 st.divider()
                 st.subheader("2. Carica Elenco Matricole")
 
-                # Two sub-options: upload TXT or type manually
-                input_mode = st.radio(
-                    "Modalità inserimento:",
-                    options=["upload", "manual"],
-                    format_func=lambda x: {
-                        "upload": "📁 Carica file .txt",
-                        "manual": "✏️ Inserisci manualmente"
-                    }[x],
-                    key="txt_input_mode",
-                    horizontal=True
+                uploaded_txt = st.file_uploader(
+                    "File TXT con matricole (una per riga)",
+                    type=['txt'],
+                    key="student_txt_uploader"
                 )
-
-                if input_mode == "upload":
-                    uploaded_txt = st.file_uploader(
-                        "File TXT con matricole (una per riga)",
-                        type=['txt'],
-                        key="student_txt_uploader"
-                    )
-                else:
-                    st.text_area(
-                        "Inserisci le matricole (una per riga o separate da virgola):",
-                        height=150,
-                        placeholder="1168\n1189\n1199\n1216",
-                        key="student_manual_matricole"
-                    )
 
                 st.divider()
                 st.subheader("3. Opzioni Convocazione")
-                st.checkbox("Invia Convocazione Online", value=True, key="student_convocazione_online")
-                st.checkbox("Invia Convocazione Presenza", value=True, key="student_convocazione_presenza")
+                st.checkbox("Invia Convocazione Online", key="student_convocazione_online")
+                st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza")
 
                 col1, col2 = st.columns([3, 1])
                 with col1:
@@ -3411,9 +3390,7 @@ class CourseView:
                 edition_code = st.session_state.student_edition_code_key.strip()
                 conv_online = st.session_state.student_convocazione_online
                 conv_presenza = st.session_state.student_convocazione_presenza
-                input_mode = st.session_state.txt_input_mode
 
-                # Validate edition code
                 if not edition_code:
                     st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
                     st.stop()
@@ -3422,50 +3399,33 @@ class CourseView:
                     st.error("❌ Selezionare almeno un tipo di convocazione.")
                     st.stop()
 
-                # Get student list based on input mode
-                student_list = []
-
-                if input_mode == "upload":
-                    uploaded_txt = st.session_state.get("student_txt_uploader")
-                    if uploaded_txt is None:
-                        st.error("❌ Carica un file .txt con le matricole.")
-                        st.stop()
-
-                    # Read TXT file
-                    try:
-                        content = uploaded_txt.read().decode('utf-8')
-                        lines = content.strip().split('\n')
-                        for line in lines:
-                            matricola = line.strip()
-                            if matricola:
-                                # Handle comma-separated on same line
-                                parts = re.split(r'[,;\s]+', matricola)
-                                for p in parts:
-                                    p = p.strip()
-                                    if p:
-                                        student_list.append(p)
-                    except Exception as e:
-                        st.error(f"❌ Errore lettura file: {e}")
-                        st.stop()
-                else:
-                    # Manual text area
-                    text = st.session_state.get("student_manual_matricole", "").strip()
-                    if not text:
-                        st.error("❌ Inserisci almeno una matricola.")
-                        st.stop()
-
-                    parts = re.split(r'[,;\n\s]+', text)
-                    student_list = [p.strip() for p in parts if p.strip()]
-
-                if not student_list:
-                    st.error("❌ Nessuna matricola trovata.")
+                uploaded_txt = st.session_state.get("student_txt_uploader")
+                if uploaded_txt is None:
+                    st.error("❌ Carica un file .txt con le matricole.")
                     st.stop()
 
-                # Show quick preview
+                # Read TXT file
+                student_list = []
+                try:
+                    content = uploaded_txt.read().decode('utf-8')
+                    lines = content.strip().split('\n')
+                    for line in lines:
+                        parts = re.split(r'[,;\s]+', line.strip())
+                        for p in parts:
+                            p = p.strip()
+                            if p:
+                                student_list.append(p)
+                except Exception as e:
+                    st.error(f"❌ Errore lettura file: {e}")
+                    st.stop()
+
+                if not student_list:
+                    st.error("❌ Nessuna matricola trovata nel file.")
+                    st.stop()
+
                 st.info(f"📋 Trovate **{len(student_list)}** matricole: {', '.join(student_list[:10])}"
                         + (f"... e altri {len(student_list) - 10}" if len(student_list) > 10 else ""))
 
-                # Start automation
                 st.session_state.student_details = {
                     "edition_code": edition_code,
                     "students": student_list,
@@ -3475,7 +3435,6 @@ class CourseView:
                 st.session_state.app_state = "RUNNING_STUDENTS"
                 st.session_state.student_message = ""
                 st.rerun()
-
         # ══════════════════════════════════════════════════
         # METHOD B: EXCEL FILE UPLOAD (multi-edition)
         # ══════════════════════════════════════════════════
