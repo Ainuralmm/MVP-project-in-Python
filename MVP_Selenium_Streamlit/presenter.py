@@ -395,86 +395,59 @@ class CoursePresenter:
     ### METHOD FOR STUDENT FLOW
     def run_add_students(self, student_details):
         """
-        Execute the student addition automation.
+        Execute student addition for a SINGLE edition.
 
         student_details keys:
-
-            - edition_code (str): Numero edizione code
-            - edition_start_date_str (str): Date string for the list name (DD/MM/YYYY)
-            - students (list[str]): List of matricola numbers
+            - edition_code (str)
+            - students (list[str])
             - convocazione_online (bool)
             - convocazione_presenza (bool)
         """
-        temp_file_path = None  # Track for cleanup
+        temp_file_path = None
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.secrets['ORACLE_USER']
             oracle_pass = st.secrets['ORACLE_PASS']
 
-            # Unpack details
-            #course_name = student_details['course_name']
             edition_code = student_details['edition_code']
-            #edition_start_date_str = student_details['edition_start_date_str']
             student_list = student_details['students']
             conv_online = student_details['convocazione_online']
             conv_presenza = student_details['convocazione_presenza']
             num_students = len(student_list)
 
-            # === STEP 1: CREATE TEMP .TXT FILE WITH MATRICOLA NUMBERS ===
-            # One matricola per line — this is what Oracle's 'Elenco numeri persona' expects
+            # === CREATE TEMP FILE ===
             self.view.update_progress("student", f"Preparazione elenco {num_students} allievi...", 5)
 
             temp_file = tempfile.NamedTemporaryFile(
-                mode='w',
-                suffix='.txt',
-                prefix='students_',
-                delete=False,  # Keep file until we explicitly delete it
-                encoding='utf-8'
+                mode='w', suffix='.txt', prefix='students_',
+                delete=False, encoding='utf-8'
             )
             for matricola in student_list:
                 temp_file.write(f"{matricola}\n")
             temp_file.close()
             temp_file_path = temp_file.name
+            print(f"Presenter: Created temp file: {temp_file_path} ({num_students} students)")
 
-            print(f"Presenter: Created temp file with {num_students} students: {temp_file_path}")
+            lista_nome = f"{edition_code}"
 
-            # Build the 'Nome' label for Oracle: "COURSE_NAME + DATA_INIZIO_EDIZIONE"
-            lista_nome = f"{edition_code} "
-            print(f"Presenter: Lista nome = '{lista_nome}'")
-
-            # === STEP 2: LOGIN ===
+            # === LOGIN ===
             self.view.update_progress("student", "Accesso a Oracle...", 10)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
 
-            # === STEP 3: NAVIGATE ===
-            self.view.update_progress("student", "Navigazione alla pagina dei corsi...", 20)
+            # === NAVIGATE TO EDITIONS PAGE ===
+            self.view.update_progress("student", "Navigazione alla pagina edizioni...", 20)
             if not self.model.navigate_to_edition_page():
                 raise Exception("Navigazione fallita.")
 
-            # # === STEP 4: SEARCH COURSE ===
-            # self.view.update_progress("student", f"Ricerca del corso '{course_name}'...", 30)
-            # if not self.model.search_course(course_name):
-            #     raise Exception(f"Corso '{course_name}' non trovato. Crealo prima.")
-
-            # # === STEP 5: OPEN COURSE ===
-            # self.view.update_progress("student", f"Apertura del corso '{course_name}'...", 40)
-            # if not self.model.open_course_from_list(course_name):
-            #     raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
-
-            # === STEP 6: OPEN EDIZIONI TAB ===
-            # self.view.update_progress("student", "Apertura scheda 'Edizioni'...", 50)
-            # if not self.model.open_edizioni_tab():
-            #     raise Exception("Impossibile fare clic sulla scheda 'Edizioni'.")
-
-            # === STEP 7: SEARCH EDITION ===
-            self.view.update_progress("student", f"Ricerca edizione codice '{edition_code}'...", 60)
+            # === SEARCH EDITION ===
+            self.view.update_progress("student", f"Ricerca edizione '{edition_code}'...", 40)
             if not self.model._search_and_open_edition(edition_code):
-                raise Exception(f"Edizione con codice '{edition_code}' non trovata.")
+                raise Exception(f"Edizione '{edition_code}' non trovata.")
 
-            # === STEP 8: ADD STUDENTS VIA FILE UPLOAD ===
-            self.view.update_progress("student", f"Caricamento elenco {num_students} allievi...", 75)
+            # === ADD STUDENTS ===
+            self.view.update_progress("student", f"Caricamento {num_students} allievi...", 65)
             success = self.model._perform_student_addition_steps(
                 student_file_path=temp_file_path,
                 lista_nome=lista_nome,
@@ -485,11 +458,11 @@ class CoursePresenter:
             if not success:
                 raise Exception("Errore durante l'aggiunta degli allievi.")
 
-            # === STEP 9: DONE ===
+            # === DONE ===
             self.view.update_progress("student", "Processo completato!", 100)
             result_message = (
-                f"✅🤩 Successo! {num_students} allievi caricati tramite elenco "
-                f"per edizione codice '{edition_code}'."
+                f"✅🤩 Successo! {num_students} allievi caricati "
+                f"per edizione '{edition_code}'."
             )
             self.view.show_message("student", result_message)
 
@@ -499,7 +472,6 @@ class CoursePresenter:
             self.view.show_message("student", error_message)
 
         finally:
-            # === CLEANUP: Delete temp file ===
             if temp_file_path and os.path.exists(temp_file_path):
                 try:
                     os.remove(temp_file_path)
@@ -507,8 +479,187 @@ class CoursePresenter:
                 except:
                     pass
 
-            print("Presenter (Student Add): Automation finished. Cleaning up.")
+            print("Presenter (Student Add): Finished. Cleaning up.")
             if hasattr(self.model, 'driver') and self.model.driver:
                 self.model.close()
+            st.session_state.app_state = "IDLE"
+            st.rerun()
+
+    # Multiple editions — used by Excel with multiple edition codes
+    def run_add_students_batch(self):
+        """
+        Execute student addition for MULTIPLE editions sequentially.
+
+        Reads from st.session_state.batch_student_data:
+            - editions: list of {edition_code, students}
+            - convocazione_online (bool)
+            - convocazione_presenza (bool)
+        """
+        results = []
+        progress_placeholder = st.empty()
+        status_placeholder = st.empty()
+        temp_file_paths = []  # Track all temp files for cleanup
+
+        def update_progress(message, percentage):
+            with progress_placeholder.container():
+                st.progress(percentage / 100)
+            with status_placeholder.container():
+                st.info(f"⏳ {message}")
+
+        try:
+            oracle_url = st.secrets['ORACLE_URL']
+            oracle_user = st.secrets['ORACLE_USER']
+            oracle_pass = st.secrets['ORACLE_PASS']
+
+            batch_data = st.session_state.batch_student_data
+            if not batch_data:
+                raise Exception("Nessun dato batch trovato.")
+
+            editions = batch_data.get('editions', [])
+            conv_online = batch_data.get('convocazione_online', True)
+            conv_presenza = batch_data.get('convocazione_presenza', True)
+            total_editions = len(editions)
+
+            if total_editions == 0:
+                raise Exception("Nessuna edizione da processare.")
+
+            # === LOGIN (once for all editions) ===
+            update_progress("Accesso a Oracle...", 5)
+            if not self.model.login(oracle_url, oracle_user, oracle_pass):
+                raise Exception("Login fallito.")
+
+            # === NAVIGATE (once) ===
+            update_progress("Navigazione alla pagina edizioni...", 10)
+            if not self.model.navigate_to_edition_page():
+                raise Exception("Navigazione fallita.")
+
+            # === PROCESS EACH EDITION ===
+            for idx, edition in enumerate(editions):
+                edition_code = edition['edition_code']
+                student_list = edition['students']
+                num_students = len(student_list)
+                edition_num = idx + 1
+
+                progress_pct = int((idx / total_editions) * 80) + 15
+                update_progress(
+                    f"Edizione {edition_num}/{total_editions}: '{edition_code}' "
+                    f"({num_students} allievi)...",
+                    progress_pct
+                )
+
+                try:
+                    # Create temp file for this edition
+                    temp_file = tempfile.NamedTemporaryFile(
+                        mode='w', suffix='.txt', prefix=f'students_{edition_code}_',
+                        delete=False, encoding='utf-8'
+                    )
+                    for matricola in student_list:
+                        temp_file.write(f"{matricola}\n")
+                    temp_file.close()
+                    temp_file_paths.append(temp_file.name)
+
+                    lista_nome = f"{edition_code}"
+
+                    # Search for edition
+                    if not self.model._search_and_open_edition(edition_code):
+                        results.append({
+                            'edition': edition_code,
+                            'status': '❌ Edizione non trovata',
+                            'students': 0
+                        })
+                        continue
+
+                    # Add students
+                    success = self.model._perform_student_addition_steps(
+                        student_file_path=temp_file.name,
+                        lista_nome=lista_nome,
+                        conv_online=conv_online,
+                        conv_presenza=conv_presenza
+                    )
+
+                    if success:
+                        results.append({
+                            'edition': edition_code,
+                            'status': '✅ Successo',
+                            'students': num_students
+                        })
+                    else:
+                        results.append({
+                            'edition': edition_code,
+                            'status': '❌ Errore durante aggiunta',
+                            'students': 0
+                        })
+
+                    # Navigate back to edition search page for next iteration
+                    if idx < total_editions - 1:
+                        if not self.model._click_back_to_edition_search():
+                            print("   ⚠️ Back button failed, trying full navigation...")
+                            try:
+                                self.model.navigate_to_edition_page()
+                            except:
+                                print("   ❌ Could not return to edition search")
+
+                except Exception as e:
+                    results.append({
+                        'edition': edition_code,
+                        'status': f'❌ Errore: {str(e)[:50]}',
+                        'students': 0
+                    })
+
+            # === FINAL PROGRESS ===
+            update_progress("Processo completato!", 100)
+
+        except Exception as e:
+            error_message = f"‼️ Errore batch: {str(e)}"
+            print(f"Presenter Error: {error_message}")
+            results.append({
+                'edition': 'ERRORE GENERALE',
+                'status': error_message,
+                'students': 0
+            })
+
+        finally:
+            # === CLEANUP ===
+            print("Presenter (Batch Students): Finished. Cleaning up.")
+            self.model.close()
+
+            # Delete all temp files
+            for path in temp_file_paths:
+                if os.path.exists(path):
+                    try:
+                        os.remove(path)
+                    except:
+                        pass
+
+            # Clear progress
+            progress_placeholder.empty()
+            status_placeholder.empty()
+
+            # === BUILD SUMMARY ===
+            success_count = sum(1 for r in results if '✅' in r.get('status', ''))
+            fail_count = len(results) - success_count
+            total_students_added = sum(r.get('students', 0) for r in results)
+
+            summary_parts = [
+                f"## 📊 Riepilogo Aggiunta Allievi Batch\n",
+                f"- **Edizioni processate:** {success_count}/{total_editions}",
+                f"- **Allievi totali aggiunti:** {total_students_added}",
+                f"- **Errori:** {fail_count}\n",
+                "### Dettagli:"
+            ]
+
+            for r in results:
+                summary_parts.append(
+                    f"- **{r['edition']}**: {r['status']} ({r['students']} allievi)"
+                )
+
+            final_message = "\n".join(summary_parts)
+
+            # Store and display
+            st.session_state.student_message = final_message
+            st.session_state.batch_student_data = None
+            st.session_state.student_parsed_data = None
+            st.session_state.student_show_summary = False
+
             st.session_state.app_state = "IDLE"
             st.rerun()
