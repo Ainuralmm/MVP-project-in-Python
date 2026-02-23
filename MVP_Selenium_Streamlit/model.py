@@ -321,6 +321,74 @@ class OracleAutomator:
             print(f"Error clicking back button: {e}")
             return False
 
+    def _click_back_to_edition_search(self):
+        """
+        Click the 'Indietro' (Back) button to return from edition detail page
+        to the edition search page.
+
+        Used in batch student processing to go back between editions.
+
+        Returns:
+            True if successfully navigated back, False otherwise
+        """
+        try:
+            print("Model: Clicking 'Indietro' to return to edition search...")
+
+            back_button_xpaths = [
+                # Best: Exact ID of the SVG icon's parent link
+                "//svg[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:SPdonei::icon']/parent::a",
+                # Fallback 1: ID fragment for the parent link
+                "//a[contains(@id, 'clDtSp1:UPsp1:SPdonei')]",
+                # Fallback 2: ID fragment on the SVG itself (click the icon)
+                "//*[contains(@id, 'clDtSp1:UPsp1:SPdonei::icon')]",
+                # Fallback 3: SVG with aria-label
+                "//svg[@aria-label='Indietro' and contains(@id, 'clDtSp1')]",
+                # Fallback 4: Any back icon in the edition detail area
+                "//*[contains(@id, 'clDtSp1') and contains(@id, 'SPdonei')]",
+            ]
+
+            back_button = None
+            for xpath in back_button_xpaths:
+                try:
+                    back_button = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    print(f"   Found back button with: {xpath}")
+                    break
+                except:
+                    continue
+
+            if not back_button:
+                raise Exception("Could not find 'Indietro' back button")
+
+            # Scroll into view and click
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", back_button)
+            time.sleep(0.5)
+
+            try:
+                back_button.click()
+            except Exception:
+                self.driver.execute_script("arguments[0].click();", back_button)
+
+            print("   ✅ Clicked 'Indietro' back button")
+
+            # Wait for edition search page to load
+            # Look for the search button or edition search input as confirmation
+            try:
+                WebDriverWait(self.driver, 15).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//button[text()='Cerca' or text()='Search']")))
+                print("   ✅ Back on edition search page")
+            except:
+                print("   ⚠️ Could not confirm edition search page loaded, waiting...")
+                time.sleep(3)
+
+            self._pause_for_visual_check()
+            return True
+
+        except Exception as e:
+            print(f"   ❌ Error clicking back button: {e}")
+            return False
+
     ### HASHTAG: UPDATED HELPER FOR ACTIVITY CREATION
     def _create_single_activity(self, unique_title, full_description, activity_date_obj, start_time_str, end_time_str,
                                 impegno_previsto_in_ore):
