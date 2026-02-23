@@ -2017,24 +2017,18 @@ class OracleAutomator:
             self._pause_for_visual_check()
             time.sleep(2)  # Wait for dialog to open
 
-            # Step 1.3: Fill 'Nome' field with list name
+            # Step 1.3: Fill 'Nome' field
             print(f"Step 1.3: Filling 'Nome' field with: {lista_nome}")
 
-            nome_field_xpaths = [
-                # Best: Exact ID
-                # "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsCrDtl:UPsp1:r10:1:r5:1:SP2:r1:0:pt1:it2::content']",
-                # Fallback 1: ID fragment
+            nome_xpaths = [
                 "//input[contains(@id, ':pt1:it2::content')]",
-                # # Fallback 2: Broader ID fragment
-                # "//input[contains(@id, 'it2::content') and contains(@id, ':SP2:')]",
-                # # Fallback 3: By attributes
-                # "//input[@maxlength='250' and @class='x25' and @type='text']",
+                "//*[contains(@id, 'pt1:it2::content')]",
             ]
 
             nome_field = None
-            for xpath in nome_field_xpaths:
+            for xpath in nome_xpaths:
                 try:
-                    nome_field = WebDriverWait(self.driver, 5).until(
+                    nome_field = WebDriverWait(self.driver, 10).until(
                         EC.presence_of_element_located((By.XPATH, xpath)))
                     print(f"   Found 'Nome' field with: {xpath}")
                     break
@@ -2042,12 +2036,30 @@ class OracleAutomator:
                     continue
 
             if not nome_field:
-                raise Exception("Could not find 'Nome' input field in Elenco dialog")
+                raise Exception("Could not find 'Nome' field")
 
-            nome_field.clear()
-            nome_field.send_keys(lista_nome)
-            print(f"   ✅ Entered nome: {lista_nome}")
-            self._pause_for_visual_check()
+            # Wait for the dialog to be fully interactive
+            time.sleep(2)
+
+            # Scroll into view
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});", nome_field)
+            time.sleep(0.5)
+
+            # Use JavaScript to clear and set value (avoids "element not interactable")
+            try:
+                nome_field.clear()
+                nome_field.send_keys(lista_nome)
+            except Exception:
+                print("   ⚠️ Standard input failed, using JavaScript...")
+                self.driver.execute_script(
+                    "arguments[0].value = ''; arguments[0].value = arguments[1]; "
+                    "arguments[0].dispatchEvent(new Event('change', {bubbles: true})); "
+                    "arguments[0].dispatchEvent(new Event('input', {bubbles: true}));",
+                    nome_field, lista_nome
+                )
+
+            print(f"   ✅ Filled 'Nome' field with: {lista_nome}")
 
             # Step 1.4: Click '+' button to add attachment row
             print("Step 1.4: Clicking '+' to add attachment row...")
@@ -2347,10 +2359,59 @@ class OracleAutomator:
             print("=" * 50)
             return True
 
+
         except Exception as e:
+
             print(f"\n❌ ERROR during student addition: {e}")
-            import traceback
-            traceback.print_exc()
+
+            # Try to close any open Oracle dialog before returning
+
+            try:
+
+                cancel_xpaths = [
+
+                    "//button[contains(@id, ':d3::cancel')]",
+
+                    "//button[text()='Annulla' or text()='Cancel']",
+
+                    "//button[contains(@id, '::cancel')]",
+
+                ]
+
+                for xpath in cancel_xpaths:
+
+                    try:
+
+                        cancel_btn = self.driver.find_element(By.XPATH, xpath)
+
+                        cancel_btn.click()
+
+                        print("   🔄 Closed open dialog (Cancel)")
+
+                        time.sleep(2)
+
+                        break
+
+                    except:
+
+                        continue
+
+            except:
+
+                pass
+
+            # Try pressing Escape as last resort
+
+            try:
+
+                from selenium.webdriver.common.keys import Keys
+
+                self.driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
+
+                time.sleep(1)
+
+            except:
+                pass
 
             try:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
