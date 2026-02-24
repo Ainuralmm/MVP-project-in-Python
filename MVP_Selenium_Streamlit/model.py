@@ -1809,6 +1809,11 @@ class OracleAutomator:
         try:
             print(f"Model: Searching for edition with code '{edition_code}'")
             time.sleep(2)  # Wait for page to stabilize
+            #First insertion of date of publication
+            data_publicazione_edizione=self.wait.until(EC.presence_of_element_located((By.XPATH,"//*[contains(@id,':value20::content')]")))
+            data_publicazione_edizione.clear()
+            data_publicazione_edizione.send_keys('01/01/2023')
+
 
             # --- Step 1: Click the 'Numero edizione' dropdown to change search operator ---
             numero_edizione_dropdown = self.wait.until(
@@ -2234,7 +2239,7 @@ class OracleAutomator:
             print("Step 3.2: Searching for results...")
             found_results = False
             attempts = 0
-            max_attempts = 10
+            max_attempts = 15
 
             while not found_results and attempts < max_attempts:
                 attempts += 1
