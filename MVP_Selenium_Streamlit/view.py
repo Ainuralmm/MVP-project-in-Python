@@ -3375,7 +3375,7 @@ class CourseView:
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     submitted = st.form_submit_button(
-                        "Aggiungi Allievi", type="primary",
+                        "Analizza File", type="primary",
                         disabled=is_disabled, width='stretch'
                     )
                 with col2:
@@ -3393,10 +3393,6 @@ class CourseView:
 
                 if not edition_code:
                     st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
-                    st.stop()
-
-                if not conv_online and not conv_presenza:
-                    st.error("❌ Selezionare almeno un tipo di convocazione.")
                     st.stop()
 
                 uploaded_txt = st.session_state.get("student_txt_uploader")
@@ -3423,17 +3419,16 @@ class CourseView:
                     st.error("❌ Nessuna matricola trovata nel file.")
                     st.stop()
 
-                st.info(f"📋 Trovate **{len(student_list)}** matricole: {', '.join(student_list[:10])}"
-                        + (f"... e altri {len(student_list) - 10}" if len(student_list) > 10 else ""))
-
-                st.session_state.student_details = {
-                    "edition_code": edition_code,
-                    "students": student_list,
-                    "convocazione_online": conv_online,
-                    "convocazione_presenza": conv_presenza
+                # Store parsed data and show preview (same as Excel flow)
+                st.session_state.student_parsed_data = {
+                    'editions': [{
+                        'edition_code': edition_code,
+                        'students': student_list
+                    }],
+                    'total_editions': 1,
+                    'total_students': len(student_list)
                 }
-                st.session_state.app_state = "RUNNING_STUDENTS"
-                st.session_state.student_message = ""
+                st.session_state.student_show_summary = True
                 st.rerun()
         # ══════════════════════════════════════════════════
         # METHOD B: EXCEL FILE UPLOAD (multi-edition)
@@ -3500,7 +3495,7 @@ class CourseView:
             nlp_text = st.text_area(
                 "Descrivi l'inserimento in linguaggio naturale:",
                 height=150,
-                placeholder="Aggiungi studenti 1168, 1189, 1199 all'edizione OLC466201",
+                #placeholder="Aggiungi studenti 1168, 1189, 1199 all'edizione OLC466201",
                 key="student_nlp_text_area"
             )
 
