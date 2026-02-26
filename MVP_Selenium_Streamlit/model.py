@@ -1864,6 +1864,7 @@ class OracleAutomator:
             link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
             print("Model: Found first result link. Clicking it...")
             link.click()
+            time.sleep(2)
             self._pause_for_visual_check()
             print(f"Model: Clicked on edition link for code '{edition_code}'.")
             return True
