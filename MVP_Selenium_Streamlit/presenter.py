@@ -455,16 +455,23 @@ class CoursePresenter:
                 conv_presenza=conv_presenza
             )
 
+            # Replace the current success message block with:
             if not success:
-                raise Exception("Errore durante l'aggiunta degli allievi.")
-
-            # === DONE ===
-            self.view.update_progress("student", "Processo completato!", 100)
-            result_message = (
-                f"✅🤩 Successo! {num_students} allievi caricati "
-                f"per edizione '{edition_code}'."
-            )
-            self.view.show_message("student", result_message)
+                # Don't raise — students may have been submitted but notifications failed
+                result_message = (
+                    f"⚠️ {num_students} allievi inviati per edizione '{edition_code}'.\n\n"
+                    f"L'invio è stato completato ma le notifiche non sono state confermate. "
+                    f"Oracle potrebbe impiegare qualche minuto per elaborare il file. "
+                    f"Controlla manualmente tra 5-10 minuti."
+                )
+                self.view.show_message("student", result_message)
+            else:
+                self.view.update_progress("student", "Processo completato!", 100)
+                result_message = (
+                    f"✅🤩 Successo! {num_students} allievi caricati "
+                    f"per edizione '{edition_code}'."
+                )
+                self.view.show_message("student", result_message)
 
         except Exception as e:
             error_message = f"‼️ Si è verificato un errore: {str(e)}"
