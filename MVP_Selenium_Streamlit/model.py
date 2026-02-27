@@ -2236,31 +2236,37 @@ class OracleAutomator:
             except Exception as e:
                 print(f"   ⚠️ Could not set filter to 'Tutto': {e}")
 
-            # Step 3.2: Click 'Cerca' and wait for results
-            print("Step 3.2: Searching for results...")
-            found_results = False
-            attempts = 0
-            max_attempts = 15
+                # Step 3.2: Wait for student list to load (Oracle processes file async)
+                print("Step 3.2: Waiting for student list to load...")
+                print("   ⏳ Oracle is processing the file upload, this may take 1-2 minutes...")
 
-            while not found_results and attempts < max_attempts:
-                attempts += 1
-                try:
-                    cerca_btn = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
-                    cerca_btn.click()
-                    time.sleep(3)
+                max_attempts = 12
+                results_found = False
 
-                    WebDriverWait(self.driver, 20).until(
-                        EC.presence_of_element_located((By.XPATH, "//td[@class='xen'][1]")))
-                    found_results = True
-                    print(f"   ✅ Results found (attempt {attempts})")
-                except:
-                    print(f"   Attempt {attempts}: results not ready, retrying...")
-                    time.sleep(2)
+                for attempt in range(1, max_attempts + 1):
+                    try:
+                        # Wait longer between attempts — Oracle needs time to process
+                        wait_time = 15 if attempt <= 3 else 20
+                        time.sleep(wait_time)
 
-            if not found_results:
-                print("   ⚠️ Could not load results. Students were added but notifications skipped.")
-                return True
+                        # Try to find student rows in the results table
+                        # (use whatever XPath you currently have for detecting results)
+                        rows = self.driver.find_elements(By.XPATH,
+                                                         "//table[contains(@id, 'ATt')]//tr[contains(@class, 'x')]")
+
+                        if rows and len(rows) > 0:
+                            print(f"   ✅ Found {len(rows)} students in results (attempt {attempt})")
+                            results_found = True
+                            break
+                        else:
+                            print(f"   Attempt {attempt}/{max_attempts}: results not ready, "
+                                  f"waiting {wait_time}s...")
+                    except:
+                        print(f"   Attempt {attempt}/{max_attempts}: results not ready, retrying...")
+
+                if not results_found:
+                    print("   ⚠️ Results table didn't load, but students were likely submitted.")
+                    print("   Oracle may still be processing. Check manually in a few minutes.")
 
             # Wait for blocking pane to disappear
             self.wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
