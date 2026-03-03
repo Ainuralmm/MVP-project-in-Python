@@ -8,7 +8,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.options import Options
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, \
+    StaleElementReferenceException
 import os
 import tempfile
 
@@ -368,7 +369,16 @@ class OracleAutomator:
                 back_button.click()
             except Exception:
                 self.driver.execute_script("arguments[0].click();", back_button)
+            time.sleep(3)  # Extra wait for search page to fully stabilize
 
+            # Also clear the previous search input to avoid stale results
+            try:
+                search_input = self.driver.find_element(By.XPATH,
+                                                        '//*[contains(@id, ":value60::content")]')
+                search_input.clear()
+                print("   ✅ Cleared previous search input")
+            except:
+                pass
             print("   ✅ Clicked 'Indietro' back button")
 
             # Wait for edition search page to load
@@ -1864,7 +1874,23 @@ class OracleAutomator:
             link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
             print("Model: Found first result link. Clicking it...")
             link.click()
-            time.sleep(2)
+            # After clicking the edition link, WAIT for detail page to fully load
+            print("   Waiting for edition detail page to load...")
+
+
+            # Wait for a reliable element on the edition detail page
+            try:
+                WebDriverWait(self.driver, 15).until(
+                    EC.presence_of_element_located((By.XPATH,
+                                                    "//a[contains(text(), 'Allievi')] | "
+                                                    "//span[contains(text(), 'Allievi')] | "
+                                                    "//*[contains(@class, 'tab') and contains(text(), 'Allievi')]"
+                                                    ))
+                )
+                print("   ✅ Edition detail page loaded (Allievi tab found)")
+            except:
+                print("   ⚠️ Could not confirm page load, waiting extra...")
+                time.sleep(5)
             self._pause_for_visual_check()
             print(f"Model: Clicked on edition link for code '{edition_code}'.")
             return True
@@ -1944,12 +1970,43 @@ class OracleAutomator:
             print(f"   ✅ Selected '{list_assegna_come}'")
             self._pause_for_visual_check()
 
-            # Step 0.5: Click first 'Successivo' to get to 'Seleziona allievi' page
+            # Step 0.5: Clicking 'Successivo'
             print("Step 0.5: Clicking 'Successivo' to reach Seleziona allievi page...")
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, "//button[text()='Successivo']"))).click()
+            time.sleep(2)  # Wait for DOM to stabilize after team selection
+
+            successivo_xpaths = ['//button[text()="Successivo"]',
+                                 '//*contains(@id,":SP2:cb143")'
+
+            ]
+
+            # Re-find the button fresh (avoid stale reference from Step 0.4)
+            successivo_btn = None
+            for xpath in successivo_xpaths:
+                try:
+                    successivo_btn = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if not successivo_btn:
+                raise Exception("Could not find 'Successivo' button")
+
+            try:
+                successivo_btn.click()
+            except StaleElementReferenceException:
+                print("   ⚠️ Stale element, re-finding Successivo...")
+                time.sleep(2)
+                for xpath in successivo_xpaths:
+                    try:
+                        successivo_btn = WebDriverWait(self.driver, 10).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        successivo_btn.click()
+                        break
+                    except:
+                        continue
+
             print("   ✅ Clicked 'Successivo'")
-            time.sleep(3)  # Wait for page transition
             self._pause_for_visual_check()
 
             # ══════════════════════════════════════════════════
