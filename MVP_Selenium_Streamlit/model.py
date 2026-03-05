@@ -1906,7 +1906,7 @@ class OracleAutomator:
                 print(f"Could not save screenshot: {ss_e}")
             return False
 
-    def _perform_student_addition_steps(self, student_file_path, lista_nome, conv_online, conv_presenza):
+    def _perform_student_addition_steps(self, student_file_path, lista_nome):
         """
         Add students to an edition using the 'Elenco numeri persona' (person number list) flow.
 
@@ -2329,102 +2329,8 @@ class OracleAutomator:
             self.wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
             time.sleep(2)
 
-            # Step 3.3: Click 'Azione di massa'
-            print("Step 3.3: Clicking 'Azione di massa'...")
-            azione_di_massa = self.wait.until(
-                EC.element_to_be_clickable((By.XPATH, "//a[text()='Azione di massa']")))
-            azione_di_massa.click()
-            print("   ✅ Clicked 'Azione di massa'")
-            self._pause_for_visual_check()
-
-            # Step 3.4: Click 'Invia avviso'
-            print("Step 3.4: Clicking 'Invia avviso'...")
-            invia_avviso_xpaths = [
-                "//tr[contains(@id,':masUpdt:itr9:1:cmi1') and .//td[normalize-space()='Invia avviso']]",
-                "//td[normalize-space()='Invia avviso']",
-                "//*[text()='Invia avviso']"
-            ]
-
-            found_invia = False
-            for xpath in invia_avviso_xpaths:
-                try:
-                    invia_avviso = self.wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
-                    self.driver.execute_script("arguments[0].click();", invia_avviso)
-                    found_invia = True
-                    print(f"   ✅ Clicked 'Invia avviso'")
-                    break
-                except:
-                    continue
-
-            if not found_invia:
-                print("   ⚠️ Could not click 'Invia avviso'. Students added, notifications skipped.")
-                return True
-
-            self._pause_for_visual_check()
-            time.sleep(2)
-
-            # Step 3.5: Select 'Utilizzare tutti i risultati'
-            print("Step 3.5: Selecting 'Utilizzare tutti i risultati'...")
-            try:
-                utilizzare_tutti = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH,
-                                                "//label[contains(normalize-space(),'Utilizzare tutti i') and "
-                                                "contains(normalize-space(),'risultati dei criteri di ricerca')]")))
-                utilizzare_tutti.click()
-                print("   ✅ Selected 'Utilizzare tutti'")
-            except:
-                try:
-                    fallback = self.wait.until(
-                        EC.element_to_be_clickable(
-                            (By.XPATH, "//*[contains(@id,':masUpdt:dc_r1:0:SP2:sor1:_1')]")))
-                    fallback.click()
-                    print("   ✅ Selected 'Utilizzare tutti' (fallback)")
-                except Exception as e:
-                    print(f"   ⚠️ Could not select 'Utilizzare tutti': {e}")
-                    return True
-
-            self._pause_for_visual_check()
-            time.sleep(2)
-
-            # Step 3.6: Click 'Successivo' (for notifications)
-            print("Step 3.6: Clicking 'Successivo' (notifications)...")
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, "//button[text()='Successivo']"))).click()
-            print("   ✅ Clicked 'Successivo'")
-            self._pause_for_visual_check()
-            time.sleep(2)
-
-            # Step 3.7: Select notification types
-            print("Step 3.7: Selecting notification types...")
-            if conv_online:
-                self.wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//label[contains(@id,':itt1:6:sbc1::Label1')]"))).click()
-                print("   ✅ Flagged 'CONVOCAZIONE PARTECIPANTE - ONLINE'")
-                self._pause_for_visual_check()
-
-            if conv_presenza:
-                self.wait.until(EC.element_to_be_clickable(
-                    (By.XPATH, "//label[contains(@id,':itt1:7:sbc1::Label1')]"))).click()
-                print("   ✅ Flagged 'CONVOCAZIONE PARTECIPANTE - PRESENTE'")
-                self._pause_for_visual_check()
-
-            # Step 3.8: Submit notifications
-            print("Step 3.8: Submitting notifications...")
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, "//button[text()='Sottometti']"))).click()
-            print("   ✅ Clicked 'Sottometti' (notifications)")
-            self._pause_for_visual_check()
-
-            # Step 3.9: Confirm notifications
-            print("Step 3.9: Confirming notifications...")
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, "//button[contains(@id,'masUpdt:dc_d11::ok')]"))).click()
-            print("   ✅ Confirmed notifications")
-            self._pause_for_visual_check()
-            time.sleep(2)
-
             print("\n" + "=" * 50)
-            print("✅ COMPLETE: Students added and notifications sent!")
+            print("✅ COMPLETE: Students added!")
             print("=" * 50)
             return True
 

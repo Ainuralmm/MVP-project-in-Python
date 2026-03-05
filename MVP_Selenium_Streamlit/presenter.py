@@ -400,8 +400,7 @@ class CoursePresenter:
         student_details keys:
             - edition_code (str)
             - students (list[str])
-            - convocazione_online (bool)
-            - convocazione_presenza (bool)
+
         """
         temp_file_path = None
 
@@ -412,8 +411,6 @@ class CoursePresenter:
 
             edition_code = student_details['edition_code']
             student_list = student_details['students']
-            conv_online = student_details['convocazione_online']
-            conv_presenza = student_details['convocazione_presenza']
             num_students = len(student_list)
 
             # === CREATE TEMP FILE ===
@@ -451,27 +448,20 @@ class CoursePresenter:
             success = self.model._perform_student_addition_steps(
                 student_file_path=temp_file_path,
                 lista_nome=lista_nome,
-                conv_online=conv_online,
-                conv_presenza=conv_presenza
+
             )
 
             # Replace the current success message block with:
             if not success:
-                # Don't raise — students may have been submitted but notifications failed
-                result_message = (
-                    f"⚠️ {num_students} allievi inviati per edizione '{edition_code}'.\n\n"
-                    f"L'invio è stato completato ma le notifiche non sono state confermate. "
-                    f"Oracle potrebbe impiegare qualche minuto per elaborare il file. "
-                    f"Controlla manualmente tra 5-10 minuti."
-                )
-                self.view.show_message("student", result_message)
-            else:
-                self.view.update_progress("student", "Processo completato!", 100)
-                result_message = (
-                    f"✅🤩 Successo! {num_students} allievi caricati "
-                    f"per edizione '{edition_code}'."
-                )
-                self.view.show_message("student", result_message)
+                raise Exception("Errore durante l'invio degli allievi.")
+
+            self.view.update_progress("student", "Processo completato!", 100)
+            result_message = (
+                f"✅🤩 Successo! {num_students} allievi inviati "
+                f"per edizione '{edition_code}'.\n\n"
+                f"Oracle potrebbe impiegare qualche minuto per elaborare il file."
+            )
+            self.view.show_message("student", result_message)
 
         except Exception as e:
             error_message = f"‼️ Si è verificato un errore: {str(e)}"
@@ -499,8 +489,7 @@ class CoursePresenter:
 
         Reads from st.session_state.batch_student_data:
             - editions: list of {edition_code, students}
-            - convocazione_online (bool)
-            - convocazione_presenza (bool)
+
         """
         results = []
         progress_placeholder = st.empty()
@@ -523,8 +512,8 @@ class CoursePresenter:
                 raise Exception("Nessun dato batch trovato.")
 
             editions = batch_data.get('editions', [])
-            conv_online = batch_data.get('convocazione_online', True)
-            conv_presenza = batch_data.get('convocazione_presenza', True)
+            # conv_online = batch_data.get('convocazione_online', True)
+            # conv_presenza = batch_data.get('convocazione_presenza', True)
             total_editions = len(editions)
 
             if total_editions == 0:
@@ -580,21 +569,19 @@ class CoursePresenter:
                     success = self.model._perform_student_addition_steps(
                         student_file_path=temp_file.name,
                         lista_nome=lista_nome,
-                        conv_online=conv_online,
-                        conv_presenza=conv_presenza
                     )
 
                     if success:
                         results.append({
                             'edition': edition_code,
-                            'status': '✅ Successo',
+                            'status': '✅ Inviato',
                             'students': num_students
                         })
                     else:
                         results.append({
                             'edition': edition_code,
-                            'status': '❌ Errore durante aggiunta',
-                            'students': 0
+                            'status': '⚠️ Invio non confermato',
+                            'students': num_students  # still num_students, may have been submitted
                         })
 
                     # Navigate back to edition search page for next iteration
@@ -650,8 +637,9 @@ class CoursePresenter:
             summary_parts = [
                 f"## 📊 Riepilogo Aggiunta Allievi Batch\n",
                 f"- **Edizioni processate:** {success_count}/{total_editions}",
-                f"- **Allievi totali aggiunti:** {total_students_added}",
+                f"- **Allievi totali inviati:** {total_students_added}",
                 f"- **Errori:** {fail_count}\n",
+                f"Oracle potrebbe impiegare qualche minuto per elaborare i file.\n",
                 "### Dettagli:"
             ]
 

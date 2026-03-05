@@ -393,10 +393,7 @@ class CourseView:
             st.session_state.edition_message = ""
         if "student_message" not in st.session_state:
             st.session_state.student_message = ""
-        if "student_convocazione_online" not in st.session_state:
-            st.session_state.student_convocazione_online = True
-        if "student_convocazione_presenza" not in st.session_state:
-            st.session_state.student_convocazione_presenza = True
+
         if st.session_state.get("student_input_method") == "manual":
             st.session_state.student_input_method = "txt"
         if "student_input_method" not in st.session_state:
@@ -1343,8 +1340,6 @@ class CourseView:
     def _clear_student_form_callback(self):
         st.session_state.student_edition_code_key = ""
         st.session_state.num_students = 1
-        st.session_state.student_convocazione_online = True
-        st.session_state.student_convocazione_presenza = True
         st.session_state.student_input_method = "txt"  # <-- was "manual"
         st.session_state.student_parsed_data = None
         st.session_state.student_show_summary = False
@@ -3367,10 +3362,6 @@ class CourseView:
                     key="student_txt_uploader"
                 )
 
-                st.divider()
-                st.subheader("3. Opzioni Convocazione")
-                st.checkbox("Invia Convocazione Online", key="student_convocazione_online")
-                st.checkbox("Invia Convocazione Presenza", key="student_convocazione_presenza")
 
                 col1, col2 = st.columns([3, 1])
                 with col1:
@@ -3388,8 +3379,6 @@ class CourseView:
                 import re
 
                 edition_code = st.session_state.student_edition_code_key.strip()
-                conv_online = st.session_state.student_convocazione_online
-                conv_presenza = st.session_state.student_convocazione_presenza
 
                 if not edition_code:
                     st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
@@ -3717,12 +3706,6 @@ class CourseView:
 
         st.divider()
 
-        # === CONVOCAZIONE OPTIONS ===
-        st.subheader("📧 Opzioni Convocazione")
-        conv_online = st.checkbox("Invia Convocazione Online", value=True, key="batch_student_conv_online")
-        conv_presenza = st.checkbox("Invia Convocazione Presenza", value=True, key="batch_student_conv_presenza")
-
-        st.divider()
 
         # === ACTION BUTTONS ===
         col1, col2 = st.columns([2, 1])
@@ -3735,9 +3718,6 @@ class CourseView:
             )
 
             if st.button(btn_text, type="primary", width='stretch', key="batch_student_confirm_btn"):
-                if not conv_online and not conv_presenza:
-                    st.error("❌ Selezionare almeno un tipo di convocazione.")
-                    st.stop()
 
                 # Store data for automation
                 if total_editions == 1:
@@ -3746,16 +3726,12 @@ class CourseView:
                     st.session_state.student_details = {
                         "edition_code": edition['edition_code'],
                         "students": edition['students'],
-                        "convocazione_online": conv_online,
-                        "convocazione_presenza": conv_presenza
                     }
                     st.session_state.app_state = "RUNNING_STUDENTS"
                 else:
                     # Multiple editions — use batch flow
                     st.session_state.batch_student_data = {
                         'editions': editions,
-                        'convocazione_online': conv_online,
-                        'convocazione_presenza': conv_presenza
                     }
                     st.session_state.app_state = "RUNNING_BATCH_STUDENTS"
 
