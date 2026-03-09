@@ -1809,36 +1809,41 @@ class OracleAutomator:
     def _search_and_open_edition(self, edition_code):
         """
         Search for an edition by its Numero Edizione (edition code) and open it.
-
-        Args:
-            edition_code (str): The edition number/code to search for.
-
-        Returns:
-            True if found and opened, False otherwise.
         """
         try:
             print(f"Model: Searching for edition with code '{edition_code}'")
-            time.sleep(2)  # Wait for page to stabilize
-            #First insertion of date of publication
-            data_publicazione_edizione=self.wait.until(EC.presence_of_element_located((By.XPATH,"//*[contains(@id,':value20::content')]")))
-            data_publicazione_edizione.clear()
-            data_publicazione_edizione.send_keys('01/01/2023')
+            time.sleep(3)  # Wait for page to stabilize
 
+            # Wait for any blocking overlay to clear first
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
 
-            # --- Step 1: Click the 'Numero edizione' dropdown to change search operator ---
+            # First: set date of publication filter
+            try:
+                data_publicazione_edizione = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//*[contains(@id,':value20::content')]")))
+                data_publicazione_edizione.clear()
+                data_publicazione_edizione.send_keys('01/01/2023')
+            except:
+                print("   ⚠️ Could not set publication date filter")
+
+            # Step 1: Click the 'Numero edizione' dropdown to change search operator
             numero_edizione_dropdown = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//*[contains(@id, ':operator6::drop')]")))
             numero_edizione_dropdown.click()
             self._pause_for_visual_check()
 
-            # --- Step 2: Select 'Contains' option (3rd item in dropdown list) ---
+            # Step 2: Select 'Contains' option (3rd item in dropdown list)
             numero_edizione_dropdown_contains = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//*[contains(@id, ':operator6::pop')]/li[3]")))
             numero_edizione_dropdown_contains.click()
             self._pause_for_visual_check()
             time.sleep(2)
 
-            # --- Step 3: Enter the edition code in the search input ---
+            # Step 3: Enter the edition code in the search input
             numero_edizione_input_xpaths = [
                 '//*[contains(@id, ":value60::content")]',
                 '//*[@aria-label=" Numero edizione"]',
@@ -1863,34 +1868,76 @@ class OracleAutomator:
             print(f"   Entered edition code: {edition_code}")
             self._pause_for_visual_check()
 
-            # --- Step 4: Click Search button ---
+            # Step 4: Click Search button
             search_button_edizione = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca' or text()='Search']")))
             search_button_edizione.click()
             print("Model: Search submitted. Waiting for results.")
 
-            # --- Step 5: Wait for results and click first link ---
-            link_xpath = "//a[contains(@id, ':_ATp:srTbl:') and contains(@id, ':clnmLnk')]"
-            link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
-            print("Model: Found first result link. Clicking it...")
-            link.click()
-            # After clicking the edition link, WAIT for detail page to fully load
-            print("   Waiting for edition detail page to load...")
-
-
-            # Wait for a reliable element on the edition detail page
+            # Step 5: Wait for results table to load
+            # Wait for blocking overlay to disappear first
             try:
                 WebDriverWait(self.driver, 15).until(
+                    EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)  # Extra stabilization
+
+            # Step 6: Find and click the result link with RETRY
+            link_xpath = "//a[contains(@id, ':_ATp:srTbl:') and contains(@id, ':clnmLnk')]"
+
+            link_clicked = False
+            for attempt in range(3):
+                try:
+                    # Re-find the link fresh each attempt (avoid stale reference)
+                    link = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, link_xpath)))
+                    print(f"Model: Found result link (attempt {attempt + 1}). Clicking...")
+
+                    # Scroll into view
+                    self.driver.execute_script(
+                        "arguments[0].scrollIntoView({block: 'center'});", link)
+                    time.sleep(0.5)
+
+                    # Try normal click first
+                    try:
+                        link.click()
+                        link_clicked = True
+                    except (StaleElementReferenceException, ElementClickInterceptedException):
+                        # Re-find and try JS click
+                        print(f"   ⚠️ Click failed (attempt {attempt + 1}), retrying...")
+                        time.sleep(2)
+                        link = self.driver.find_element(By.XPATH, link_xpath)
+                        self.driver.execute_script("arguments[0].click();", link)
+                        link_clicked = True
+
+                    if link_clicked:
+                        break
+
+                except Exception as e:
+                    print(f"   ⚠️ Attempt {attempt + 1} to find/click link failed: {e}")
+                    time.sleep(3)
+
+            if not link_clicked:
+                raise Exception(f"Could not click edition link after 3 attempts")
+
+            # Step 7: Wait for edition detail page to fully load
+            print("   Waiting for edition detail page to load...")
+            time.sleep(3)
+
+            try:
+                WebDriverWait(self.driver, 20).until(
                     EC.presence_of_element_located((By.XPATH,
-                                                    "//a[contains(text(), 'Allievi')] | "
-                                                    "//span[contains(text(), 'Allievi')] | "
-                                                    "//*[contains(@class, 'tab') and contains(text(), 'Allievi')]"
-                                                    ))
+                        "//a[contains(text(), 'Allievi')] | "
+                        "//span[contains(text(), 'Allievi')] | "
+                        "//div[contains(@id, 'learnerTile')]"
+                    ))
                 )
                 print("   ✅ Edition detail page loaded (Allievi tab found)")
             except:
                 print("   ⚠️ Could not confirm page load, waiting extra...")
                 time.sleep(5)
+
             self._pause_for_visual_check()
             print(f"Model: Clicked on edition link for code '{edition_code}'.")
             return True
@@ -1902,10 +1949,9 @@ class OracleAutomator:
                 ss_path = f"error_search_edition_{timestamp}.png"
                 self.driver.save_screenshot(ss_path)
                 print(f"Saved screenshot on search error: {ss_path}")
-            except Exception as ss_e:
-                print(f"Could not save screenshot: {ss_e}")
+            except:
+                pass
             return False
-
     def _perform_student_addition_steps(self, student_file_path, lista_nome):
         """
         Add students to an edition using the 'Elenco numeri persona' (person number list) flow.
