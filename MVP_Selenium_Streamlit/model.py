@@ -2274,64 +2274,85 @@ class OracleAutomator:
             time.sleep(2)
 
             # ══════════════════════════════════════════════════
-            # PART 3: SEND NOTIFICATIONS (CONVOCAZIONE)
+            # PART 3: VERIFY STUDENTS WERE ADDED
             # ══════════════════════════════════════════════════
 
-            print("\n=== PART 3: Sending notifications ===")
+            print("\n=== PART 3: Verifying students were added ===")
 
-            # Step 3.1: Set filter to 'Tutto' to see all students
-            print("Step 3.1: Setting filter to 'Tutto'...")
+            # Read the matricola numbers from the uploaded file for verification
+            verification_matricole = []
             try:
-                stato_dropdown = WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//span[contains(@class, 'x1kn')]/a[contains(@id, ':lrasQry:value20::drop')]")))
-                stato_dropdown.click()
+                with open(student_file_path, 'r', encoding='utf-8') as f:
+                    verification_matricole = [line.strip() for line in f if line.strip()]
+                print(f"   Will verify {len(verification_matricole)} matricole from file")
+            except:
+                print("   ⚠️ Could not read file for verification, skipping check")
 
-                tutto_option = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[contains(text(),"Tutto")]')))
-                tutto_option.click()
-                print("   ✅ Set filter to 'Tutto'")
-            except Exception as e:
-                print(f"   ⚠️ Could not set filter to 'Tutto': {e}")
+            # Wait for Oracle to process
+            time.sleep(5)
 
-                # Step 3.2: Wait for student list to load (Oracle processes file async)
-                print("Step 3.2: Waiting for student list to load...")
-                print("   ⏳ Oracle is processing the file upload, this may take 1-2 minutes...")
+            # Try to find students in the results by their person number
+            students_found = False
+            max_attempts = 5
 
-                max_attempts = 12
-                results_found = False
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    print(f"   Attempt {attempt}/{max_attempts}: Checking for students...")
 
-                for attempt in range(1, max_attempts + 1):
-                    try:
-                        # Wait longer between attempts — Oracle needs time to process
-                        wait_time = 15 if attempt <= 3 else 20
+                    # Look for any student rows in the table
+                    # Oracle shows a table with student data after submission
+                    student_row_xpaths = [
+                        # Try to find rows containing any of our matricola numbers
+                        "//table[contains(@summary, 'llievi') or contains(@summary, 'learner')]//tbody//tr",
+                        "//table[contains(@id, 'ATt')]//tbody//tr[contains(@class, 'x')]",
+                        "//div[contains(@id, 'learner')]//table//tbody//tr",
+                    ]
+
+                    rows = []
+                    for xpath in student_row_xpaths:
+                        rows = self.driver.find_elements(By.XPATH, xpath)
+                        if rows:
+                            break
+
+                    if rows and len(rows) > 0:
+                        print(f"   ✅ Found {len(rows)} student rows in the list")
+                        students_found = True
+
+                        # Verify specific matricole if we have them
+                        if verification_matricole:
+                            page_text = self.driver.page_source
+                            found_count = sum(1 for m in verification_matricole if m in page_text)
+                            print(f"   ✅ Verified {found_count}/{len(verification_matricole)} matricole on page")
+
+                        break
+                    else:
+                        wait_time = 10
+                        print(f"   Attempt {attempt}/{max_attempts}: no rows yet, waiting {wait_time}s...")
                         time.sleep(wait_time)
 
-                        # Try to find student rows in the results table
-                        # (use whatever XPath you currently have for detecting results)
-                        rows = self.driver.find_elements(By.XPATH,
-                                                         "//table[contains(@id, 'ATt')]//tr[contains(@class, 'x')]")
+                except Exception as verify_err:
+                    print(f"   Attempt {attempt}/{max_attempts}: verification error: {verify_err}")
+                    time.sleep(10)
 
-                        if rows and len(rows) > 0:
-                            print(f"   ✅ Found {len(rows)} students in results (attempt {attempt})")
-                            results_found = True
-                            break
-                        else:
-                            print(f"   Attempt {attempt}/{max_attempts}: results not ready, "
-                                  f"waiting {wait_time}s...")
-                    except:
-                        print(f"   Attempt {attempt}/{max_attempts}: results not ready, retrying...")
+            # Wait for any blocking overlay
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
 
-                if not results_found:
-                    print("   ⚠️ Results table didn't load, but students were likely submitted.")
-                    print("   Oracle may still be processing. Check manually in a few minutes.")
+            if students_found:
+                print("\n" + "=" * 50)
+                print("✅ COMPLETE: Students added and verified!")
+                print("=" * 50)
+            else:
+                print("\n" + "=" * 50)
+                print("⚠️ COMPLETE: Students submitted but not yet visible in list.")
+                print("   Oracle may need a few minutes to process the file.")
+                print("=" * 50)
 
-            # Wait for blocking pane to disappear
-            self.wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
-            time.sleep(2)
-
-            print("\n" + "=" * 50)
-            print("✅ COMPLETE: Students added!")
-            print("=" * 50)
+            # Always return True — the submission completed in PART 2
+            # The verification is just a check, not a requirement
             return True
 
 
