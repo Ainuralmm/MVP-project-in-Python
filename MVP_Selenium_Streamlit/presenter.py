@@ -5,6 +5,9 @@ import time
 import os
 import tempfile
 
+from selenium.webdriver.common.by import By
+
+
 class CoursePresenter:
     def __init__(self, model, view):
         self.model = model
@@ -452,15 +455,22 @@ class CoursePresenter:
             )
 
             # Replace the current success message block with:
-            if not success:
-                raise Exception("Errore durante l'invio degli allievi.")
-
             self.view.update_progress("student", "Processo completato!", 100)
-            result_message = (
-                f"✅🤩 Successo! {num_students} allievi inviati "
-                f"per edizione '{edition_code}'.\n\n"
-                f"Oracle potrebbe impiegare qualche minuto per elaborare il file."
-            )
+
+            if success:
+                result_message = (
+                    f"✅🤩 Successo! {num_students} allievi inviati "
+                    f"per edizione '{edition_code}'.\n\n"
+                    f"Se gli allievi non appaiono subito nella lista, "
+                    f"ricontrolla tra qualche minuto — Oracle potrebbe "
+                    f"necessitare di tempo per elaborare il file."
+                )
+            else:
+                result_message = (
+                    f"⚠️ Processo completato per edizione '{edition_code}', "
+                    f"ma non è stato possibile confermare l'aggiunta di {num_students} allievi.\n\n"
+                    f"Ricontrolla la lista allievi manualmente tra qualche minuto."
+                )
             self.view.show_message("student", result_message)
 
         except Exception as e:
@@ -593,12 +603,48 @@ class CoursePresenter:
                             except:
                                 print("   ❌ Could not return to edition search")
 
+
                 except Exception as e:
-                    results.append({
-                        'edition': edition_code,
-                        'status': f'❌ Errore: {str(e)[:50]}',
-                        'students': 0
-                    })
+                                error_msg = str(e)[:80]
+                                print(f"   ❌ Error for edition '{edition_code}': {error_msg}")
+                                results.append({
+
+                                    'edition': edition_code,
+                                    'status': f'❌ Errore: {error_msg}',
+                                    'students': 0
+
+                                })
+
+                                # Try to recover: close any dialogs and go back
+
+                                try:
+                                    # Close any open dialog
+                                    cancel_xpaths = [
+
+                                        "//button[contains(@id, ':d3::cancel')]",
+                                        "//button[text()='Annulla' or text()='Cancel']",
+                                        "//button[contains(@id, '::cancel')]",
+
+                                    ]
+
+                                    for xpath in cancel_xpaths:
+
+                                        try:
+
+                                            cancel_btn = self.model.driver.find_element(By.XPATH, xpath)
+                                            cancel_btn.click()
+                                            print("   🔄 Closed open dialog")
+                                            time.sleep(2)
+                                            break
+
+                                        except:
+                                            continue
+
+                                except:
+
+                                    pass
+
+
 
             # === FINAL PROGRESS ===
             update_progress("Processo completato!", 100)
