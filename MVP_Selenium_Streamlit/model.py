@@ -1952,6 +1952,7 @@ class OracleAutomator:
             except:
                 pass
             return False
+
     def _perform_student_addition_steps(self, student_file_path, lista_nome):
         """
         Add students to an edition using the 'Elenco numeri persona' (person number list) flow.
@@ -2463,6 +2464,160 @@ class OracleAutomator:
             except:
                 pass
             return False
+
+    def _verify_students_in_edition(self, edition_code, expected_matricole):
+        """
+        Navigate to an edition's Allievi tab and check which students exist
+        by searching each matricola via the 'Cerca allievi' form.
+        """
+        result = {
+            'found': [],
+            'not_found': [],
+            'total_in_system': 0,
+            'success': False
+        }
+
+        try:
+            print(f"\n   Verifying students for edition '{edition_code}'...")
+
+            # Step 1: Click 'Allievi' tab (left sidebar)
+            allievi_tab = WebDriverWait(self.driver, 15).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "//div[contains(@id, ':clDtSp1:UPsp1:learnerTile::text')]")))
+            allievi_tab.click()
+            print("   ✅ Clicked 'Allievi' tab")
+            time.sleep(3)
+
+
+            # # Step 2: Set "Stato assegnazione" filter to "Tutto"
+            # print("   Setting filter to 'Tutto'...")
+            # try:
+            #     stato_dropdown = WebDriverWait(self.driver, 10).until(
+            #         EC.element_to_be_clickable(
+            #             (By.XPATH, "//select[contains(@id, 'lrasQry:value20')] | "
+            #                        "//a[contains(@id, 'lrasQry:value20::drop')]")))
+            #     stato_dropdown.click()
+            #     time.sleep(1)
+            #
+            #     tutto_option = WebDriverWait(self.driver, 5).until(
+            #         EC.element_to_be_clickable(
+            #             (By.XPATH, "//li[text()='Tutto'] | //option[text()='Tutto']")))
+            #     tutto_option.click()
+            #     print("   ✅ Set filter to 'Tutto'")
+            #     time.sleep(1)
+            # except Exception as e:
+            #     print(f"   ⚠️ Could not set 'Tutto' filter: {e}")
+
+            # Step 3: Search for EACH matricola individually
+            for matricola in expected_matricole:
+                matricola_clean = str(matricola).strip()
+                found = False
+
+                try:
+                    # Find "Parola chiave persona" input field
+                    keyword_xpaths = [
+                        "//input[contains(@id, 'lrasQry:value10::content')]",
+                        "//input[contains(@id, ':value10::content')]",
+                    ]
+
+                    keyword_input = None
+                    for xpath in keyword_xpaths:
+                        try:
+                            keyword_input = WebDriverWait(self.driver, 5).until(
+                                EC.presence_of_element_located((By.XPATH, xpath)))
+                            break
+                        except:
+                            continue
+
+                    if not keyword_input:
+                        print(f"   ⚠️ Could not find search input, skipping {matricola_clean}")
+                        result['not_found'].append(matricola_clean)
+                        continue
+
+                    # Clear and enter matricola
+                    keyword_input.clear()
+                    keyword_input.send_keys(matricola_clean)
+
+                    # Click Cerca button
+                    cerca_btn = self.driver.find_element(
+                        By.XPATH, "//button[text()='Cerca' or text()='Search']")
+                    cerca_btn.click()
+
+                    # Wait for results
+                    try:
+                        WebDriverWait(self.driver, 10).until(
+                            EC.invisibility_of_element_located(
+                                (By.CLASS_NAME, "AFBlockingGlassPane")))
+                    except:
+                        pass
+                    time.sleep(2)
+
+                    # Check if "Nessun dato" (no data) message appears
+                    try:
+                        no_data = WebDriverWait(self.driver, 3).until(
+                            EC.presence_of_element_located(
+                                (By.XPATH, "//*[contains(text(),'Nessun dato') or "
+                                           "contains(text(),'Nessuna riga') or "
+                                           "contains(text(),'No data')]")))
+                        # No data found for this matricola
+                        print(f"   ❌ Matricola {matricola_clean}: NOT FOUND")
+                        result['not_found'].append(matricola_clean)
+                    except TimeoutException:
+                        # No "no data" message means results were found
+                        # Double-check: look for the matricola in the Numero persona column
+                        try:
+                            # Look for a cell containing the matricola number
+                            cell = self.driver.find_element(
+                                By.XPATH,
+                                f"//td[normalize-space(.)='{matricola_clean}'] | "
+                                f"//span[normalize-space(.)='{matricola_clean}']")
+                            print(f"   ✅ Matricola {matricola_clean}: FOUND")
+                            result['found'].append(matricola_clean)
+                            found = True
+                        except:
+                            # Cell not found with exact match, check page text
+                            page_text = self.driver.find_element(
+                                By.TAG_NAME, 'body').text
+                            if matricola_clean in page_text:
+                                print(f"   ✅ Matricola {matricola_clean}: FOUND (in page text)")
+                                result['found'].append(matricola_clean)
+                                found = True
+                            else:
+                                print(f"   ❌ Matricola {matricola_clean}: NOT FOUND")
+                                result['not_found'].append(matricola_clean)
+
+                    # Click Reimposta (Reset) to clear search for next matricola
+                    try:
+                        reset_btn = self.driver.find_element(
+                            By.XPATH, "//button[text()='Reimposta' or text()='Reset']")
+                        reset_btn.click()
+                        time.sleep(1)
+                    except:
+                        # If no reset button, just clear the field
+                        try:
+                            keyword_input.clear()
+                        except:
+                            pass
+
+                except Exception as e:
+                    print(f"   ⚠️ Error checking matricola {matricola_clean}: {e}")
+                    result['not_found'].append(matricola_clean)
+
+            result['total_in_system'] = len(result['found'])
+            result['success'] = True
+
+            found_count = len(result['found'])
+            total_expected = len(expected_matricole)
+            print(f"   ✅ Verification complete: {found_count}/{total_expected} found")
+
+            self._pause_for_visual_check()
+            return result
+
+        except Exception as e:
+            print(f"   ❌ Error verifying students: {e}")
+            result['not_found'] = [m for m in expected_matricole
+                                   if m not in result['found']]
+            return result
 
     def close(self):
         """Close the WebDriver and clean up resources."""
