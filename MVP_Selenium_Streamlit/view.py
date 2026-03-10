@@ -407,6 +407,8 @@ class CourseView:
             st.session_state.student_show_summary = False
         if "batch_student_data" not in st.session_state:
             st.session_state.batch_student_data = None
+        if "verify_student_data" not in st.session_state:
+             st.session_state.verify_student_data = None
 
         # --- Form Specific State ---
         if "num_activities" not in st.session_state:
@@ -537,7 +539,7 @@ class CourseView:
         # --- Tab3:Student Form Container ---
         with tab3:
             st.header("Aggiungi Allievi")
-            if st.session_state.app_state in ["RUNNING_STUDENTS", "RUNNING_BATCH_STUDENTS"]:
+            if st.session_state.app_state in ["RUNNING_STUDENTS", "RUNNING_BATCH_STUDENTS", "RUNNING_VERIFY_STUDENTS"]:
                 self.student_output_placeholder = st.empty()
 
             else:
@@ -3708,7 +3710,7 @@ class CourseView:
 
 
         # === ACTION BUTTONS ===
-        col1, col2 = st.columns([2, 1])
+        col1, col2, col3 = st.columns([2, 1, 1])
 
         with col1:
             btn_text = (
@@ -3718,10 +3720,8 @@ class CourseView:
             )
 
             if st.button(btn_text, type="primary", width='stretch', key="batch_student_confirm_btn"):
-
                 # Store data for automation
                 if total_editions == 1:
-                    # Single edition — use normal flow
                     edition = editions[0]
                     st.session_state.student_details = {
                         "edition_code": edition['edition_code'],
@@ -3729,7 +3729,6 @@ class CourseView:
                     }
                     st.session_state.app_state = "RUNNING_STUDENTS"
                 else:
-                    # Multiple editions — use batch flow
                     st.session_state.batch_student_data = {
                         'editions': editions,
                     }
@@ -3741,31 +3740,46 @@ class CourseView:
                 st.rerun()
 
         with col2:
+            verify_text = (
+                f"🔍 Verifica {total_students} Allievi"
+            )
+            if st.button(verify_text, width='stretch', key="batch_student_verify_btn"):
+                st.session_state.verify_student_data = {
+                    'editions': editions,
+                }
+                st.session_state.app_state = "RUNNING_VERIFY_STUDENTS"
+                st.session_state.student_message = ""
+                st.session_state.student_parsed_data = None
+                st.session_state.student_show_summary = False
+                st.rerun()
+
+        with col3:
             if st.button("❌ Annulla", width='stretch', key="batch_student_cancel_btn"):
                 st.session_state.student_parsed_data = None
                 st.session_state.student_show_summary = False
-                st.session_state.student_input_method = "manual"
+                st.session_state.student_input_method = "txt"
                 st.rerun()
 
-    def update_progress(self, form_type, message, percentage):
-        placeholder = None
-        if form_type == "course":
-            # Use getattr to safely get the attribute
-            placeholder = getattr(self, 'course_output_placeholder', None)
-        elif form_type == "edition":
-            placeholder = getattr(self, 'edition_output_placeholder', None)
-        elif form_type == "student":
-            placeholder = getattr(self, 'student_output_placeholder', None)
 
-        # Only try to use placeholder if it exists and is not None
-        if placeholder is not None:
-            with placeholder.container():
+    def update_progress(self, form_type, message, percentage):
+            placeholder = None
+            if form_type == "course":
+                # Use getattr to safely get the attribute
+                placeholder = getattr(self, 'course_output_placeholder', None)
+            elif form_type == "edition":
+                placeholder = getattr(self, 'edition_output_placeholder', None)
+            elif form_type == "student":
+                placeholder = getattr(self, 'student_output_placeholder', None)
+
+            # Only try to use placeholder if it exists and is not None
+            if placeholder is not None:
+                with placeholder.container():
+                    st.info(f"⏳ {message}")
+                    st.progress(percentage)
+            else:
+                # Fallback: just show the message directly
                 st.info(f"⏳ {message}")
                 st.progress(percentage)
-        else:
-            # Fallback: just show the message directly
-            st.info(f"⏳ {message}")
-            st.progress(percentage)
 
     def show_message(self, form_type, message, show_clear_button=False):
         placeholder = None
