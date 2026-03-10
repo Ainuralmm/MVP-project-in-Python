@@ -704,3 +704,184 @@ class CoursePresenter:
 
             st.session_state.app_state = "IDLE"
             st.rerun()
+
+    def run_verify_students(self):
+        """
+        Verify that students exist in Oracle editions.
+        Reads from st.session_state.verify_student_data (same format as batch).
+        """
+        results = []
+        progress_placeholder = st.empty()
+        status_placeholder = st.empty()
+
+        def update_progress(message, percentage):
+            with progress_placeholder.container():
+                st.progress(percentage / 100)
+            with status_placeholder.container():
+                st.info(f"⏳ {message}")
+
+        try:
+            oracle_url = st.secrets['ORACLE_URL']
+            oracle_user = st.secrets['ORACLE_USER']
+            oracle_pass = st.secrets['ORACLE_PASS']
+
+            verify_data = st.session_state.verify_student_data
+            if not verify_data:
+                raise Exception("Nessun dato di verifica trovato.")
+
+            editions = verify_data.get('editions', [])
+            total_editions = len(editions)
+
+            if total_editions == 0:
+                raise Exception("Nessuna edizione da verificare.")
+
+            # === LOGIN ===
+            update_progress("Accesso a Oracle...", 5)
+            if not self.model.login(oracle_url, oracle_user, oracle_pass):
+                raise Exception("Login fallito.")
+
+            # === NAVIGATE ===
+            update_progress("Navigazione alla pagina edizioni...", 10)
+            if not self.model.navigate_to_edition_page():
+                raise Exception("Navigazione fallita.")
+
+            # === VERIFY EACH EDITION ===
+            for idx, edition in enumerate(editions):
+                edition_code = edition['edition_code']
+                expected_students = edition['students']
+                num_students = len(expected_students)
+                edition_num = idx + 1
+
+                progress_pct = int((idx / total_editions) * 80) + 15
+                update_progress(
+                    f"Verifica edizione {edition_num}/{total_editions}: '{edition_code}' "
+                    f"({num_students} allievi)...",
+                    progress_pct
+                )
+
+                try:
+                    # Search and open edition
+                    if not self.model._search_and_open_edition(edition_code):
+                        results.append({
+                            'edition': edition_code,
+                            'expected': num_students,
+                            'found': 0,
+                            'not_found': num_students,
+                            'not_found_list': expected_students,
+                            'status': '❌ Edizione non trovata'
+                        })
+                        continue
+
+                    # Verify students
+                    verify_result = self.model._verify_students_in_edition(
+                        edition_code, expected_students)
+
+                    found_count = len(verify_result['found'])
+                    not_found_count = len(verify_result['not_found'])
+
+                    if not_found_count == 0:
+                        status = f'✅ Tutti {found_count} trovati'
+                    elif found_count == 0:
+                        status = f'❌ Nessuno trovato (0/{num_students})'
+                    else:
+                        status = f'⚠️ {found_count}/{num_students} trovati'
+
+                    results.append({
+                        'edition': edition_code,
+                        'expected': num_students,
+                        'found': found_count,
+                        'not_found': not_found_count,
+                        'not_found_list': verify_result['not_found'],
+                        'found_list': verify_result['found'],
+                        'status': status
+                    })
+
+                    # Navigate back for next edition
+                    if idx < total_editions - 1:
+                        if not self.model._click_back_to_edition_search():
+                            print("   ⚠️ Back button failed, trying full navigation...")
+                            try:
+                                self.model.navigate_to_edition_page()
+                            except:
+                                print("   ❌ Could not return to edition search")
+
+                except Exception as e:
+                    results.append({
+                        'edition': edition_code,
+                        'expected': num_students,
+                        'found': 0,
+                        'not_found': num_students,
+                        'not_found_list': expected_students,
+                        'status': f'❌ Errore: {str(e)[:50]}'
+                    })
+
+            # === FINAL ===
+            update_progress("Verifica completata!", 100)
+
+        except Exception as e:
+            error_message = f"‼️ Errore verifica: {str(e)}"
+            print(f"Presenter Error: {error_message}")
+            results.append({
+                'edition': 'ERRORE GENERALE',
+                'expected': 0,
+                'found': 0,
+                'not_found': 0,
+                'not_found_list': [],
+                'status': error_message
+            })
+
+        finally:
+            print("Presenter (Verify Students): Finished. Cleaning up.")
+            self.model.close()
+
+            progress_placeholder.empty()
+            status_placeholder.empty()
+
+            # === BUILD SUMMARY ===
+            total_expected = sum(r.get('expected', 0) for r in results)
+            total_found = sum(r.get('found', 0) for r in results)
+            total_not_found = sum(r.get('not_found', 0) for r in results)
+            all_ok = all('✅' in r.get('status', '') for r in results)
+
+            summary_parts = [
+                f"## 🔍 Riepilogo Verifica Allievi\n",
+                f"- **Edizioni verificate:** {len(results)}",
+                f"- **Allievi totali attesi:** {total_expected}",
+                f"- **Trovati nel sistema:** {total_found}",
+                f"- **Non trovati:** {total_not_found}\n",
+            ]
+
+            if all_ok:
+                summary_parts.append("### ✅ Tutti gli allievi sono presenti nel sistema!\n")
+            elif total_not_found > 0:
+                summary_parts.append(
+                    "### ⚠️ Alcuni allievi non sono stati trovati.\n"
+                    "Oracle potrebbe necessitare di più tempo per elaborare. "
+                    "Riprova tra qualche minuto.\n"
+                )
+
+            summary_parts.append("### Dettagli per edizione:")
+
+            for r in results:
+                summary_parts.append(
+                    f"- **{r['edition']}**: {r['status']}"
+                )
+                # Show not-found matricole if any
+                not_found_list = r.get('not_found_list', [])
+                if not_found_list and len(not_found_list) <= 10:
+                    matricole_str = ', '.join(not_found_list)
+                    summary_parts.append(f"  - Non trovati: `{matricole_str}`")
+                elif not_found_list:
+                    first_5 = ', '.join(not_found_list[:5])
+                    summary_parts.append(
+                        f"  - Non trovati: `{first_5}` ... e altri {len(not_found_list) - 5}")
+
+            final_message = "\n".join(summary_parts)
+
+            st.session_state.student_message = final_message
+            st.session_state.verify_student_data = None
+            st.session_state.student_parsed_data = None
+            st.session_state.student_show_summary = False
+
+            st.session_state.app_state = "IDLE"
+            st.rerun()
