@@ -443,15 +443,22 @@ class CoursePresenter:
 
             # === SEARCH EDITION ===
             self.view.update_progress("student", f"Ricerca edizione '{edition_code}'...", 40)
-            if not self.model._search_and_open_edition(edition_code):
+            edition_result = self.model._search_and_open_edition(edition_code)
+            if not edition_result:
                 raise Exception(f"Edizione '{edition_code}' non trovata.")
+
+            # Extract dates from edition search
+            edition_start_date = edition_result.get('start_date') if isinstance(edition_result, dict) else None
+            edition_end_date = edition_result.get('end_date') if isinstance(edition_result, dict) else None
+            print(f"Presenter: Edition dates - start: {edition_start_date}, end: {edition_end_date}")
 
             # === ADD STUDENTS ===
             self.view.update_progress("student", f"Caricamento {num_students} allievi...", 65)
             success = self.model._perform_student_addition_steps(
                 student_file_path=temp_file_path,
                 lista_nome=lista_nome,
-
+                edition_start_date=edition_start_date,
+                edition_end_date=edition_end_date,
             )
 
             # Replace the current success message block with:
