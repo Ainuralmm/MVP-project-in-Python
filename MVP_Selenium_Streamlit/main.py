@@ -47,7 +47,9 @@ if __name__ == "__main__":
 
         elif st.session_state.app_state == "RUNNING_STUDENTS":
             presenter.run_add_students(st.session_state.get("student_details"))
-        # After automation completes, the presenter sets state to IDLE
-        # and the page naturally refreshes showing the UI
+        elif st.session_state.app_state == "RUNNING_BATCH_STUDENTS":
+             presenter.run_add_students_batch()
+        elif st.session_state.app_state == "RUNNING_VERIFY_STUDENTS":
+            presenter.run_verify_students()
     else: # 4. Only render UI when NOT running automation
         view.render_ui()
