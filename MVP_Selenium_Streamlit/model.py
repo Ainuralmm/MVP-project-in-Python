@@ -1885,7 +1885,7 @@ class OracleAutomator:
             # ═══════════════════════════════════════════
             # NEW: Extract dates from the results row
             # ═══════════════════════════════════════════
-            # From screenshot: columns are:
+            #  columns are:
             # Numero edizione | Titolo edizione | Titolo corso | Data inizio pubblicazione | Data fine pubblicazione
             # We need Data inizio pubblicazione (col 4) and Data fine pubblicazione (col 5)
             # But actually we need EDITION start/end dates, not publication dates.
@@ -2059,22 +2059,7 @@ class OracleAutomator:
                 pass
             return False
 
-    def _perform_student_addition_steps(self, student_file_path, lista_nome):
-        """
-        Add students to an edition using the 'Elenco numeri persona' (person number list) flow.
-
-        Uploads a .txt file containing student matricola numbers instead of
-        adding them one by one.
-
-        Args:
-            student_file_path (str): Absolute path to .txt file with one matricola per line
-            lista_nome (str): Name for the list (format: "COURSE_NAME DATA_INIZIO_EDIZIONE")
-            conv_online (bool): Send online convocation notification
-            conv_presenza (bool): Send in-person convocation notification
-
-        Returns:
-            True if successful, False otherwise
-        """
+    def _perform_student_addition_steps(self, student_file_path, lista_nome,edition_start_date=None, edition_end_date=None):
         try:
             # ══════════════════════════════════════════════════
             # PART 0: NAVIGATE TO 'SELEZIONA ALLIEVI' PAGE
@@ -2097,11 +2082,29 @@ class OracleAutomator:
             print("   ✅ Clicked 'Aggiungi allievi'")
             self._pause_for_visual_check()
 
-            # Step 0.3: Click 'Assegnazione volontaria'
-            print("Step 0.3: Clicking 'Assegnazione volontaria'...")
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, '//td[contains(@class, "xo2") and normalize-space()="Assegnazione volontaria"]'))).click()
-            print("   ✅ Clicked 'Assegnazione volontaria'")
+            # Step 0.3: Click 'Assegnazione obbligatoria' (was: volontaria)
+            print("Step 0.3: Clicking 'Assegnazione obbligatoria'...")
+
+            assegnazione_obb_xpaths = [
+                "//*[contains(@id, 'requireCmi')]/td[2]",
+                "//td[contains(@class, 'xo2') and normalize-space()='Assegnazione obbligatoria']",
+                "//*[contains(@id, 'requireCmi')]//td[normalize-space()='Assegnazione obbligatoria']",
+            ]
+
+            assegnazione_btn = None
+            for xpath in assegnazione_obb_xpaths:
+                try:
+                    assegnazione_btn = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if not assegnazione_btn:
+                raise Exception("Could not find 'Assegnazione obbligatoria' option")
+
+            assegnazione_btn.click()
+            print("   ✅ Clicked 'Assegnazione obbligatoria'")
             self._pause_for_visual_check()
 
             # Step 0.4: Select 'Team Organizzazione & Sviluppo' from dropdown
@@ -2123,7 +2126,98 @@ class OracleAutomator:
             print(f"   ✅ Selected '{list_assegna_come}'")
             self._pause_for_visual_check()
 
-            # Step 0.5: Clicking 'Successivo'
+            # Step 0.5: Fill 'Con questa nota' field with "."
+            print("Step 0.5: Filling 'Con questa nota' with '.'...")
+
+            nota_xpaths = [
+                "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:r5:0:SP2:r1:0:it1::content']",
+                "//textarea[contains(@id, ':r5:0:SP2:r1:0:it1::content')]",
+                "//textarea[contains(@placeholder, 'Aggiungi un commento')]",
+            ]
+
+            nota_field = None
+            for xpath in nota_xpaths:
+                try:
+                    nota_field = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if nota_field:
+                nota_field.clear()
+                nota_field.send_keys(".")
+                print("   ✅ Filled 'Con questa nota' with '.'")
+            else:
+                print("   ⚠️ Could not find 'Con questa nota' field")
+
+            self._pause_for_visual_check()
+
+            # Step 0.6: Fill 'Data scadenza' based on edition dates logic
+            print("Step 0.6: Calculating and filling 'Data scadenza'...")
+
+            # Calculate data scadenza:
+            # If edition_start > today: scadenza = edition_end + 1 day
+            # If edition_start <= today: scadenza = today + 1 day
+            from datetime import datetime, timedelta
+
+            today = datetime.now().date()
+            data_scadenza_str = ""
+
+            if edition_start_date and edition_end_date:
+                try:
+                    start_date_obj = datetime.strptime(edition_start_date, "%d/%m/%Y").date()
+                    end_date_obj = datetime.strptime(edition_end_date, "%d/%m/%Y").date()
+
+                    if start_date_obj > today:
+                        # Future edition: scadenza = end date + 1
+                        data_scadenza = end_date_obj + timedelta(days=1)
+                        print(f"   Edition is FUTURE (start {edition_start_date} > today {today.strftime('%d/%m/%Y')})")
+                        print(f"   Scadenza = end date + 1 = {data_scadenza.strftime('%d/%m/%Y')}")
+                    else:
+                        # Past edition: scadenza = today + 1
+                        data_scadenza = today + timedelta(days=1)
+                        print(f"   Edition is PAST (start {edition_start_date} <= today {today.strftime('%d/%m/%Y')})")
+                        print(f"   Scadenza = today + 1 = {data_scadenza.strftime('%d/%m/%Y')}")
+
+                    data_scadenza_str = data_scadenza.strftime("%d/%m/%Y")
+
+                except Exception as date_calc_err:
+                    print(f"   ⚠️ Error calculating scadenza: {date_calc_err}")
+                    # Fallback: today + 1
+                    data_scadenza_str = (today + timedelta(days=1)).strftime("%d/%m/%Y")
+                    print(f"   Using fallback scadenza: {data_scadenza_str}")
+            else:
+                # No dates available: fallback to today + 1
+                data_scadenza_str = (today + timedelta(days=1)).strftime("%d/%m/%Y")
+                print(f"   ⚠️ Edition dates not available, using fallback: {data_scadenza_str}")
+
+            # Fill the data scadenza field
+            scadenza_xpaths = [
+                "//*[@id='pt1:_FOr1:1:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:r5:0:SP2:r1:0:id1::content']",
+                "//input[contains(@id, ':r5:0:SP2:r1:0:id1::content')]",
+                "//input[contains(@placeholder, 'dd/mm/yyyy') and contains(@id, ':id1::content')]",
+            ]
+
+            scadenza_field = None
+            for xpath in scadenza_xpaths:
+                try:
+                    scadenza_field = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if scadenza_field:
+                scadenza_field.clear()
+                scadenza_field.send_keys(data_scadenza_str)
+                scadenza_field.send_keys(Keys.TAB)
+                print(f"   ✅ Filled 'Data scadenza' with: {data_scadenza_str}")
+            else:
+                print("   ⚠️ Could not find 'Data scadenza' field")
+
+            self._pause_for_visual_check()
+            # Step 0.7: Clicking 'Successivo'
             print("Step 0.5: Clicking 'Successivo' to reach Seleziona allievi page...")
             time.sleep(2)  # Wait for DOM to stabilize after team selection
 
