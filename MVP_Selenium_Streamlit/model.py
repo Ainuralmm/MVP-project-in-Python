@@ -2489,24 +2489,21 @@ class OracleAutomator:
             time.sleep(3)
 
 
-            # # Step 2: Set "Stato assegnazione" filter to "Tutto"
-            # print("   Setting filter to 'Tutto'...")
-            # try:
-            #     stato_dropdown = WebDriverWait(self.driver, 10).until(
-            #         EC.element_to_be_clickable(
-            #             (By.XPATH, "//select[contains(@id, 'lrasQry:value20')] | "
-            #                        "//a[contains(@id, 'lrasQry:value20::drop')]")))
-            #     stato_dropdown.click()
-            #     time.sleep(1)
-            #
-            #     tutto_option = WebDriverWait(self.driver, 5).until(
-            #         EC.element_to_be_clickable(
-            #             (By.XPATH, "//li[text()='Tutto'] | //option[text()='Tutto']")))
-            #     tutto_option.click()
-            #     print("   ✅ Set filter to 'Tutto'")
-            #     time.sleep(1)
-            # except Exception as e:
-            #     print(f"   ⚠️ Could not set 'Tutto' filter: {e}")
+            # Step 2: Set "Stato assegnazione" filter to "Tutto"
+            print("   Setting filter to 'Tutto'...")
+            try:
+                print("Clicking on 'Stato_assegnazione' dropdown")
+                stato_assegnazione_allievi = WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//span[contains(@class, 'x1kn')]/a[contains(@id, ':lrasQry:value20::drop')]")))
+                stato_assegnazione_allievi.click()
+                print("Clicking on 'Tutto' option")
+                stato_assegnazione_allievi_tutto = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '//*[contains(text(),"Tutto")]')))
+                stato_assegnazione_allievi_tutto.click()
+                print("Successfully clicked 'Tutto'.")
+            except Exception as e:
+                print(f"Initial setup (filter) failed. Cannot continue. Error: {e}")
+                return False
 
             # Step 3: Search for EACH matricola individually
             for matricola in expected_matricole:
