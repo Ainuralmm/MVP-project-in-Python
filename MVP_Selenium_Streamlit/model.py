@@ -2211,6 +2211,7 @@ class OracleAutomator:
             if scadenza_field:
                 scadenza_field.clear()
                 scadenza_field.send_keys(data_scadenza_str)
+                from selenium.webdriver.common.keys import Keys
                 scadenza_field.send_keys(Keys.TAB)
                 print(f"   ✅ Filled 'Data scadenza' with: {data_scadenza_str}")
             else:
