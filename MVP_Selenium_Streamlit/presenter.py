@@ -529,8 +529,6 @@ class CoursePresenter:
                 raise Exception("Nessun dato batch trovato.")
 
             editions = batch_data.get('editions', [])
-            # conv_online = batch_data.get('convocazione_online', True)
-            # conv_presenza = batch_data.get('convocazione_presenza', True)
             total_editions = len(editions)
 
             if total_editions == 0:
@@ -574,7 +572,8 @@ class CoursePresenter:
                     lista_nome = f"{edition_code}"
 
                     # Search for edition
-                    if not self.model._search_and_open_edition(edition_code):
+                    edition_result = self.model._search_and_open_edition(edition_code)
+                    if not edition_result:
                         results.append({
                             'edition': edition_code,
                             'status': '❌ Edizione non trovata',
@@ -582,11 +581,16 @@ class CoursePresenter:
                         })
                         continue
 
-                    # Add students
+                    edition_start_date = edition_result.get('start_date') if isinstance(edition_result, dict) else None
+                    edition_end_date = edition_result.get('end_date') if isinstance(edition_result, dict) else None
+
                     success = self.model._perform_student_addition_steps(
                         student_file_path=temp_file.name,
                         lista_nome=lista_nome,
+                        edition_start_date=edition_start_date,
+                        edition_end_date=edition_end_date,
                     )
+
 
                     if success:
                         results.append({
