@@ -1713,55 +1713,85 @@ class OracleAutomator:
                 print(f"Errore: Impossibile fare clic sulla scheda 'Edizioni'. Error: {e}")
                 return False
 
-    def _search_and_open_edition(self, edition_name, edition_publish_date_obj):
-            try:
-                date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
-                print(
-                    f"Model: Searching for edition '{edition_name}' with publish date {edition_publish_date_obj.strftime('%d/%m/%Y')}")
-                time.sleep(2) #remove it after bugging solved
+    def _search_and_open_edition(self, edition_code):
+        """
+        Search for an edition by its Numero Edizione (edition code) and open it.
 
-                # --- Fill Search Form (This part is correct) ---
-                title_input_edizione = self.wait.until(
-                    EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Titolo edizione']")))
-                # title_input_edizione.clear()
-                title_input_edizione.send_keys(edition_name)
+        Args:
+            edition_code (str): The edition number/code to search for.
 
-                date_input_edizione = self.wait.until(
-                    EC.presence_of_element_located((By.XPATH, "//input[@aria-label=' Data inizio pubblicazione']")))
-                date_str = edition_publish_date_obj.strftime('%d/%m/%Y')
-                self.driver.execute_script("arguments[0].value=arguments[1];", date_input_edizione, date_str)
-                date_input_edizione.send_keys(Keys.TAB)
-                time.sleep(2)  # remove it after bugging solved
+        Returns:
+            True if found and opened, False otherwise.
+        """
+        try:
+            print(f"Model: Searching for edition with code '{edition_code}'")
+            time.sleep(2)  # Wait for page to stabilize
 
-                search_button_edizione = self.wait.until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca']")))
-                search_button_edizione.click()
-                print("Model: Search submitted. Waiting for results.")
-                #time.sleep(2)  # remove it after bugging solved
+            # --- Step 1: Click the 'Numero edizione' dropdown to change search operator ---
+            numero_edizione_dropdown = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//*[contains(@id, ':operator6::drop')]")))
+            numero_edizione_dropdown.click()
+            self._pause_for_visual_check()
 
-                #checing for appeared results and choosing it
-                # It waits for the search to finish AND for that specific link to become clickable.
-                link_xpath = "//a[contains(@id, ':_ATp:srTbl:') and contains(@id, ':clnmLnk')]"
-                link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
-                print("Model: Found first result link. Clicking it...")
-                link.click()
-                self._pause_for_visual_check()
-                print(f"Model: Clicked on edition link.")
-                return True
+            # --- Step 2: Select 'Contains' option (3rd item in dropdown list) ---
+            numero_edizione_dropdown_contains = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//*[contains(@id, ':operator6::pop')]/li[3]")))
+            numero_edizione_dropdown_contains.click()
+            self._pause_for_visual_check()
+            time.sleep(2)
 
-            except Exception as e:
-                print(f"Model: Could not find/click edition '{edition_name}' with date {date_str}. Error: {e}")
-                # Try to save a screenshot to help debug
+            # --- Step 3: Enter the edition code in the search input ---
+            numero_edizione_input_xpaths = [
+                '//*[contains(@id, ":value60::content")]',
+                '//*[@aria-label=" Numero edizione"]',
+                '//input[contains(@id, ":clsQry2:value60::content")]',
+            ]
+
+            numero_edizione_input = None
+            for xpath in numero_edizione_input_xpaths:
                 try:
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    ss_path = f"error_search_edition_{timestamp}.png"
-                    self.driver.save_screenshot(ss_path)
-                    print(f"Saved screenshot on search error: {ss_path}")
-                except Exception as ss_e:
-                    print(f"Could not save screenshot: {ss_e}")
-                return False
+                    numero_edizione_input = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, xpath)))
+                    print(f"   Found edition input with: {xpath}")
+                    break
+                except:
+                    continue
 
-            # model.py (Corrected function)
+            if not numero_edizione_input:
+                raise Exception("Could not find 'Numero edizione' input field")
+
+            numero_edizione_input.clear()
+            numero_edizione_input.send_keys(edition_code)
+            print(f"   Entered edition code: {edition_code}")
+            self._pause_for_visual_check()
+
+            # --- Step 4: Click Search button ---
+            search_button_edizione = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca' or text()='Search']")))
+            search_button_edizione.click()
+            print("Model: Search submitted. Waiting for results.")
+
+            # --- Step 5: Wait for results and click first link ---
+            link_xpath = "//a[contains(@id, ':_ATp:srTbl:') and contains(@id, ':clnmLnk')]"
+            link = self.wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
+            print("Model: Found first result link. Clicking it...")
+            link.click()
+            self._pause_for_visual_check()
+            print(f"Model: Clicked on edition link for code '{edition_code}'.")
+            return True
+
+        except Exception as e:
+            print(f"Model: Could not find/click edition with code '{edition_code}'. Error: {e}")
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                ss_path = f"error_search_edition_{timestamp}.png"
+                self.driver.save_screenshot(ss_path)
+                print(f"Saved screenshot on search error: {ss_path}")
+            except Exception as ss_e:
+                print(f"Could not save screenshot: {ss_e}")
+            return False
+
+
 
     def _perform_student_addition_steps(self, student_list, conv_online, conv_presenza):
         try:

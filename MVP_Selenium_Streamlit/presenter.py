@@ -390,17 +390,16 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
-    ### HASHTAG: ADDED METHOD FOR STUDENT FLOW ###
+    ### METHOD FOR STUDENT FLOW
     def run_add_students(self, student_details):
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.secrets['ORACLE_USER']
             oracle_pass = st.secrets['ORACLE_PASS']
 
-            # Unpack details for function calls
+            # Unpack details
             course_name = student_details['course_name']
-            edition_name = student_details['edition_name']
-            edition_publish_date = student_details['edition_publish_date']
+            edition_code = student_details['edition_code']
             student_list = student_details['students']
             conv_online = student_details['convocazione_online']
             conv_presenza = student_details['convocazione_presenza']
@@ -424,26 +423,23 @@ class CoursePresenter:
                 raise Exception("Impossibile aprire la pagina dei dettagli del corso.")
 
             self.view.update_progress("student", "Apertura scheda 'Edizioni'...", 50)
-            # This new helper function just clicks the tab
             if not self.model.open_edizioni_tab():
                 raise Exception("Impossibile fare clic sulla scheda 'Edizioni'.")
 
-            self.view.update_progress("student", f"Ricerca dell'edizione '{edition_name}'...", 60)
-            ### HASHTAG: THIS IS THE FIX FOR YOUR TypeError ✅ ###
-            # Now calling the *correct* model function with the *correct* arguments
-            if not self.model._search_and_open_edition(edition_name, edition_publish_date):
+            self.view.update_progress("student", f"Ricerca dell'edizione codice '{edition_code}'...", 60)
+            # UPDATED: Now using edition_code only (no publish date needed)
+            if not self.model._search_and_open_edition(edition_code):
                 raise Exception(
-                    f"Edizione '{edition_name}' (pubbl. {edition_publish_date.strftime('%d/%m/%Y')}) non trovata.")
+                    f"Edizione con codice '{edition_code}' non trovata.")
 
             self.view.update_progress("student", f"Aggiunta di {num_students} allievi...", 75)
-            # Call the model method that *only* adds students
             success = self.model._perform_student_addition_steps(student_list, conv_online, conv_presenza)
 
             if not success:
                 raise Exception("Errore durante l'aggiunta degli allievi.")
 
             self.view.update_progress("student", "Processo completato!", 100)
-            result_message = f"✅🤩 Successo! {len(student_list)} allievi aggiunti all'edizione '{edition_name}'."
+            result_message = f"✅🤩 Successo! {len(student_list)} allievi aggiunti all'edizione codice '{edition_code}'."
             self.view.show_message("student", result_message)
 
         except Exception as e:
@@ -453,7 +449,6 @@ class CoursePresenter:
 
         finally:
             print("Presenter (Student Add): Automation finished. Cleaning up.")
-            # Ensure model driver is closed even if login happens inside model method
             if hasattr(self.model, 'driver') and self.model.driver:
                 self.model.close()
             st.session_state.app_state = "IDLE"
