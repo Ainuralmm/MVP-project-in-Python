@@ -772,7 +772,8 @@ class CoursePresenter:
 
                 try:
                     # Search and open edition
-                    if not self.model._search_and_open_edition(edition_code):
+                    edition_result = self.model._search_and_open_edition(edition_code)
+                    if not edition_result:
                         results.append({
                             'edition': edition_code,
                             'expected': num_students,
