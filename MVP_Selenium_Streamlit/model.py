@@ -1808,46 +1808,48 @@ class OracleAutomator:
 
     def _search_and_open_edition(self, edition_code):
         """
-        Search for an edition by its Numero Edizione (edition code) and open it.
+        Search for an edition by code, extract dates from results, and open it.
+
+        Returns:
+            dict with 'success', 'start_date', 'end_date' on success
+            False on failure
         """
         try:
             print(f"Model: Searching for edition with code '{edition_code}'")
-            time.sleep(3)  # Wait for page to stabilize
+            time.sleep(3)
 
-            # Wait for any blocking overlay to clear first
+            # Wait for blocking overlay
             try:
                 WebDriverWait(self.driver, 5).until(
                     EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
             except:
                 pass
 
-            # First: set date of publication filter
+            # Set date filter
             try:
-                data_publicazione_edizione = WebDriverWait(self.driver, 10).until(
+                data_pub = WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, "//*[contains(@id,':value20::content')]")))
-                data_publicazione_edizione.clear()
-                data_publicazione_edizione.send_keys('01/01/2023')
+                data_pub.clear()
+                data_pub.send_keys('13/09/2020')
             except:
                 print("   ⚠️ Could not set publication date filter")
 
-            # Step 1: Click the 'Numero edizione' dropdown to change search operator
+            # Step 1: Click 'Numero edizione' dropdown
             numero_edizione_dropdown = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//*[contains(@id, ':operator6::drop')]")))
             numero_edizione_dropdown.click()
             self._pause_for_visual_check()
 
-            # Step 2: Select 'Contains' option (3rd item in dropdown list)
-            numero_edizione_dropdown_contains = self.wait.until(
-                EC.element_to_be_clickable((By.XPATH, "//*[contains(@id, ':operator6::pop')]/li[3]")))
-            numero_edizione_dropdown_contains.click()
+            # Step 2: Select 'Contains'
+            self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//*[contains(@id, ':operator6::pop')]/li[3]"))).click()
             self._pause_for_visual_check()
             time.sleep(2)
 
-            # Step 3: Enter the edition code in the search input
+            # Step 3: Enter edition code
             numero_edizione_input_xpaths = [
                 '//*[contains(@id, ":value60::content")]',
                 '//*[@aria-label=" Numero edizione"]',
-                '//input[contains(@id, ":clsQry2:value60::content")]',
             ]
 
             numero_edizione_input = None
@@ -1868,43 +1870,84 @@ class OracleAutomator:
             print(f"   Entered edition code: {edition_code}")
             self._pause_for_visual_check()
 
-            # Step 4: Click Search button
-            search_button_edizione = self.wait.until(
-                EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca' or text()='Search']")))
-            search_button_edizione.click()
+            # Step 4: Click Search
+            self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//button[text()='Cerca' or text()='Search']"))).click()
             print("Model: Search submitted. Waiting for results.")
 
-            # Step 5: Wait for results table to load
-            # Wait for blocking overlay to disappear first
             try:
                 WebDriverWait(self.driver, 15).until(
                     EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
             except:
                 pass
-            time.sleep(2)  # Extra stabilization
+            time.sleep(2)
 
-            # Step 6: Find and click the result link with RETRY
+            # ═══════════════════════════════════════════
+            # NEW: Extract dates from the results row
+            # ═══════════════════════════════════════════
+            # From screenshot: columns are:
+            # Numero edizione | Titolo edizione | Titolo corso | Data inizio pubblicazione | Data fine pubblicazione
+            # We need Data inizio pubblicazione (col 4) and Data fine pubblicazione (col 5)
+            # But actually we need EDITION start/end dates, not publication dates.
+            # The edition start/end are visible when you open the edition.
+            # However, from the search page we can see publication dates.
+            #
+            # ALTERNATIVE: We read the dates AFTER opening the edition detail page.
+            # For now, let's extract from the result row what's available.
+
+            edition_start_date = None
+            edition_end_date = None
+
+            try:
+                # Find the result row
+                result_row = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, "//a[contains(@id, ':_ATp:srTbl:') and contains(@id, ':clnmLnk')]/ancestor::tr")))
+
+                # Get all cells in the row
+                cells = result_row.find_elements(By.TAG_NAME, 'td')
+                print(f"   Found {len(cells)} cells in result row")
+
+                # Extract dates from cells (look for dd/mm/yyyy pattern)
+                import re
+                date_pattern = r'\b(\d{2}/\d{2}/\d{4})\b'
+                dates_found = []
+
+                for cell in cells:
+                    cell_text = cell.text.strip()
+                    date_matches = re.findall(date_pattern, cell_text)
+                    for d in date_matches:
+                        dates_found.append(d)
+
+                print(f"   Dates found in row: {dates_found}")
+
+                # The dates in order should be:
+                # dates_found[0] = Data inizio pubblicazione
+                # dates_found[1] = Data fine pubblicazione
+                # These are PUBLICATION dates, not edition dates.
+                # We'll extract EDITION dates from the detail page after clicking.
+
+            except Exception as e:
+                print(f"   ⚠️ Could not extract dates from search results: {e}")
+
+            # Step 6: Find and click result link with retry
             link_xpath = "//a[contains(@id, ':_ATp:srTbl:') and contains(@id, ':clnmLnk')]"
 
             link_clicked = False
             for attempt in range(3):
                 try:
-                    # Re-find the link fresh each attempt (avoid stale reference)
                     link = WebDriverWait(self.driver, 10).until(
                         EC.element_to_be_clickable((By.XPATH, link_xpath)))
                     print(f"Model: Found result link (attempt {attempt + 1}). Clicking...")
 
-                    # Scroll into view
                     self.driver.execute_script(
                         "arguments[0].scrollIntoView({block: 'center'});", link)
                     time.sleep(0.5)
 
-                    # Try normal click first
                     try:
                         link.click()
                         link_clicked = True
                     except (StaleElementReferenceException, ElementClickInterceptedException):
-                        # Re-find and try JS click
                         print(f"   ⚠️ Click failed (attempt {attempt + 1}), retrying...")
                         time.sleep(2)
                         link = self.driver.find_element(By.XPATH, link_xpath)
@@ -1913,15 +1956,14 @@ class OracleAutomator:
 
                     if link_clicked:
                         break
-
                 except Exception as e:
-                    print(f"   ⚠️ Attempt {attempt + 1} to find/click link failed: {e}")
+                    print(f"   ⚠️ Attempt {attempt + 1} failed: {e}")
                     time.sleep(3)
 
             if not link_clicked:
-                raise Exception(f"Could not click edition link after 3 attempts")
+                raise Exception("Could not click edition link after 3 attempts")
 
-            # Step 7: Wait for edition detail page to fully load
+            # Step 7: Wait for detail page to load
             print("   Waiting for edition detail page to load...")
             time.sleep(3)
 
@@ -1930,25 +1972,89 @@ class OracleAutomator:
                     EC.presence_of_element_located((By.XPATH,
                         "//a[contains(text(), 'Allievi')] | "
                         "//span[contains(text(), 'Allievi')] | "
-                        "//div[contains(@id, 'learnerTile')]"
-                    ))
-                )
-                print("   ✅ Edition detail page loaded (Allievi tab found)")
+                        "//div[contains(@id, 'learnerTile')]")))
+                print("   ✅ Edition detail page loaded")
             except:
                 print("   ⚠️ Could not confirm page load, waiting extra...")
                 time.sleep(5)
 
+            # ═══════════════════════════════════════════
+            # NEW: Extract edition start/end dates from detail page
+            # ═══════════════════════════════════════════
+            try:
+                # Click 'Definizione' tab (left sidebar) to see edition dates
+                definizione_tab = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//div[contains(@id, 'definitionTile')] | "
+                                   "//a[contains(text(), 'Definizione')]")))
+                definizione_tab.click()
+                time.sleep(2)
+
+                # Look for date fields on the definition page
+                # Edition start date
+                start_date_xpaths = [
+                    "//input[contains(@id, ':liSdDt::content')]",
+                    "//label[contains(text(), 'Data inizio')]/following::input[1]",
+                ]
+                for xpath in start_date_xpaths:
+                    try:
+                        start_field = self.driver.find_element(By.XPATH, xpath)
+                        start_val = start_field.get_attribute('value')
+                        if start_val:
+                            edition_start_date = start_val.strip()
+                            print(f"   ✅ Edition start date: {edition_start_date}")
+                        break
+                    except:
+                        continue
+
+                # Edition end date
+                end_date_xpaths = [
+                    "//input[contains(@id, ':liEdDt::content')]",
+                    "//label[contains(text(), 'Data fine')]/following::input[1]",
+                ]
+                for xpath in end_date_xpaths:
+                    try:
+                        end_field = self.driver.find_element(By.XPATH, xpath)
+                        end_val = end_field.get_attribute('value')
+                        if end_val:
+                            edition_end_date = end_val.strip()
+                            print(f"   ✅ Edition end date: {edition_end_date}")
+                        break
+                    except:
+                        continue
+
+                # If we couldn't find dates on Definizione, try page source
+                if not edition_start_date or not edition_end_date:
+                    print("   ⚠️ Could not find dates on Definizione tab, checking page text...")
+                    import re
+                    page_text = self.driver.find_element(By.TAG_NAME, 'body').text
+                    date_matches = re.findall(r'\b(\d{2}/\d{2}/\d{4})\b', page_text)
+                    if date_matches and len(date_matches) >= 2:
+                        if not edition_start_date:
+                            edition_start_date = date_matches[0]
+                        if not edition_end_date:
+                            edition_end_date = date_matches[1]
+                        print(f"   Found dates from page: start={edition_start_date}, end={edition_end_date}")
+
+            except Exception as e:
+                print(f"   ⚠️ Error extracting edition dates: {e}")
+
             self._pause_for_visual_check()
-            print(f"Model: Clicked on edition link for code '{edition_code}'.")
-            return True
+            print(f"Model: Opened edition '{edition_code}'. "
+                  f"Dates: start={edition_start_date}, end={edition_end_date}")
+
+            # Return dict with success and dates
+            return {
+                'success': True,
+                'start_date': edition_start_date,
+                'end_date': edition_end_date
+            }
 
         except Exception as e:
-            print(f"Model: Could not find/click edition with code '{edition_code}'. Error: {e}")
+            print(f"Model: Could not find/click edition '{edition_code}'. Error: {e}")
             try:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                ss_path = f"error_search_edition_{timestamp}.png"
-                self.driver.save_screenshot(ss_path)
-                print(f"Saved screenshot on search error: {ss_path}")
+                self.driver.save_screenshot(f"error_search_edition_{timestamp}.png")
             except:
                 pass
             return False
