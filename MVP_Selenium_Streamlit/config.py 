@@ -36,6 +36,7 @@ LOGIN_SUBMIT_FALLBACK_3  = '//button[@type="submit"]'
 # =============================================================================
 # MAIN NAVIGATION
 # =============================================================================
+NAV_NEW_HOMEPAGE_BUTTON = '//*[@id="pt1:commandLink1"]'
 NAV_WORKFORCE_MENU  = '//*[@id="groupNode_workforce_management"]'
 NAV_LEARN_ADMIN     = 'WLF_FUSE_LEARN_ADMIN'           # used with By.ID
 NAV_CORSI_LINK      = '//a[@title="Corsi" and text()="Corsi"]'
