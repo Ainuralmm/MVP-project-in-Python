@@ -874,7 +874,7 @@ class CourseView:
                     )
 
                     st.text_area(
-                        "Programma (opzionale)",
+                        "Programma",
                         value=course.get('programme', ''),
                         key=f"edit_prog_{idx}",
                         height=80,
@@ -1389,7 +1389,7 @@ class CourseView:
             )
 
             programme = st.text_area(
-                "Dettagli del Programma (opzionale)",
+                "Dettagli del Programma",
                 value=st.session_state.course_parsed_data.get('programme', ''),
                 key="summary_programme"
             )
@@ -1487,7 +1487,7 @@ class CourseView:
             with st.form(key='course_form'):
                 course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati",
                                              key="course_title_key")
-                programme = st.text_area("Dettagli del Programma", placeholder="Campo opzionale...",
+                programme = st.text_area("Dettagli del Programma",
                                          key="course_programme_key")
                 short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati - Informatica",
                                            key="course_short_desc_key")
@@ -2270,18 +2270,18 @@ class CourseView:
             st.subheader("Dettagli Edizione")
             st.text_input("Nome del Corso Esistente", placeholder="Nome corso esistente",
                           key="edition_course_name_key")
-            st.text_input("Titolo Edizione (opzionale)",
+            st.text_input("Titolo Edizione ",
                           placeholder="Lascia vuoto per usare il nome predefinito...",
                           key="edition_title_key")
             st.text_input("Data Inizio Edizione (GG/MM/AAAA)", key="edition_start_date_str_key")
             st.text_input("Data Fine Edizione (GG/MM/AAAA)", key="edition_end_date_str_key")
-            st.text_area("Descrizione Edizione (opzionale)", placeholder="Descrizione...",
+            st.text_area("Descrizione Edizione ", placeholder="Descrizione...",
                          key="edition_description_key")
-            st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA DE CARLI",
+            st.text_area("Aula Principale ", placeholder="Esempio: AULA DE CARLI",
                          key="edition_location_key")
-            st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: AEIT",
+            st.text_area("Nome Fornitore Formazione ", placeholder="Esempio: AEIT",
                          key="edition_supplier_key")
-            st.text_input("Prezzo Edizione (€) (opzionale)", placeholder="Esempio: 1000",
+            st.text_input("Prezzo Edizione (€) ", placeholder="Esempio: 1000",
                           key="edition_price_key")
 
             st.divider()
@@ -2868,7 +2868,7 @@ class CourseView:
                     key="edit_edition_course_name"
                 )
                 edition_title = st.text_input(
-                    "Titolo Edizione (opzionale)",
+                    "Titolo Edizione",
                     value=edition.get('edition_title', ''),
                     key="edit_edition_title"
                 )
