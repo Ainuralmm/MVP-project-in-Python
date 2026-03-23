@@ -1485,11 +1485,11 @@ class CourseView:
         # ========== METHOD 1: STRUCTURED INPUT (ORIGINAL) ==========
         if input_method == "structured":
             with st.form(key='course_form'):
-                course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati",
+                course_title = st.text_input("Titolo del Corso",
                                              key="course_title_key")
                 programme = st.text_area("Dettagli del Programma",
                                          key="course_programme_key")
-                short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati - Informatica",
+                short_desc = st.text_input("Breve Descrizione",
                                            key="course_short_desc_key")
                 date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", key="course_date_str_key")
 
@@ -2041,7 +2041,7 @@ class CourseView:
         Example input:
         "Crea edizione per corso Data Science01 titolo Winter Edition
          data inizio 12/02/2026 data fine 20/02/2026
-         aula Aula de carli fornitore Aeit costo 1000
+         aula Aula de carli fornitore AEIT costo 1000
          attività: primo giorno 12/02/2026 ore 09.00-11.00,
          secondo giorno 13/02/2026 ore 10.00-12.00"
         """
@@ -2277,9 +2277,9 @@ class CourseView:
             st.text_input("Data Fine Edizione (GG/MM/AAAA)", key="edition_end_date_str_key")
             st.text_area("Descrizione Edizione ", placeholder="Descrizione...",
                          key="edition_description_key")
-            st.text_area("Aula Principale ", placeholder="Esempio: AULA DE CARLI",
+            st.text_area("Aula Principale ",
                          key="edition_location_key")
-            st.text_area("Nome Fornitore Formazione ", placeholder="Esempio: AEIT",
+            st.text_area("Nome Fornitore Formazione ",
                          key="edition_supplier_key")
             st.text_input("Prezzo Edizione (€) ", placeholder="Esempio: 1000",
                           key="edition_price_key")
@@ -2326,7 +2326,7 @@ class CourseView:
 
         "Crea edizione per corso Data Science01 titolo Winter Edition
         data inizio 12/02/2026 data fine 20/02/2026
-        aula Aula de carli fornitore Aeit costo 1000
+        aula Aula de carli fornitore AEIT costo 1000
         attività: primo giorno 12/02/2026 ore 09.00-11.00,
         secondo giorno 13/02/2026 ore 10.00-12.00"
         """, icon="💡")
