@@ -1600,7 +1600,7 @@ class CourseView:
             st.info("""
             **Scrivi una frase che descriva il corso**, ad esempio:
 
-            - "Crea un corso titolo Analisi dei Dati con descrizione Informatica avanzata data inizio 15/03/2024"
+            - "Crea un corso titolo Analisi dei Dati con descrizione competenze digitali data inizio 15/03/2024"
 
             Il sistema estrarrà automaticamente le informazioni rilevanti.
             """, icon="💡")
