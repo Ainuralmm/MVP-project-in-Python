@@ -3360,10 +3360,10 @@ class CourseView:
                 )
 
                 st.divider()
-                st.subheader("2. Carica Elenco Matricole")
+                st.subheader("2. Carica Elenco Numero Persona")
 
                 uploaded_txt = st.file_uploader(
-                    "File TXT con matricole (una per riga)",
+                    "File TXT con numero persona (una per riga)",
                     type=['txt'],
                     key="student_txt_uploader"
                 )
@@ -3392,7 +3392,7 @@ class CourseView:
 
                 uploaded_txt = st.session_state.get("student_txt_uploader")
                 if uploaded_txt is None:
-                    st.error("❌ Carica un file .txt con le matricole.")
+                    st.error("❌ Carica un file .txt con numero persona per riga.")
                     st.stop()
 
                 # Read TXT file
@@ -3477,9 +3477,9 @@ class CourseView:
             st.info(
                 "**Scrivi una frase in italiano**, ad esempio:\n\n"
                 '- "Aggiungi allievi 1168, 1189, 1199 all\'edizione OLC466201"\n'
-                '- "Edizione OLC466201: matricole 1168 1189 1199 1216"\n'
+                '- "Edizione OLC466201: numero persona 1168 1189 1199 1216"\n'
                 '- "Per edizione OLC466201 inserisci 1168, 1189, 1199"\n\n'
-                "Il sistema estrarrà automaticamente il codice edizione e le matricole.",
+                "Il sistema estrarrà automaticamente il codice edizione e numero persona.",
                 icon="💬"
             )
 
@@ -3543,7 +3543,7 @@ class CourseView:
                                 key="nlp_partial_edition_code"
                             )
                             students_text = st.text_area(
-                                "Matricole (una per riga o separate da virgola)",
+                                "Numero Persona (una per riga o separate da virgola)",
                                 value='\n'.join(parsed.get('students', [])),
                                 key="nlp_partial_students",
                                 height=100
@@ -3580,7 +3580,7 @@ class CourseView:
                             "❌ Impossibile estrarre le informazioni.\n\n"
                             "Assicurati di includere:\n"
                             "- **Codice edizione** (es: OLC466201)\n"
-                            "- **Matricole** allievi (es: 1168, 1189, 1199)"
+                            "- **Numero persona** allievi (es: 1168, 1189, 1199)"
                         )
 
             with col2:
@@ -3592,12 +3592,12 @@ class CourseView:
 
     def _parse_student_nlp_input(self, text: str) -> 'Optional[Dict[str, Any]]':
         """
-        Parse natural language input to extract edition code and student matricole.
+        Parse natural language input to extract edition code and student numero persona.
 
         SUPPORTED FORMATS:
         - "Aggiungi allievi 1168, 1189, 1199 all'edizione OLC466201"
         - "Edizione OLC466201: allievi 1168 1189 1199"
-        - "OLC466201 matricole 1168, 1189, 1199, 1216"
+        - "OLC466201 numero persona 1168, 1189, 1199, 1216"
         - "Per edizione OLC466201 aggiungi 1168 1189 1199"
 
         Returns:
@@ -3669,7 +3669,7 @@ class CourseView:
                 st.write("- ❌ **Codice Edizione:** non trovato")
 
             if parsed['students']:
-                st.write(f"- ✅ **Allievi trovati:** {len(parsed['students'])} matricole")
+                st.write(f"- ✅ **Allievi trovati:** {len(parsed['students'])} numero persona")
             else:
                 st.write("- ❌ **Allievi:** nessuna numero persona trovata")
 
