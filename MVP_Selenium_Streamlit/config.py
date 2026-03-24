@@ -136,15 +136,12 @@ EDITION_PRICE_LISTINO_OPTION = '//*[contains(text(),"Prezzo di listino")]'
 EDITION_PRICE_COST_INPUT    = "//input[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:t1:0:it1::content')]"
 
 # =============================================================================
-# EDITION DETAIL PAGE - DEFINIZIONE TAB
+# EDITION SEARCH RESULTS - DATE EXTRACTION (from search results row)
 # =============================================================================
-EDITION_DEFINIZIONE_TAB_1 = "//div[contains(@id, 'definitionTile')]"
-EDITION_DEFINIZIONE_TAB_2 = "//a[contains(text(), 'Definizione')]"
-EDITION_DEFINIZIONE_TAB_3 = "//span[contains(text(), 'Definizione')]"
-EDITION_DATE_START_INPUT_1 = "//input[contains(@id, ':liSdDt::content')]"
-EDITION_DATE_START_INPUT_2 = "//input[contains(@id, 'liSdDt')]"
-EDITION_DATE_END_INPUT_1   = "//input[contains(@id, ':liEdDt::content')]"
-EDITION_DATE_END_INPUT_2   = "//input[contains(@id, 'liEdDt')]"
+EDITION_RESULT_ROW           = "//a[contains(@id, ':_ATp:srTbl:') and contains(@id, ':clnmLnk')]/ancestor::tr"
+EDITION_RESULT_PUB_START     = ".//*[contains(@id, ':sdDt::content')]"
+EDITION_RESULT_PUB_END       = ".//*[contains(@id, ':edDt::content')]"
+EDITION_RESULT_DATE_SPAN     = ".//td[contains(@class,'xen')]//span[contains(@class,'x2ey')]"
 
 # =============================================================================
 # ACTIVITY - CREATE (POPUP)
