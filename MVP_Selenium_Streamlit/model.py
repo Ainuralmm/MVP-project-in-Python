@@ -1341,7 +1341,7 @@ class OracleAutomator:
         """Search for an edition by code, extract dates, and open it."""
         try:
             print(f"Model: Searching for edition with code '{edition_code}'")
-            time.sleep(3)
+            time.sleep(1)
 
             try:
                 WebDriverWait(self.driver, 5).until(
@@ -1409,124 +1409,54 @@ class OracleAutomator:
             edition_start_date = None
             edition_end_date = None
 
-            # Find and click result link
-            link_xpath = EDITION_SEARCH_RESULT_LINK
-            link_clicked = False
-            for attempt in range(3):
+            # Extract dates directly from search results row BEFORE clicking
+            try:
+                # Find the result row
+                result_row = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_RESULT_ROW)))
+
+                # Strategy 1: Find span with publication start date by ID
                 try:
-                    link = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, link_xpath)))
-                    print(f"Model: Found result link (attempt {attempt + 1}). Clicking...")
-                    self.driver.execute_script(
-                        "arguments[0].scrollIntoView({block: 'center'});", link)
-                    time.sleep(0.5)
-                    try:
-                        link.click()
-                        link_clicked = True
-                    except (StaleElementReferenceException, ElementClickInterceptedException):
-                        print(f"   ⚠️ Click failed (attempt {attempt + 1}), retrying...")
-                        time.sleep(2)
-                        link = self.driver.find_element(By.XPATH, link_xpath)
-                        self.driver.execute_script("arguments[0].click();", link)
-                        link_clicked = True
-                    if link_clicked:
-                        break
-                except Exception as e:
-                    print(f"   ⚠️ Attempt {attempt + 1} failed: {e}")
-                    time.sleep(3)
+                    pub_start_span = result_row.find_element(
+                        By.XPATH, EDITION_RESULT_PUB_START)
+                    val = pub_start_span.text.strip()
+                    if val:
+                        edition_start_date = val
+                        print(f"   ✅ Publication start date: {edition_start_date}")
+                except:
+                    pass
 
-            if not link_clicked:
-                raise Exception("Could not click edition link after 3 attempts")
+                # Strategy 2: Find span with publication end date by ID
+                try:
+                    pub_end_span = result_row.find_element(
+                        By.XPATH, EDITION_RESULT_PUB_END)
+                    val = pub_end_span.text.strip()
+                    if val:
+                        edition_end_date = val
+                        print(f"   ✅ Publication end date: {edition_end_date}")
+                except:
+                    pass
 
-            # Wait for detail page
-            print("   Waiting for edition detail page to load...")
-            time.sleep(3)
-
-            try:
-                WebDriverWait(self.driver, 20).until(
-                    EC.presence_of_element_located((By.XPATH,
-                        f"{EDITION_DETAIL_CONFIRM_1} | "
-                        f"{EDITION_DETAIL_CONFIRM_2} | "
-                        f"{EDITION_DETAIL_CONFIRM_3}")))
-                print("   ✅ Edition detail page loaded")
-            except:
-                print("   ⚠️ Could not confirm page load, waiting extra...")
-                time.sleep(5)
-
-            # Extract edition start/end dates from detail page
-            try:
-                time.sleep(3)
-
-                # Strategy 1: Try clicking Definizione tab
-                definizione_clicked = False
-                definizione_xpaths = [
-                    EDITION_DEFINIZIONE_TAB_1,
-                    EDITION_DEFINIZIONE_TAB_2,
-                    EDITION_DEFINIZIONE_TAB_3,
-                ]
-                for xpath in definizione_xpaths:
-                    try:
-                        def_tab = WebDriverWait(self.driver, 5).until(
-                            EC.element_to_be_clickable((By.XPATH, xpath)))
-                        self.driver.execute_script(
-                            "arguments[0].scrollIntoView({block: 'center'});", def_tab)
-                        time.sleep(0.5)
-                        def_tab.click()
-                        definizione_clicked = True
-                        print(f"   ✅ Clicked Definizione tab with: {xpath}")
-                        time.sleep(2)
-                        break
-                    except:
-                        continue
-
-                if not definizione_clicked:
-                    print("   ⚠️ Could not click Definizione tab, trying current page")
-
-                # Strategy 2: Read date input fields directly
-                for xpath in [EDITION_DATE_START_INPUT_1, EDITION_DATE_START_INPUT_2]:
-                    try:
-                        start_field = WebDriverWait(self.driver, 5).until(
-                            EC.presence_of_element_located((By.XPATH, xpath)))
-                        start_val = start_field.get_attribute('value')
-                        if start_val and start_val.strip():
-                            edition_start_date = start_val.strip()
-                            print(f"   ✅ Edition start date: {edition_start_date}")
-                            break
-                    except:
-                        continue
-
-                for xpath in [EDITION_DATE_END_INPUT_1, EDITION_DATE_END_INPUT_2]:
-                    try:
-                        end_field = WebDriverWait(self.driver, 5).until(
-                            EC.presence_of_element_located((By.XPATH, xpath)))
-                        end_val = end_field.get_attribute('value')
-                        if end_val and end_val.strip():
-                            edition_end_date = end_val.strip()
-                            print(f"   ✅ Edition end date: {edition_end_date}")
-                            break
-                    except:
-                        continue
-
-                # Strategy 3: Scan ALL date inputs on page as last resort
+                # Strategy 3: If still missing, get ALL date spans from the row
                 if not edition_start_date or not edition_end_date:
-                    print("   ⚠️ Scanning all date inputs on page...")
+                    print("   ⚠️ Trying to read all date spans from result row...")
                     import re
-                    all_inputs = self.driver.find_elements(
-                        By.XPATH, "//input[@type='text']")
+                    date_spans = result_row.find_elements(
+                        By.XPATH, EDITION_RESULT_DATE_SPAN)
                     dates_found = []
-                    for inp in all_inputs:
-                        val = inp.get_attribute('value') or ''
-                        if re.match(r'\d{2}/\d{2}/\d{4}', val.strip()):
-                            dates_found.append(val.strip())
-                    print(f"   All dates found on page: {dates_found}")
-                    if len(dates_found) >= 2:
-                        if not edition_start_date:
-                            edition_start_date = dates_found[0]
-                        if not edition_end_date:
-                            edition_end_date = dates_found[1]
+                    for span in date_spans:
+                        val = span.text.strip()
+                        if re.match(r'\d{2}/\d{2}/\d{4}', val):
+                            dates_found.append(val)
+                    print(f"   Dates found in row: {dates_found}")
+                    if len(dates_found) >= 1 and not edition_start_date:
+                        edition_start_date = dates_found[0]
+                    if len(dates_found) >= 2 and not edition_end_date:
+                        edition_end_date = dates_found[1]
 
             except Exception as e:
-                print(f"   ⚠️ Error extracting edition dates: {e}")
+                print(f"   ⚠️ Could not extract dates from search results: {e}")
 
             self._pause_for_visual_check()
             print(f"Model: Opened edition '{edition_code}'. "
@@ -1556,7 +1486,7 @@ class OracleAutomator:
             # Step 0.1: Click Allievi tab
             print("Step 0.1: Clicking 'Allievi' tab...")
             # Wait longer for page to fully stabilize after navigation
-            time.sleep(5)
+            #time.sleep(5)
 
             # Wait for blocking overlay to disappear first
             try:
