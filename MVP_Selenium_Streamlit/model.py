@@ -1406,12 +1406,14 @@ class OracleAutomator:
                 pass
             time.sleep(2)
 
+            # ═══════════════════════════════════════════════════════
+            # STEP 1: EXTRACT DATES FROM SEARCH RESULTS ROW
+            # (do this BEFORE clicking, while row is still visible)
+            # ═══════════════════════════════════════════════════════
             edition_start_date = None
             edition_end_date = None
 
-            # Extract dates directly from search results row BEFORE clicking
             try:
-                # Find the result row
                 result_row = WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located(
                         (By.XPATH, EDITION_RESULT_ROW)))
@@ -1457,6 +1459,58 @@ class OracleAutomator:
 
             except Exception as e:
                 print(f"   ⚠️ Could not extract dates from search results: {e}")
+
+            # ═══════════════════════════════════════════════════════
+            # STEP 2: CLICK THE EDITION LINK TO OPEN IT
+            # (this runs ALWAYS — after date extraction, not inside it)
+            # ═══════════════════════════════════════════════════════
+            print(f"   Clicking edition link to open it...")
+            link_xpath = EDITION_SEARCH_RESULT_LINK
+            link_clicked = False
+
+            for attempt in range(3):
+                try:
+                    link = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, link_xpath)))
+                    print(f"   Found result link (attempt {attempt + 1}). Clicking...")
+                    self.driver.execute_script(
+                        "arguments[0].scrollIntoView({block: 'center'});", link)
+                    time.sleep(0.5)
+                    try:
+                        link.click()
+                        link_clicked = True
+                    except (StaleElementReferenceException,
+                            ElementClickInterceptedException):
+                        print(f"   ⚠️ Click failed, retrying...")
+                        time.sleep(2)
+                        link = self.driver.find_element(By.XPATH, link_xpath)
+                        self.driver.execute_script("arguments[0].click();", link)
+                        link_clicked = True
+                    if link_clicked:
+                        break
+                except Exception as e:
+                    print(f"   ⚠️ Attempt {attempt + 1} failed: {e}")
+                    time.sleep(3)
+
+            if not link_clicked:
+                raise Exception("Could not click edition link after 3 attempts")
+
+            # ═══════════════════════════════════════════════════════
+            # STEP 3: WAIT FOR EDITION DETAIL PAGE TO LOAD
+            # ═══════════════════════════════════════════════════════
+            print("   Waiting for edition detail page to load...")
+            time.sleep(3)
+
+            try:
+                WebDriverWait(self.driver, 20).until(
+                    EC.presence_of_element_located((By.XPATH,
+                                                    f"{EDITION_DETAIL_CONFIRM_1} | "
+                                                    f"{EDITION_DETAIL_CONFIRM_2} | "
+                                                    f"{EDITION_DETAIL_CONFIRM_3}")))
+                print("   ✅ Edition detail page loaded")
+            except:
+                print("   ⚠️ Could not confirm page load, waiting extra...")
+                time.sleep(5)
 
             self._pause_for_visual_check()
             print(f"Model: Opened edition '{edition_code}'. "
