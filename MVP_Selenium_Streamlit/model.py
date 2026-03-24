@@ -1455,42 +1455,75 @@ class OracleAutomator:
 
             # Extract edition start/end dates from detail page
             try:
-                definizione_tab = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH,
-                        "//div[contains(@id, 'definitionTile')] | "
-                        "//a[contains(text(), 'Definizione')]")))
-                definizione_tab.click()
-                time.sleep(2)
+                time.sleep(3)
 
-                start_date_xpaths = [
-                    "//input[contains(@id, ':liSdDt::content')]",
-                    "//label[contains(text(), 'Data inizio')]/following::input[1]",
+                # Strategy 1: Try clicking Definizione tab
+                definizione_clicked = False
+                definizione_xpaths = [
+                    EDITION_DEFINIZIONE_TAB_1,
+                    EDITION_DEFINIZIONE_TAB_2,
+                    EDITION_DEFINIZIONE_TAB_3,
                 ]
-                for xpath in start_date_xpaths:
+                for xpath in definizione_xpaths:
                     try:
-                        start_field = self.driver.find_element(By.XPATH, xpath)
+                        def_tab = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, xpath)))
+                        self.driver.execute_script(
+                            "arguments[0].scrollIntoView({block: 'center'});", def_tab)
+                        time.sleep(0.5)
+                        def_tab.click()
+                        definizione_clicked = True
+                        print(f"   ✅ Clicked Definizione tab with: {xpath}")
+                        time.sleep(2)
+                        break
+                    except:
+                        continue
+
+                if not definizione_clicked:
+                    print("   ⚠️ Could not click Definizione tab, trying current page")
+
+                # Strategy 2: Read date input fields directly
+                for xpath in [EDITION_DATE_START_INPUT_1, EDITION_DATE_START_INPUT_2]:
+                    try:
+                        start_field = WebDriverWait(self.driver, 5).until(
+                            EC.presence_of_element_located((By.XPATH, xpath)))
                         start_val = start_field.get_attribute('value')
-                        if start_val:
+                        if start_val and start_val.strip():
                             edition_start_date = start_val.strip()
                             print(f"   ✅ Edition start date: {edition_start_date}")
-                        break
+                            break
                     except:
                         continue
 
-                end_date_xpaths = [
-                    "//input[contains(@id, ':liEdDt::content')]",
-                    "//label[contains(text(), 'Data fine')]/following::input[1]",
-                ]
-                for xpath in end_date_xpaths:
+                for xpath in [EDITION_DATE_END_INPUT_1, EDITION_DATE_END_INPUT_2]:
                     try:
-                        end_field = self.driver.find_element(By.XPATH, xpath)
+                        end_field = WebDriverWait(self.driver, 5).until(
+                            EC.presence_of_element_located((By.XPATH, xpath)))
                         end_val = end_field.get_attribute('value')
-                        if end_val:
+                        if end_val and end_val.strip():
                             edition_end_date = end_val.strip()
                             print(f"   ✅ Edition end date: {edition_end_date}")
-                        break
+                            break
                     except:
                         continue
+
+                # Strategy 3: Scan ALL date inputs on page as last resort
+                if not edition_start_date or not edition_end_date:
+                    print("   ⚠️ Scanning all date inputs on page...")
+                    import re
+                    all_inputs = self.driver.find_elements(
+                        By.XPATH, "//input[@type='text']")
+                    dates_found = []
+                    for inp in all_inputs:
+                        val = inp.get_attribute('value') or ''
+                        if re.match(r'\d{2}/\d{2}/\d{4}', val.strip()):
+                            dates_found.append(val.strip())
+                    print(f"   All dates found on page: {dates_found}")
+                    if len(dates_found) >= 2:
+                        if not edition_start_date:
+                            edition_start_date = dates_found[0]
+                        if not edition_end_date:
+                            edition_end_date = dates_found[1]
 
             except Exception as e:
                 print(f"   ⚠️ Error extracting edition dates: {e}")
@@ -1522,9 +1555,29 @@ class OracleAutomator:
 
             # Step 0.1: Click Allievi tab
             print("Step 0.1: Clicking 'Allievi' tab...")
+            # Wait longer for page to fully stabilize after navigation
+            time.sleep(5)
+
+            # Wait for blocking overlay to disappear first
+            try:
+                WebDriverWait(self.driver, 15).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
+            # Extra wait for page to be fully interactive
+            time.sleep(3)
+
             allievi_tab = self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, STUDENT_ALLIEVI_TAB)))
-            allievi_tab.click()
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});", allievi_tab)
+            time.sleep(1)
+            try:
+                allievi_tab.click()
+            except Exception:
+                self.driver.execute_script("arguments[0].click();", allievi_tab)
             print("   ✅ Clicked 'Allievi' tab")
             self._pause_for_visual_check()
 
