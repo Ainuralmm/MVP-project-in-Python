@@ -874,7 +874,7 @@ class CourseView:
                     )
 
                     st.text_area(
-                        "Programma (opzionale)",
+                        "Programma",
                         value=course.get('programme', ''),
                         key=f"edit_prog_{idx}",
                         height=80,
@@ -1389,7 +1389,7 @@ class CourseView:
             )
 
             programme = st.text_area(
-                "Dettagli del Programma (opzionale)",
+                "Dettagli del Programma",
                 value=st.session_state.course_parsed_data.get('programme', ''),
                 key="summary_programme"
             )
@@ -1485,11 +1485,11 @@ class CourseView:
         # ========== METHOD 1: STRUCTURED INPUT (ORIGINAL) ==========
         if input_method == "structured":
             with st.form(key='course_form'):
-                course_title = st.text_input("Titolo del Corso", placeholder="Esempio: Analisi dei Dati",
+                course_title = st.text_input("Titolo del Corso",
                                              key="course_title_key")
-                programme = st.text_area("Dettagli del Programma", placeholder="Campo opzionale...",
+                programme = st.text_area("Dettagli del Programma",
                                          key="course_programme_key")
-                short_desc = st.text_input("Breve Descrizione", placeholder="Esempio: Analisi dei Dati - Informatica",
+                short_desc = st.text_input("Breve Descrizione",
                                            key="course_short_desc_key")
                 date_str = st.text_input("Data di Pubblicazione (GG/MM/AAAA)", key="course_date_str_key")
 
@@ -1600,7 +1600,7 @@ class CourseView:
             st.info("""
             **Scrivi una frase che descriva il corso**, ad esempio:
 
-            - "Crea un corso titolo Analisi dei Dati con descrizione Informatica avanzata data inizio 15/03/2024"
+            - "Crea un corso titolo Analisi dei Dati con descrizione competenze digitali data inizio 15/03/2024"
 
             Il sistema estrarrà automaticamente le informazioni rilevanti.
             """, icon="💡")
@@ -2039,9 +2039,13 @@ class CourseView:
         Parse natural language input to extract edition and activities.
 
         Example input:
-        "Crea edizione per corso Data Science01 titolo Winter Edition
+        "Crea edizione per corso Analisi dei dati titolo Analisi dei dati - Base
          data inizio 12/02/2026 data fine 20/02/2026
-         aula Aula de carli fornitore Aeit costo 1000
+         aula Aula de carli fornitore AEIT costo 1000 con CENTRO DI COSTO - TP00001,
+         DIREZIONE PAGANTE - Direzione Operativa - VAM,	FINANZIATA - no,
+         SERVIZIO PAGANTE - Impianti di Cogenerazione UT Verona,
+         SOTTOTIPOLOGIA-	Office Automation & Produttività,
+         SOCIETA' PAGANTE - Magis Calore S.r.l.
          attività: primo giorno 12/02/2026 ore 09.00-11.00,
          secondo giorno 13/02/2026 ore 10.00-12.00"
         """
@@ -2270,18 +2274,18 @@ class CourseView:
             st.subheader("Dettagli Edizione")
             st.text_input("Nome del Corso Esistente", placeholder="Nome corso esistente",
                           key="edition_course_name_key")
-            st.text_input("Titolo Edizione (opzionale)",
+            st.text_input("Titolo Edizione ",
                           placeholder="Lascia vuoto per usare il nome predefinito...",
                           key="edition_title_key")
             st.text_input("Data Inizio Edizione (GG/MM/AAAA)", key="edition_start_date_str_key")
             st.text_input("Data Fine Edizione (GG/MM/AAAA)", key="edition_end_date_str_key")
-            st.text_area("Descrizione Edizione (opzionale)", placeholder="Descrizione...",
+            st.text_area("Descrizione Edizione ", placeholder="Descrizione...",
                          key="edition_description_key")
-            st.text_area("Aula Principale (opzionale)", placeholder="Esempio: AULA DE CARLI",
+            st.text_area("Aula Principale ",
                          key="edition_location_key")
-            st.text_area("Nome Fornitore Formazione (opzionale)", placeholder="Esempio: AEIT",
+            st.text_area("Nome Fornitore Formazione ",
                          key="edition_supplier_key")
-            st.text_input("Prezzo Edizione (€) (opzionale)", placeholder="Esempio: 1000",
+            st.text_input("Prezzo Edizione (€) ", placeholder="Esempio: 1000",
                           key="edition_price_key")
 
             st.divider()
@@ -2326,7 +2330,7 @@ class CourseView:
 
         "Crea edizione per corso Data Science01 titolo Winter Edition
         data inizio 12/02/2026 data fine 20/02/2026
-        aula Aula de carli fornitore Aeit costo 1000
+        aula Aula de carli fornitore AEIT costo 1000
         attività: primo giorno 12/02/2026 ore 09.00-11.00,
         secondo giorno 13/02/2026 ore 10.00-12.00"
         """, icon="💡")
@@ -2868,7 +2872,7 @@ class CourseView:
                     key="edit_edition_course_name"
                 )
                 edition_title = st.text_input(
-                    "Titolo Edizione (opzionale)",
+                    "Titolo Edizione",
                     value=edition.get('edition_title', ''),
                     key="edit_edition_title"
                 )
@@ -3217,7 +3221,7 @@ class CourseView:
 
             # --- Find person number column ---
             person_col_names = [
-                'person number', 'person_number', 'matricola',
+                'person number', 'person_number', 'numero persona',
                 'numero persona', 'numero_persona', 'number', 'id'
             ]
             person_col = None
@@ -3341,7 +3345,7 @@ class CourseView:
         # ══════════════════════════════════════════════════
         if student_method == "txt":
             st.info(
-                "**Carica un file .txt** con un numero di matricola per riga.\n\n"
+                "**Carica un file .txt** con un numero di numero persona per riga.\n\n"
                 "Esempio contenuto file:\n"
                 "```\n1168\n1189\n1199\n1216\n```",
                 icon="📄"
@@ -3356,10 +3360,10 @@ class CourseView:
                 )
 
                 st.divider()
-                st.subheader("2. Carica Elenco Matricole")
+                st.subheader("2. Carica Elenco Numero Persona")
 
                 uploaded_txt = st.file_uploader(
-                    "File TXT con matricole (una per riga)",
+                    "File TXT con numero persona (una per riga)",
                     type=['txt'],
                     key="student_txt_uploader"
                 )
@@ -3388,7 +3392,7 @@ class CourseView:
 
                 uploaded_txt = st.session_state.get("student_txt_uploader")
                 if uploaded_txt is None:
-                    st.error("❌ Carica un file .txt con le matricole.")
+                    st.error("❌ Carica un file .txt con numero persona per riga.")
                     st.stop()
 
                 # Read TXT file
@@ -3407,7 +3411,7 @@ class CourseView:
                     st.stop()
 
                 if not student_list:
-                    st.error("❌ Nessuna matricola trovata nel file.")
+                    st.error("❌ Nessuna numero persona trovata nel file.")
                     st.stop()
 
                 # Store parsed data and show preview (same as Excel flow)
@@ -3432,7 +3436,7 @@ class CourseView:
                 "| OLC466201       | 1168          |\n"
                 "| OLC466201       | 1189          |\n"
                 "| OLC466202       | 1247          |\n\n"
-                "Il file può contenere studenti per **più edizioni**.\n"
+                "Il file può contenere allievi per **più edizioni**.\n"
                 "I dati vengono letti dal foglio **ALLIEVI** (4° foglio).",
                 icon="📊"
             )
@@ -3472,10 +3476,10 @@ class CourseView:
         elif student_method == "nlp":
             st.info(
                 "**Scrivi una frase in italiano**, ad esempio:\n\n"
-                '- "Aggiungi studenti 1168, 1189, 1199 all\'edizione OLC466201"\n'
-                '- "Edizione OLC466201: matricole 1168 1189 1199 1216"\n'
+                '- "Aggiungi allievi 1168, 1189, 1199 all\'edizione OLC466201"\n'
+                '- "Edizione OLC466201: numero persona 1168 1189 1199 1216"\n'
                 '- "Per edizione OLC466201 inserisci 1168, 1189, 1199"\n\n'
-                "Il sistema estrarrà automaticamente il codice edizione e le matricole.",
+                "Il sistema estrarrà automaticamente il codice edizione e numero persona.",
                 icon="💬"
             )
 
@@ -3486,7 +3490,7 @@ class CourseView:
             nlp_text = st.text_area(
                 "Descrivi l'inserimento in linguaggio naturale:",
                 height=150,
-                #placeholder="Aggiungi studenti 1168, 1189, 1199 all'edizione OLC466201",
+                #placeholder="Aggiungi allievi 1168, 1189, 1199 all'edizione OLC466201",
                 key="student_nlp_text_area"
             )
 
@@ -3539,7 +3543,7 @@ class CourseView:
                                 key="nlp_partial_edition_code"
                             )
                             students_text = st.text_area(
-                                "Matricole (una per riga o separate da virgola)",
+                                "Numero Persona (una per riga o separate da virgola)",
                                 value='\n'.join(parsed.get('students', [])),
                                 key="nlp_partial_students",
                                 height=100
@@ -3557,7 +3561,7 @@ class CourseView:
                                 ]
 
                                 if not student_list:
-                                    st.error("❌ Inserisci almeno una matricola.")
+                                    st.error("❌ Inserisci almeno un numero persona.")
                                     st.stop()
 
                                 batch_format = {
@@ -3576,7 +3580,7 @@ class CourseView:
                             "❌ Impossibile estrarre le informazioni.\n\n"
                             "Assicurati di includere:\n"
                             "- **Codice edizione** (es: OLC466201)\n"
-                            "- **Matricole** studenti (es: 1168, 1189, 1199)"
+                            "- **Numero persona** allievi (es: 1168, 1189, 1199)"
                         )
 
             with col2:
@@ -3588,12 +3592,12 @@ class CourseView:
 
     def _parse_student_nlp_input(self, text: str) -> 'Optional[Dict[str, Any]]':
         """
-        Parse natural language input to extract edition code and student matricole.
+        Parse natural language input to extract edition code and student numero persona.
 
         SUPPORTED FORMATS:
-        - "Aggiungi studenti 1168, 1189, 1199 all'edizione OLC466201"
-        - "Edizione OLC466201: studenti 1168 1189 1199"
-        - "OLC466201 matricole 1168, 1189, 1199, 1216"
+        - "Aggiungi allievi 1168, 1189, 1199 all'edizione OLC466201"
+        - "Edizione OLC466201: allievi 1168 1189 1199"
+        - "OLC466201 numero persona 1168, 1189, 1199, 1216"
         - "Per edizione OLC466201 aggiungi 1168 1189 1199"
 
         Returns:
@@ -3628,8 +3632,8 @@ class CourseView:
                 parsed['edition_code'] = match.group(1).strip()
                 break
 
-        # === STEP 2: Extract matricola numbers ===
-        # Strategy: find ALL numbers that are 3-7 digits (typical matricola range)
+        # === STEP 2: Extract numero persona numbers ===
+        # Strategy: find ALL numbers that are 3-7 digits (typical numero persona range)
         # but exclude the edition code itself
 
         # First, remove the edition code from text to avoid confusion
@@ -3637,7 +3641,7 @@ class CourseView:
         if parsed['edition_code']:
             text_for_numbers = text_for_numbers.replace(parsed['edition_code'], '')
 
-        # Find all numbers (3-7 digits = typical matricola)
+        # Find all numbers (3-7 digits = typical numero persona)
         all_numbers = re.findall(r'\b(\d{3,7})\b', text_for_numbers)
 
         # Deduplicate while preserving order
@@ -3654,7 +3658,7 @@ class CourseView:
             missing_fields.append("Codice Edizione")
 
         if not parsed['students']:
-            missing_fields.append("Matricole Studenti")
+            missing_fields.append("Numero Persona")
 
         if missing_fields:
             st.warning(f"⚠️ Campi mancanti: {', '.join(missing_fields)}")
@@ -3665,9 +3669,9 @@ class CourseView:
                 st.write("- ❌ **Codice Edizione:** non trovato")
 
             if parsed['students']:
-                st.write(f"- ✅ **Studenti trovati:** {len(parsed['students'])} matricole")
+                st.write(f"- ✅ **Allievi trovati:** {len(parsed['students'])} numero persona")
             else:
-                st.write("- ❌ **Studenti:** nessuna matricola trovata")
+                st.write("- ❌ **Allievi:** nessuna numero persona trovata")
 
             # Return partial data if at least something was found
             if parsed['edition_code'] or parsed['students']:
@@ -3695,14 +3699,14 @@ class CourseView:
                     expanded=(idx == 0)
             ):
                 # Show students in a table
-                student_data = [{'#': i + 1, 'Matricola': s} for i, s in enumerate(students)]
+                student_data = [{'#': i + 1, 'Numero persona': s} for i, s in enumerate(students)]
                 st.dataframe(
                     pd.DataFrame(student_data),
                     width='stretch',
                     hide_index=True,
                     column_config={
                         '#': st.column_config.NumberColumn('#', width='small'),
-                        'Matricola': st.column_config.TextColumn('Matricola', width='medium')
+                        'Numero persona': st.column_config.TextColumn('Numero Persona', width='medium')
                     }
                 )
 
