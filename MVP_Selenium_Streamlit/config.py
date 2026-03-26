@@ -136,6 +136,18 @@ EDITION_PRICE_LISTINO_OPTION = '//*[contains(text(),"Prezzo di listino")]'
 EDITION_PRICE_COST_INPUT    = "//input[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:t1:0:it1::content')]"
 
 # =============================================================================
+# EDITION - ATTRIBUTI AGGIUNTIVI (new fields after price)
+# =============================================================================
+EDITION_CENTRO_COSTO_INPUT     = '//input[contains(@id, "IteratorcomuneFuoriComune__FLEX_EMPTY::content")]'
+EDITION_DIREZIONE_PAG_INPUT    = '//input[contains(@id, "IteratordirezionePagante__FLEX_EMPTY::content")]'
+EDITION_FINANZIATA_LOV         = '//a[contains(@id, "Iteratorfinanziata_Display__FLEX_EMPTY::lovIconId")]'
+EDITION_FINANZIATA_SI          = '//td[contains(@class,"xen")]//span[normalize-space(text())="Sì"]'
+EDITION_FINANZIATA_NO          = '//td[contains(@class,"xen")]//span[normalize-space(text())="No"]'
+EDITION_SERVIZIO_PAG_INPUT     = '//input[contains(@id, "IteratorservizioPagante__FLEX_EMPTY::content")]'
+EDITION_SOTTOTIPOLOGIA_INPUT   = '//input[contains(@id, "Iteratorsottotipologia__FLEX_EMPTY::content")]'
+EDITION_SOCIETA_PAG_INPUT      = '//input[contains(@id, "IteratorsocietaPagante__FLEX_EMPTY::content")]'
+
+# =============================================================================
 # EDITION SEARCH RESULTS - DATE EXTRACTION (from search results row)
 # =============================================================================
 EDITION_RESULT_ROW           = "//a[contains(@id, ':_ATp:srTbl:') and contains(@id, ':clnmLnk')]/ancestor::tr"
