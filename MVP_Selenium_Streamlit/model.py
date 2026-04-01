@@ -1338,6 +1338,16 @@ class OracleAutomator:
             self._fill_edition_supplier(supplier)
             self._fill_edition_price(price)
 
+            # Fill Attributi Aggiuntivi
+            self._fill_edition_attributi_aggiuntivi(
+                centro_costo=edition_details.get('centro_costo', ''),
+                direzione_pagante=edition_details.get('direzione_pagante', ''),
+                finanziata=edition_details.get('finanziata', ''),
+                servizio_pagante=edition_details.get('servizio_pagante', ''),
+                sottotipologia=edition_details.get('sottotipologia', ''),
+                societa_pagante=edition_details.get('societa_pagante', '')
+            )
+
             # Step 6: Save edition
             print(f"\n[6] Saving edition...")
             time.sleep(1)
