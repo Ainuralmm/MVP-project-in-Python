@@ -2060,7 +2060,14 @@ class CourseView:
             'supplier': '',
             'price': '',
             'description': '',
-            'activities': []
+            'activities': [],
+            # NEW:
+            'centro_costo': '',
+            'direzione_pagante': '',
+            'finanziata': '',
+            'servizio_pagante': '',
+            'sottotipologia': '',
+            'societa_pagante': '',
         }
 
         text_lower = text.lower()
