@@ -268,7 +268,14 @@ class CoursePresenter:
                         price=edition.get('price', ''),
                         description=edition.get('description', ''),
                         activities=activities,
-                        return_to_courses_page=True
+                        return_to_courses_page=True,
+                        # NEW:
+                        centro_costo=edition.get('centro_costo', ''),
+                        direzione_pagante=edition.get('direzione_pagante', ''),
+                        finanziata=edition.get('finanziata', ''),
+                        servizio_pagante=edition.get('servizio_pagante', ''),
+                        sottotipologia=edition.get('sottotipologia', ''),
+                        societa_pagante=edition.get('societa_pagante', ''),
                     )
 
                     if success:
