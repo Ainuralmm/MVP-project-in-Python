@@ -2121,6 +2121,58 @@ class CourseView:
         if price_match:
             parsed['price'] = price_match.group(1)
 
+        # --- Centro di Costo ---
+        centro_costo_match = re.search(
+            r'centro\s+di\s+costo\s*[-–:]\s*([^,]+?)(?:,|\s+direzione|\s+finanziata|$)',
+            text_lower)
+        if centro_costo_match:
+            start = centro_costo_match.start(1)
+            end = centro_costo_match.end(1)
+            parsed['centro_costo'] = text[start:end].strip()
+
+        # --- Direzione Pagante ---
+        direzione_match = re.search(
+            r'direzione\s+pagante\s*[-–:]\s*([^,]+?)(?:,|\s+finanziata|\s+servizio|$)',
+            text_lower)
+        if direzione_match:
+            start = direzione_match.start(1)
+            end = direzione_match.end(1)
+            parsed['direzione_pagante'] = text[start:end].strip()
+
+        # --- Finanziata ---
+        finanziata_match = re.search(
+            r'finanziata\s*[-–:]\s*(s[iì]|no)',
+            text_lower)
+        if finanziata_match:
+            val = finanziata_match.group(1).strip().lower()
+            parsed['finanziata'] = 'Sì' if val in ['si', 'sì'] else 'No'
+
+        # --- Servizio Pagante ---
+        servizio_match = re.search(
+            r'servizio\s+pagante\s*[-–:]\s*([^,]+?)(?:,|\s+sottotipologia|\s+societ|$)',
+            text_lower)
+        if servizio_match:
+            start = servizio_match.start(1)
+            end = servizio_match.end(1)
+            parsed['servizio_pagante'] = text[start:end].strip()
+
+        # --- Sottotipologia ---
+        sottotipologia_match = re.search(
+            r'sottotipologia\s*[-–:]\s*([^,]+?)(?:,|\s+societ|$)',
+            text_lower)
+        if sottotipologia_match:
+            start = sottotipologia_match.start(1)
+            end = sottotipologia_match.end(1)
+            parsed['sottotipologia'] = text[start:end].strip()
+
+        # --- Società Pagante ---
+        societa_match = re.search(
+            r"societ[àa]['\u2019]?\s+pagante\s*[-–:]\s*([^,]+?)(?:,|\s+attivit|$)",
+            text_lower)
+        if societa_match:
+            start = societa_match.start(1)
+            end = societa_match.end(1)
+            parsed['societa_pagante'] = text[start:end].strip()
         # Extract activities
         # Pattern: "primo giorno 12/02/2026 ore 09.00-11.00" or similar
         activity_section = re.search(r'attività[:\s]+(.+)', text_lower, re.DOTALL)
