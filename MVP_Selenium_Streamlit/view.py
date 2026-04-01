@@ -2365,6 +2365,34 @@ class CourseView:
                          key="edition_supplier_key")
             st.text_input("Prezzo Edizione (€) ", placeholder="Esempio: 1000",
                           key="edition_price_key")
+            st.divider()
+            st.subheader("Attributi Aggiuntivi")
+            st.caption("Campi opzionali — compilare se necessario")
+
+            st.text_input("Centro di Costo",
+                          placeholder="Es: TP00001",
+                          key="edition_centro_costo_key")
+
+            st.text_input("Direzione Pagante",
+                          placeholder="Es: Direzione Operativa - VAM",
+                          key="edition_direzione_pagante_key")
+
+            finanziata_options = ["", "Sì", "No"]
+            st.selectbox("Finanziata",
+                         options=finanziata_options,
+                         key="edition_finanziata_key")
+
+            st.text_input("Servizio Pagante",
+                          placeholder="Es: Impianti di Cogenerazione",
+                          key="edition_servizio_pagante_key")
+
+            st.text_input("Sottotipologia",
+                          placeholder="Es: Office Automation & Produttività",
+                          key="edition_sottotipologia_key")
+
+            st.text_input("Società Pagante",
+                          placeholder="Es: Magis Calore S.r.l.",
+                          key="edition_societa_pagante_key")
 
             st.divider()
             st.subheader("Dettagli Attività")
@@ -2618,15 +2646,22 @@ class CourseView:
 
         # ✅ ALL VALIDATION PASSED - Now start automation
         st.session_state.edition_details = {
-            "course_name": course_name,
-            "edition_title": edition_title,
-            "edition_start_date": edition_start,
-            "edition_end_date": edition_end,
-            "location": location,
-            "supplier": supplier,
-            "price": price,
-            "description": description,
-            "activities": activities_list
+            'course_name': course_name,
+            'edition_title': edition_title,
+            'edition_start_date': edition_start,
+            'edition_end_date': edition_end,
+            'location': location,
+            'supplier': supplier,
+            'price': price,
+            'description': description,
+            'activities': activities_list,
+            # NEW FIELDS:
+            'centro_costo': st.session_state.get('edition_centro_costo_key', ''),
+            'direzione_pagante': st.session_state.get('edition_direzione_pagante_key', ''),
+            'finanziata': st.session_state.get('edition_finanziata_key', ''),
+            'servizio_pagante': st.session_state.get('edition_servizio_pagante_key', ''),
+            'sottotipologia': st.session_state.get('edition_sottotipologia_key', ''),
+            'societa_pagante': st.session_state.get('edition_societa_pagante_key', ''),
         }
         st.session_state.app_state = "RUNNING_EDITION"
         st.session_state.edition_message = ""
@@ -2704,7 +2739,7 @@ class CourseView:
             st.write(f"**Titolo Edizione:** {edition_data.get('edition_title', '-') or 'Default (nome corso + data)'}")
             st.write(f"**Data Inizio:** {edition_data.get('start_date', '-')}")
             st.write(f"**Data Fine:** {edition_data.get('end_date', '-')}")
-        with col2:
+
             st.write(f"**Aula:** {edition_data.get('location', '-') or 'Non specificata'}")
             st.write(f"**Fornitore:** {edition_data.get('supplier', '-') or 'Non specificato'}")
             st.write(f"**Costo:** €{edition_data.get('price', '-') or '0'}")
@@ -2779,6 +2814,7 @@ class CourseView:
                 st.session_state.edition_show_summary = False
                 st.session_state.edition_input_method = "structured"
                 st.rerun()
+
 
     def _render_multiple_editions_preview(self, batch_data: Dict[str, Any]):
         """
