@@ -1961,15 +1961,27 @@ class CourseView:
                         row[edition_cols['title']]) else '',
                     'start_date': start_date_str,
                     'end_date': end_date_str,
-                    'location': str(row[edition_cols['location']]).strip() if edition_cols['location'] and pd.notna(
-                        row[edition_cols['location']]) else '',
-                    'supplier': str(row[edition_cols['supplier']]).strip() if edition_cols['supplier'] and pd.notna(
-                        row[edition_cols['supplier']]) else '',
-                    'price': str(row[edition_cols['price']]).strip() if edition_cols['price'] and pd.notna(
-                        row[edition_cols['price']]) else '',
-                    'description': str(row[edition_cols['description']]).strip() if edition_cols[
-                                                                                        'description'] and pd.notna(
-                        row[edition_cols['description']]) else '',
+                    'location': ...,
+                    'supplier': ...,
+                    'price': ...,
+                    'description': ...,
+                    # NEW FIELDS:
+                    'centro_costo': str(row[edition_cols['centro_costo']]).strip()
+                    if edition_cols.get('centro_costo') and pd.notna(row.get(edition_cols['centro_costo'], '')) else '',
+                    'direzione_pagante': str(row[edition_cols['direzione_pagante']]).strip()
+                    if edition_cols.get('direzione_pagante') and pd.notna(
+                        row.get(edition_cols['direzione_pagante'], '')) else '',
+                    'finanziata': str(row[edition_cols['finanziata']]).strip()
+                    if edition_cols.get('finanziata') and pd.notna(row.get(edition_cols['finanziata'], '')) else '',
+                    'servizio_pagante': str(row[edition_cols['servizio_pagante']]).strip()
+                    if edition_cols.get('servizio_pagante') and pd.notna(
+                        row.get(edition_cols['servizio_pagante'], '')) else '',
+                    'sottotipologia': str(row[edition_cols['sottotipologia']]).strip()
+                    if edition_cols.get('sottotipologia') and pd.notna(
+                        row.get(edition_cols['sottotipologia'], '')) else '',
+                    'societa_pagante': str(row[edition_cols['societa_pagante']]).strip()
+                    if edition_cols.get('societa_pagante') and pd.notna(
+                        row.get(edition_cols['societa_pagante'], '')) else '',
                     'activities': []
                 }
                 editions_list.append(edition)
