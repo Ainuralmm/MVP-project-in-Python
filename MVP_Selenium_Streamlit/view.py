@@ -1902,7 +1902,14 @@ class CourseView:
                 'location': ['aula', 'aula principale', 'aula_principale'],
                 'supplier': ['fornitore', 'fornitore formazione'],
                 'price': ['costo', 'prezzo'],
-                'description': ['descrizione', 'desc']
+                'description': ['descrizione', 'desc'],
+                # NEW FIELDS:
+                'centro_costo': ['centro di costo', 'centro_costo', 'cdc'],
+                'direzione_pagante': ['direzione pagante', 'direzione_pagante'],
+                'finanziata': ['finanziata'],
+                'servizio_pagante': ['servizio pagante', 'servizio_pagante'],
+                'sottotipologia': ['sottotipologia'],
+                'societa_pagante': ["società pagante", "societa pagante", 'societa_pagante'],
             }
 
             # Column mappings for activities
