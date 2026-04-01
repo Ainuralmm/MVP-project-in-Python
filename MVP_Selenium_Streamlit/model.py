@@ -961,6 +961,96 @@ class OracleAutomator:
         print(f"Confirmed the selected language: {EDITION_LANGUAGE_DEFAULT}")
         self._pause_for_visual_check()
 
+    def _fill_edition_attributi_aggiuntivi(self, centro_costo, direzione_pagante,
+                                           finanziata, servizio_pagante,
+                                           sottotipologia, societa_pagante):
+        """Helper: fill the Attributi Aggiuntivi fields after price section."""
+
+        # --- Centro di Costo ---
+        if centro_costo:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_CENTRO_COSTO_INPUT)))
+                field.clear()
+                field.send_keys(centro_costo)
+                print(f"   ✅ Centro di Costo: {centro_costo}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Centro di Costo: {e}")
+
+        # --- Direzione Pagante ---
+        if direzione_pagante:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_DIREZIONE_PAG_INPUT)))
+                field.clear()
+                field.send_keys(direzione_pagante)
+                print(f"   ✅ Direzione Pagante: {direzione_pagante}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Direzione Pagante: {e}")
+
+        # --- Finanziata (dropdown: Sì / No) ---
+        if finanziata:
+            try:
+                # Click the LOV icon to open dropdown
+                lov_icon = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, EDITION_FINANZIATA_LOV)))
+                lov_icon.click()
+                self._pause_for_visual_check()
+
+                # Select Sì or No
+                finanziata_clean = finanziata.strip().lower()
+                if finanziata_clean in ['si', 'sì', 'yes', 's']:
+                    option_xpath = EDITION_FINANZIATA_SI
+                else:
+                    option_xpath = EDITION_FINANZIATA_NO
+
+                option = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, option_xpath)))
+                option.click()
+                print(f"   ✅ Finanziata: {finanziata}")
+                self._pause_for_visual_check()
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Finanziata: {e}")
+
+        # --- Servizio Pagante ---
+        if servizio_pagante:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_SERVIZIO_PAG_INPUT)))
+                field.clear()
+                field.send_keys(servizio_pagante)
+                print(f"   ✅ Servizio Pagante: {servizio_pagante}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Servizio Pagante: {e}")
+
+        # --- Sottotipologia ---
+        if sottotipologia:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_SOTTOTIPOLOGIA_INPUT)))
+                field.clear()
+                field.send_keys(sottotipologia)
+                print(f"   ✅ Sottotipologia: {sottotipologia}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Sottotipologia: {e}")
+
+        # --- Società Pagante ---
+        if societa_pagante:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_SOCIETA_PAG_INPUT)))
+                field.clear()
+                field.send_keys(societa_pagante)
+                print(f"   ✅ Società Pagante: {societa_pagante}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Società Pagante: {e}")
+
     def create_edition_and_activities(self, edition_details):
         """
         Create edition and its activities.
