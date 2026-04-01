@@ -1067,6 +1067,12 @@ class OracleAutomator:
             supplier = edition_details.get('supplier', "")
             price = edition_details.get('price', "")
             description = edition_details.get('description', "")
+            centro_costo = edition_details.get('centro_costo', '')
+            direzione_pagante = edition_details.get('direzione_pagante', '')
+            finanziata = edition_details.get('finanziata', '')
+            servizio_pagante = edition_details.get('servizio_pagante', '')
+            sottotipologia = edition_details.get('sottotipologia', '')
+            societa_pagante = edition_details.get('societa_pagante', '')
             activities = edition_details.get('activities', [])
 
             print(f"Model (EDITION): Creating edition for {course_name} "
