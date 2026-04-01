@@ -2406,11 +2406,15 @@ class CourseView:
         st.info("""
         **Scrivi una frase che descriva l'edizione e le attività**, ad esempio:
 
-        "Crea edizione per corso Data Science01 titolo Winter Edition
-        data inizio 12/02/2026 data fine 20/02/2026
-        aula Aula de carli fornitore AEIT costo 1000
-        attività: primo giorno 12/02/2026 ore 09.00-11.00,
-        secondo giorno 13/02/2026 ore 10.00-12.00"
+        "Crea edizione per corso Analisi dei dati titolo Analisi dei dati - Base
+         data inizio 12/02/2026 data fine 20/02/2026
+         aula Aula de carli fornitore AEIT costo 1000 con CENTRO DI COSTO - TP00001,
+         DIREZIONE PAGANTE - Direzione Operativa - VAM,	FINANZIATA - no,
+         SERVIZIO PAGANTE - Impianti di Cogenerazione UT Verona,
+         SOTTOTIPOLOGIA-	Office Automation & Produttività,
+         SOCIETA' PAGANTE - Magis Calore S.r.l.
+         attività: primo giorno 12/02/2026 ore 09.00-11.00,
+         secondo giorno 13/02/2026 ore 10.00-12.00"
         """, icon="💡")
 
         # ✅ Initialize the key-based state if not exists
