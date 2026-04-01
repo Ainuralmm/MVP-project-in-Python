@@ -1150,6 +1150,16 @@ class OracleAutomator:
             self._fill_edition_supplier(supplier)
             self._fill_edition_price(price)
 
+            # Fill Attributi Aggiuntivi
+            self._fill_edition_attributi_aggiuntivi(
+                centro_costo=centro_costo,
+                direzione_pagante=direzione_pagante,
+                finanziata=finanziata,
+                servizio_pagante=servizio_pagante,
+                sottotipologia=sottotipologia,
+                societa_pagante=societa_pagante,
+            )
+
             time.sleep(1)
             # Save and close edition
             self.wait.until(EC.element_to_be_clickable(
