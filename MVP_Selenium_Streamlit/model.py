@@ -1215,7 +1215,14 @@ class OracleAutomator:
             price: str = "",
             description: str = "",
             activities: list = None,
-            return_to_courses_page: bool = True
+            return_to_courses_page: bool = True,
+            # NEW PARAMETERS:
+            centro_costo: str = "",
+            direzione_pagante: str = "",
+            finanziata: str = "",
+            servizio_pagante: str = "",
+            sottotipologia: str = "",
+            societa_pagante: str = "",
     ) -> bool:
         """Create a single edition with activities for BATCH processing."""
         try:
