@@ -2628,6 +2628,30 @@ class CourseView:
             st.write(f"**Costo:** €{edition_data.get('price', '-') or '0'}")
             if edition_data.get('description'):
                 st.write(f"**Descrizione:** {edition_data.get('description', '')}")
+        with col2:
+            # Show Attributi Aggiuntivi if any are present
+            new_fields = {
+                'Centro di Costo': edition_data.get('centro_costo', ''),
+                'Direzione Pagante': edition_data.get('direzione_pagante', ''),
+                'Finanziata': edition_data.get('finanziata', ''),
+                'Servizio Pagante': edition_data.get('servizio_pagante', ''),
+                'Sottotipologia': edition_data.get('sottotipologia', ''),
+                'Società Pagante': edition_data.get('societa_pagante', ''),
+            }
+
+            # Only show section if at least one field has a value
+            if any(new_fields.values()):
+                st.markdown("### 🗂️ Attributi Aggiuntivi")
+                col3, col4 = st.columns(2)
+                fields_list = list(new_fields.items())
+                with col3:
+                    for label, value in fields_list[:3]:
+                        if value:
+                            st.write(f"**{label}:** {value}")
+                with col4:
+                    for label, value in fields_list[3:]:
+                        if value:
+                            st.write(f"**{label}:** {value}")
 
         # Activities table
         st.markdown("### 📝 Attività")
