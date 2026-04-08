@@ -132,6 +132,12 @@ class OracleAutomator:
                 (By.ID, NAV_LEARN_ADMIN))).click()
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, NAV_CORSI_LINK))).click()
+
+            #Wait for courses page to fully load
+            print("Model: Waiting for Corsi page to load...")
+            WebDriverWait(self.driver, 30).until(
+                EC.presence_of_element_located(
+                    (By.NAME, COURSE_SEARCH_NAME_INPUT)))
             print("Model: Navigated to 'Corsi' page.")
             return True
         except Exception as e:
@@ -172,9 +178,9 @@ class OracleAutomator:
             capitalised_course_name = cleaned_course_name.title()
 
             # Wait for page to fully stabilize
-            time.sleep(2)
+            time.sleep(3)
             try:
-                WebDriverWait(self.driver, 5).until(
+                WebDriverWait(self.driver, 10).until(
                     EC.invisibility_of_element_located(
                         (By.CLASS_NAME, "AFBlockingGlassPane")))
             except:
