@@ -2972,6 +2972,12 @@ class CourseView:
                 'price': edition_data.get('price', ''),
                 'description': edition_data.get('description', ''),
                 'activities': activities_list
+                'centro_costo': edition_data.get('centro_costo', ''),
+                'direzione_pagante': edition_data.get('direzione_pagante', ''),
+                'finanziata': edition_data.get('finanziata', ''),
+                'servizio_pagante': edition_data.get('servizio_pagante', ''),
+                'sottotipologia': edition_data.get('sottotipologia', ''),
+                'societa_pagante': edition_data.get('societa_pagante', ''),
             }
 
             # Start automation
