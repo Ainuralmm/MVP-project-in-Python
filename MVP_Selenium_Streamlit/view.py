@@ -1930,6 +1930,23 @@ class CourseView:
                         return name
                 return None
 
+            def safe_val(row, col_key, cols_dict):
+                """Safely extract value from row, returning empty string for None/NaN/Ellipsis"""
+                col = cols_dict.get(col_key)
+                if not col:
+                    return ''
+                val = row.get(col, '')
+                if val is None or val is ...:
+                    return ''
+                try:
+                    if pd.isna(val):
+                        return ''
+                except:
+                    pass
+                result = str(val).strip()
+                # Remove "nan" strings
+                return '' if result.lower() == 'nan' else result
+
             edition_cols = {k: find_column(df_edizioni, v) for k, v in edition_mappings.items()}
             activity_cols = {k: find_column(df_attivita, v) for k, v in activity_mappings.items()}
 
@@ -1956,32 +1973,20 @@ class CourseView:
 
                 edition = {
                     'id': edition_id,
-                    'course_name': str(course_name).strip(),
-                    'edition_title': str(row[edition_cols['title']]).strip() if edition_cols['title'] and pd.notna(
-                        row[edition_cols['title']]) else '',
+                    'course_name': safe_val(row, 'course_name', edition_cols),
+                    'edition_title': safe_val(row, 'title', edition_cols),
                     'start_date': start_date_str,
                     'end_date': end_date_str,
-                    'location': ...,
-                    'supplier': ...,
-                    'price': ...,
-                    'description': ...,
-                    # NEW FIELDS:
-                    'centro_costo': str(row[edition_cols['centro_costo']]).strip()
-                    if edition_cols.get('centro_costo') and pd.notna(row.get(edition_cols['centro_costo'], '')) else '',
-                    'direzione_pagante': str(row[edition_cols['direzione_pagante']]).strip()
-                    if edition_cols.get('direzione_pagante') and pd.notna(
-                        row.get(edition_cols['direzione_pagante'], '')) else '',
-                    'finanziata': str(row[edition_cols['finanziata']]).strip()
-                    if edition_cols.get('finanziata') and pd.notna(row.get(edition_cols['finanziata'], '')) else '',
-                    'servizio_pagante': str(row[edition_cols['servizio_pagante']]).strip()
-                    if edition_cols.get('servizio_pagante') and pd.notna(
-                        row.get(edition_cols['servizio_pagante'], '')) else '',
-                    'sottotipologia': str(row[edition_cols['sottotipologia']]).strip()
-                    if edition_cols.get('sottotipologia') and pd.notna(
-                        row.get(edition_cols['sottotipologia'], '')) else '',
-                    'societa_pagante': str(row[edition_cols['societa_pagante']]).strip()
-                    if edition_cols.get('societa_pagante') and pd.notna(
-                        row.get(edition_cols['societa_pagante'], '')) else '',
+                    'location': safe_val(row, 'location', edition_cols),
+                    'supplier': safe_val(row, 'supplier', edition_cols),
+                    'price': safe_val(row, 'price', edition_cols),
+                    'description': safe_val(row, 'description', edition_cols),
+                    'centro_costo': safe_val(row, 'centro_costo', edition_cols),
+                    'direzione_pagante': safe_val(row, 'direzione_pagante', edition_cols),
+                    'finanziata': safe_val(row, 'finanziata', edition_cols),
+                    'servizio_pagante': safe_val(row, 'servizio_pagante', edition_cols),
+                    'sottotipologia': safe_val(row, 'sottotipologia', edition_cols),
+                    'societa_pagante': safe_val(row, 'societa_pagante', edition_cols),
                     'activities': []
                 }
                 editions_list.append(edition)
@@ -2842,6 +2847,28 @@ class CourseView:
                     st.write(f"**Aula:** {edition.get('location', 'N/A')}")
                     st.write(f"**Fornitore:** {edition.get('supplier', 'N/A')}")
                     st.write(f"**Costo:** €{edition.get('price', 'N/A')}")
+
+                # Show Attributi Aggiuntivi if present
+                new_fields = {
+                    'Centro di Costo': edition.get('centro_costo', ''),
+                    'Direzione Pagante': edition.get('direzione_pagante', ''),
+                    'Finanziata': edition.get('finanziata', ''),
+                    'Servizio Pagante': edition.get('servizio_pagante', ''),
+                    'Sottotipologia': edition.get('sottotipologia', ''),
+                    'Società Pagante': edition.get('societa_pagante', ''),
+                }
+                if any(new_fields.values()):
+                    st.markdown("**Attributi Aggiuntivi:**")
+                    col3, col4 = st.columns(2)
+                    fields_list = list(new_fields.items())
+                    with col3:
+                        for label, value in fields_list[:3]:
+                            if value:
+                                st.write(f"**{label}:** {value}")
+                    with col4:
+                        for label, value in fields_list[3:]:
+                            if value:
+                                st.write(f"**{label}:** {value}")
 
                 # Activities table
                 if activities:
