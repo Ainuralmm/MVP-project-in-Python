@@ -171,6 +171,15 @@ class OracleAutomator:
             cleaned_course_name = course_name.strip()
             capitalised_course_name = cleaned_course_name.title()
 
+            # Wait for page to fully stabilize
+            time.sleep(2)
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
             # Fill search name
             search_box_locator = (By.NAME, COURSE_SEARCH_NAME_INPUT)
             search_box = self.wait.until(EC.element_to_be_clickable(search_box_locator))
