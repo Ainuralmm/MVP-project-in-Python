@@ -199,6 +199,7 @@ class OracleAutomator:
             date_input.clear()
             date_input.send_keys("01/01/2000")
             self._pause_for_visual_check()
+            time.sleep(3)
 
             # Click search button
             search_button = self.wait.until(EC.element_to_be_clickable(
@@ -206,54 +207,104 @@ class OracleAutomator:
             search_button.click()
             print(f"Clicked Search button for course: '{capitalised_course_name}'")
 
-            # Wait for results or 'no data' message
-            short_wait = WebDriverWait(self.driver, 7)
+            result_container_xpath = COURSE_TABLE_SUMMARY
+
+            # Wait for Oracle to process the search (blocking overlay)
+            time.sleep(2)
+            try:
+                WebDriverWait(self.driver, 15).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(1)
+
+
+            try:
+                # Wait for result container to be present
+                WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, COURSE_TABLE_SUMMARY)))
+            except:
+                print("   ⚠️ Could not find result container")
+
+            # Check for "no data" message
+            short_wait = WebDriverWait(self.driver, 5)
             try:
                 short_wait.until(EC.presence_of_element_located(
                     (By.XPATH, COURSE_NO_DATA_MESSAGE)))
-                print(f"Search result: Course '{course_name}' NOT found (no data message)")
+                print(f"Search result: Course '{course_name}' NOT found")
                 return False
             except TimeoutException:
-                course_name_lower = cleaned_course_name.lower()
-                case_insensitive_xpath = (
-                    f"//table[@summary='{COURSE_TABLE_SUMMARY}']//a"
-                    f"[translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',"
-                    f" 'abcdefghijklmnopqrstuvwxyz')='{course_name_lower}']"
+                pass
+
+            # Look for the course name as a link inside the result container
+            course_name_lower = cleaned_course_name.lower()
+            course_link_xpath = (
+                f'{result_container_xpath}//a'
+                f'[translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
+                f' "abcdefghijklmnopqrstuvwxyz")="{course_name_lower}"]'
+            )
+            try:
+                short_wait.until(EC.presence_of_element_located(
+                    (By.XPATH, course_link_xpath)))
+                print(f"Search result: Course '{course_name}' FOUND")
+                return True
+            except TimeoutException:
+                # Fallback: check if any link in the container contains the name
+                fallback_xpath = (
+                    f'{result_container_xpath}//a'
+                    f'[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
+                    f' "abcdefghijklmnopqrstuvwxyz"), "{course_name_lower}")]'
                 )
                 try:
                     short_wait.until(EC.presence_of_element_located(
-                        (By.XPATH, case_insensitive_xpath)))
-                    print(f"Search result: Course '{course_name}' FOUND (exact match)")
+                        (By.XPATH, fallback_xpath)))
+                    print(f"Search result: Course '{course_name}' FOUND (partial match)")
                     return True
                 except TimeoutException:
-                    print(f"Search result: Course '{course_name}' NOT found (no exact match)")
+                    print(f"Search result: Course '{course_name}' NOT found")
                     return False
-
         except Exception as e:
-            print(f"Error during search_course for '{course_name}': {e}")
+            print(f"Error during course search: {e}")
             return False
 
     def open_course_from_list(self, course_name):
         try:
+            result_container_xpath = COURSE_TABLE_SUMMARY
             course_name_lower = course_name.lower()
-            case_insensitive_xpath = (
-                f"//table[@summary='{COURSE_TABLE_SUMMARY}']//a"
-                f"[translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',"
-                f" 'abcdefghijklmnopqrstuvwxyz')='{course_name_lower}']"
+
+            # Exact match first
+            course_link_xpath = (
+                f'{result_container_xpath}//a'
+                f'[translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
+                f' "abcdefghijklmnopqrstuvwxyz")="{course_name_lower}"]'
             )
-            link = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, case_insensitive_xpath)))
+
+            try:
+                link = self.wait.until(EC.element_to_be_clickable(
+                    (By.XPATH, course_link_xpath)))
+            except:
+                # Fallback: partial match
+                course_link_xpath = (
+                    f'{result_container_xpath}//a'
+                    f'[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
+                    f' "abcdefghijklmnopqrstuvwxyz"), "{course_name_lower}")]'
+                )
+                link = self.wait.until(EC.element_to_be_clickable(
+                    (By.XPATH, course_link_xpath)))
+
             link.click()
             self._pause_for_visual_check()
-            print(f"Model: Clicked on existing course '{course_name}' in list.")
+            print(f"Model: Clicked on course '{course_name}' in list.")
 
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, COURSE_DETAIL_EDIZIONI_TAB)))
-            print(f"Model: Course details page loaded successfully (found Edizioni tab).")
+            print(f"Model: Course details page loaded.")
             return True
 
         except Exception as e:
-            print(f"Model: Could not find or click the link for '{course_name}'. Error: {e}")
+            print(f"Model: Could not open course '{course_name}'. Error: {e}")
             return False
 
     def create_course(self, course_details):
