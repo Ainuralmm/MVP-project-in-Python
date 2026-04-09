@@ -1124,7 +1124,7 @@ class OracleAutomator:
                 desc_edizione = self.wait.until(EC.presence_of_element_located(
                     (By.XPATH, EDITION_DESCRIPTION_INPUT)))
                 full_desc = (f"{course_name}-{edition_start_date.strftime('%d/%m/%Y')}"
-                             f"-/n{description}")
+                             f"-\n{description}")
                 desc_edizione.send_keys(full_desc)
                 self._pause_for_visual_check()
 
