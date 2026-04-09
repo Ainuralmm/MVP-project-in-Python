@@ -46,11 +46,11 @@ NAV_EDIZIONI_LINK   = '//a[@title="Edizioni" and text()="Edizioni"]'
 # =============================================================================
 # COURSES PAGE - SEARCH
 # =============================================================================
-COURSE_SEARCH_NAME_INPUT = 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00'  # used with By.NAME
-COURSE_SEARCH_DATE_INPUT = '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]'
-COURSE_SEARCH_BUTTON     = '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'
+COURSE_SEARCH_NAME_INPUT = '_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value20'  # used with By.NAME
+COURSE_SEARCH_DATE_INPUT = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value40::content"]'
+COURSE_SEARCH_BUTTON     = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'
 COURSE_NO_DATA_MESSAGE   = '//*[contains(text(),"Nessun dato da visualizzare.")]'
-COURSE_TABLE_SUMMARY     = 'Corsi'                      # used in //table[@summary='Corsi']
+COURSE_TABLE_SUMMARY     = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srSdh"]'                      # used in //table[@summary='Corsi']
 
 
 # =============================================================================
