@@ -1834,6 +1834,12 @@ class CourseView:
                     'supplier': str(row.iloc[5]).strip() if len(row) > 5 and pd.notna(row.iloc[5]) else '',
                     'price': str(row.iloc[6]).strip() if len(row) > 6 and pd.notna(row.iloc[6]) else '',
                     'description': '',
+                    'centro_costo': '',
+                    'direzione_pagante': '',
+                    'finanziata': '',
+                    'servizio_pagante': '',
+                    'sottotipologia': '',
+                    'societa_pagante': '',
                     'activities': []
                 }
                 continue
