@@ -1406,12 +1406,12 @@ class OracleAutomator:
 
             # Fill Attributi Aggiuntivi
             self._fill_edition_attributi_aggiuntivi(
-                centro_costo=edition_details.get('centro_costo', ''),
-                direzione_pagante=edition_details.get('direzione_pagante', ''),
-                finanziata=edition_details.get('finanziata', ''),
-                servizio_pagante=edition_details.get('servizio_pagante', ''),
-                sottotipologia=edition_details.get('sottotipologia', ''),
-                societa_pagante=edition_details.get('societa_pagante', '')
+                centro_costo=centro_costo,
+                direzione_pagante=direzione_pagante,
+                finanziata=finanziata,
+                servizio_pagante=servizio_pagante,
+                sottotipologia=sottotipologia,
+                societa_pagante=societa_pagante
             )
 
             # Step 6: Save edition
