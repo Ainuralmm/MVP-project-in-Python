@@ -1510,6 +1510,16 @@ class OracleAutomator:
                 self.driver.save_screenshot(f"batch_error_{timestamp}.png")
             except:
                 pass
+
+            # Try to navigate back to courses page for next iteration
+
+            try:
+                print("   Attempting recovery: navigating back to Corsi page...")
+                self.navigate_to_courses_page()
+                print("   ✅ Recovery successful")
+
+            except:
+                print("   ❌ Recovery failed")
             return False
 
     def open_edizioni_tab(self):
