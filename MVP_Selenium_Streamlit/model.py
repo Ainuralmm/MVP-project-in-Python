@@ -867,23 +867,63 @@ class OracleAutomator:
         self.wait.until(EC.presence_of_element_located(
             (By.XPATH, EDITION_AULA_RESULTS_TABLE)))
 
+        # Wait for results to load
+        time.sleep(2)
         try:
-            short_wait = WebDriverWait(self.driver, 3)
-            short_wait.until(EC.presence_of_element_located((By.XPATH,
-                f'{EDITION_AULA_RESULTS_TABLE}//tr'
-                f'[.//text()[contains(., "Nessuna riga da visualizzare")]]')))
-            print(f"⚠️ The location '{location}' was not found.")
+            WebDriverWait(self.driver, 5).until(
+                EC.invisibility_of_element_located(
+                    (By.CLASS_NAME, "AFBlockingGlassPane")))
+        except:
+            pass
+
+        location_lower = location.lower()
+
+        # Check for "no results" first
+        try:
+            WebDriverWait(self.driver, 3).until(
+                EC.presence_of_element_located((By.XPATH,
+                                                '//*[contains(text(), "Nessuna riga") or '
+                                                'contains(text(), "Nessun dato")]')))
+            print(f"⚠️ Location '{location}' not found in popup.")
+            # Click Annulla to close popup gracefully
+            try:
+                annulla = self.driver.find_element(
+                    By.XPATH, "//button[text()='Annulla' or text()='Cancel']")
+                annulla.click()
+            except:
+                pass
+            return
         except TimeoutException:
-            location_lower = location.lower()
-            case_insensitive_xpath = (
-                f"//td[contains(@class, 'xen') and .//span"
-                f"[translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',"
-                f" 'abcdefghijklmnopqrstuvwxyz')='{location_lower}']]"
-            )
-            list_aula_option_row = self.wait.until(
-                EC.element_to_be_clickable((By.XPATH, case_insensitive_xpath)))
-            list_aula_option_row.click()
-            self._pause_for_visual_check()
+            pass
+
+        # Try multiple strategies to click the matching row
+        found = False
+
+        # Strategy 1: exact match on td text (direct text, no span required)
+        for xpath in [
+            # Exact match anywhere in the row's text
+            f'{EDITION_AULA_RESULTS_TABLE}//tr[.//td['
+            f'translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", '
+            f'"abcdefghijklmnopqrstuvwxyz")="{location_lower}"]]',
+            # Contains match (more lenient)
+            f'{EDITION_AULA_RESULTS_TABLE}//tr[.//td['
+            f'contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", '
+            f'"abcdefghijklmnopqrstuvwxyz"), "{location_lower}")]]',
+        ]:
+            try:
+                row = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath)))
+                row.click()
+                print(f"   ✅ Selected location: {location}")
+                found = True
+                break
+            except:
+                continue
+
+        if not found:
+            print(f"   ⚠️ Could not click row for '{location}', proceeding anyway")
+
+        self._pause_for_visual_check()
 
         ok_button = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, EDITION_AULA_OK_BUTTON)))
@@ -1501,6 +1541,7 @@ class OracleAutomator:
             print(f"{'=' * 60}\n")
             return True
 
+
         except Exception as e:
             print(f"\n❌ BATCH ERROR: {str(e)}")
             import traceback
@@ -1508,6 +1549,7 @@ class OracleAutomator:
             try:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 self.driver.save_screenshot(f"batch_error_{timestamp}.png")
+
             except:
                 pass
 
