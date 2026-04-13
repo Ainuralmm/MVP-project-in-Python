@@ -2732,56 +2732,48 @@ class CourseView:
             self._render_single_edition_preview(edition_data)
 
     def _render_single_edition_preview(self, edition_data: Dict[str, Any]):
-        """Preview for a single edition with activities"""
+        """Preview for a single edition with activities — 3-table layout"""
 
         st.success("✅ Dati estratti con successo!")
         st.subheader("📋 Anteprima Edizione + Attività")
 
-        # Edition details card
+        # === TABLE 1: Dettagli Edizione ===
         st.markdown("### 📚 Dettagli Edizione")
+        dettagli = {
+            'Campo': ['Corso', 'Titolo Edizione', 'Data Inizio', 'Data Fine',
+                      'Aula', 'Fornitore', 'Costo', 'Descrizione'],
+            'Valore': [
+                edition_data.get('course_name', '-'),
+                edition_data.get('edition_title', '') or 'Default (nome corso + data)',
+                edition_data.get('start_date', '-'),
+                edition_data.get('end_date', '-'),
+                edition_data.get('location', '') or 'Non specificata',
+                edition_data.get('supplier', '') or 'Non specificato',
+                f"€{edition_data.get('price', '0') or '0'}",
+                edition_data.get('description', '') or '-',
+            ]
+        }
+        st.dataframe(pd.DataFrame(dettagli), hide_index=True, width='stretch')
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write(f"**Corso:** {edition_data.get('course_name', '-')}")
-            st.write(f"**Titolo Edizione:** {edition_data.get('edition_title', '-') or 'Default (nome corso + data)'}")
-            st.write(f"**Data Inizio:** {edition_data.get('start_date', '-')}")
-            st.write(f"**Data Fine:** {edition_data.get('end_date', '-')}")
+        # === TABLE 2: Attributi Aggiuntivi (only if any filled) ===
+        aggiuntivi_values = {
+            'Campo': ['Centro di Costo', 'Società Pagante', 'Direzione Pagante',
+                      'Servizio Pagante', 'Sottotipologia', 'Finanziata'],
+            'Valore': [
+                edition_data.get('centro_costo', '') or '-',
+                edition_data.get('societa_pagante', '') or '-',
+                edition_data.get('direzione_pagante', '') or '-',
+                edition_data.get('servizio_pagante', '') or '-',
+                edition_data.get('sottotipologia', '') or '-',
+                edition_data.get('finanziata', '') or '-',
+            ]
+        }
+        st.markdown("### 🗂️ Attributi Aggiuntivi")
+        st.dataframe(pd.DataFrame(aggiuntivi_values), hide_index=True, width='stretch')
 
-            st.write(f"**Aula:** {edition_data.get('location', '-') or 'Non specificata'}")
-            st.write(f"**Fornitore:** {edition_data.get('supplier', '-') or 'Non specificato'}")
-            st.write(f"**Costo:** €{edition_data.get('price', '-') or '0'}")
-            if edition_data.get('description'):
-                st.write(f"**Descrizione:** {edition_data.get('description', '')}")
-        with col2:
-            # Show Attributi Aggiuntivi if any are present
-            new_fields = {
-                'Centro di Costo': edition_data.get('centro_costo', ''),
-                'Società Pagante': edition_data.get('societa_pagante', ''),
-                'Direzione Pagante': edition_data.get('direzione_pagante', ''),
-                'Servizio Pagante': edition_data.get('servizio_pagante', ''),
-                'Sottotipologia': edition_data.get('sottotipologia', ''),
-                'Finanziata': edition_data.get('finanziata', ''),
-
-            }
-
-            # Only show section if at least one field has a value
-            if any(new_fields.values()):
-                st.markdown("### 🗂️ Attributi Aggiuntivi")
-                col3, col4 = st.columns(2)
-                fields_list = list(new_fields.items())
-                with col3:
-                    for label, value in fields_list[:3]:
-                        if value:
-                            st.write(f"**{label}:** {value}")
-                with col4:
-                    for label, value in fields_list[3:]:
-                        if value:
-                            st.write(f"**{label}:** {value}")
-
-        # Activities table
+        # === TABLE 3: Attività ===
         st.markdown("### 📝 Attività")
         activities = edition_data.get('activities', [])
-
         if activities:
             activities_preview = []
             for idx, act in enumerate(activities):
@@ -2791,38 +2783,31 @@ class CourseView:
                     'Data': act.get('date', ''),
                     'Ora Inizio': act.get('start_time', ''),
                     'Ora Fine': act.get('end_time', ''),
-                    'Impegno (ore)': act.get('impegno_ore', '') or act.get('impegno_previsto_in_ore', '')
+                    'Impegno (ore)': act.get('impegno_ore', '') or act.get('impegno_previsto_in_ore', '') or '-'
                 })
-
-            activities_df = pd.DataFrame(activities_preview)
-            st.dataframe(activities_df, width='stretch', hide_index=True)
+            st.dataframe(pd.DataFrame(activities_preview), hide_index=True, width='stretch')
         else:
-            st.warning("⚠️ Nessuna attività trovata. Aggiungi attività nella modalità Modifica.")
+            st.warning("⚠️ Nessuna attività trovata.")
 
         st.divider()
 
-        # Action buttons (NO FORM - regular buttons)
         col1, col2, col3 = st.columns([2, 1, 1])
-
         with col1:
             if st.button("✅ Conferma e Crea Edizione", type="primary", width='stretch',
                          key="edition_preview_confirm_btn"):
                 self._start_edition_creation(edition_data)
-
         with col2:
             if st.button("✏️ Modifica", width='stretch', key="edition_preview_edit_btn"):
                 st.session_state.edition_edit_mode = True
                 st.session_state.edition_to_edit = edition_data.copy()
                 st.session_state.edition_show_summary = False
                 st.rerun()
-
         with col3:
             if st.button("❌ Annulla", width='stretch', key="edition_preview_cancel_btn"):
                 st.session_state.edition_parsed_data = None
                 st.session_state.edition_show_summary = False
                 st.session_state.edition_input_method = "structured"
                 st.rerun()
-
 
     def _render_multiple_editions_preview(self, batch_data: Dict[str, Any]):
         """
