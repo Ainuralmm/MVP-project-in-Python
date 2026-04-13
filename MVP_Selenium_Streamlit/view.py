@@ -3083,6 +3083,43 @@ class CourseView:
                     key="edit_edition_description",
                     height=100
                 )
+                # Attributi Aggiuntivi section
+                st.markdown("### 🗂️ Attributi Aggiuntivi")
+                col3, col4 = st.columns(2)
+                with col3:
+                    st.text_input(
+                        "Centro di Costo",
+                        value=edition.get('centro_costo', ''),
+                        key="edit_edition_centro_costo"
+                    )
+                    st.text_input(
+                        "Società Pagante",
+                        value=edition.get('societa_pagante', ''),
+                        key="edit_edition_societa_pagante"
+                    )
+                    st.text_input(
+                        "Direzione Pagante",
+                        value=edition.get('direzione_pagante', ''),
+                        key="edit_edition_direzione_pagante"
+                    )
+                with col4:
+                    st.text_input(
+                        "Servizio Pagante",
+                        value=edition.get('servizio_pagante', ''),
+                        key="edit_edition_servizio_pagante"
+                    )
+                    st.text_input(
+                        "Sottotipologia",
+                        value=edition.get('sottotipologia', ''),
+                        key="edit_edition_sottotipologia"
+                    )
+                    st.selectbox(
+                        "Finanziata",
+                        options=['', 'Sì', 'No'],
+                        index=['', 'Sì', 'No'].index(edition.get('finanziata', ''))
+                        if edition.get('finanziata', '') in ['', 'Sì', 'No'] else 0,
+                        key="edit_edition_finanziata"
+                    )
 
             # Activities
             st.markdown("### 📝 Attività")
