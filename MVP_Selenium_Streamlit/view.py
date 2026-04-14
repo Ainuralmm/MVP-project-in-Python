@@ -2812,105 +2812,115 @@ class CourseView:
     def _render_multiple_editions_preview(self, batch_data: Dict[str, Any]):
         """
         Preview multiple editions from Excel with batch creation support.
+        3-table layout inside each edition expander:
+        - Table 1: Dettagli Edizione
+        - Table 2: Attributi Aggiuntivi
+        - Table 3: Attività
         """
         editions = batch_data.get('editions', [])
         total_editions = len(editions)
         total_activities = sum(len(e.get('activities', [])) for e in editions)
 
         st.subheader("📁 Anteprima Edizioni")
+        st.info(f"📊 Trovate **{total_editions} edizioni** con **{total_activities} attività** totali.")
 
-        # Display each edition in an expander
         for idx, edition in enumerate(editions):
             activities = edition.get('activities', [])
-            with st.expander(
-                    f"📚 Edizione {idx + 1}: {edition.get('course_name', 'N/A')} - {edition.get('edition_title', 'N/A')}",
-                    expanded=(idx == 0)  # First one expanded by default
-            ):
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.write(f"**Corso:** {edition.get('course_name', 'N/A')}")
-                    st.write(f"**Titolo:** {edition.get('edition_title', 'N/A')}")
-                    st.write(f"**Date:** {edition.get('start_date', 'N/A')} → {edition.get('end_date', 'N/A')}")
-                with col2:
-                    st.write(f"**Aula:** {edition.get('location', 'N/A')}")
-                    st.write(f"**Fornitore:** {edition.get('supplier', 'N/A')}")
-                    st.write(f"**Costo:** €{edition.get('price', 'N/A')}")
+            has_errors = not edition.get('course_name') or not edition.get('start_date')
 
-                # Show Attributi Aggiuntivi if present
-                new_fields = {
-                    'Centro di Costo': edition.get('centro_costo', ''),
-                    'Società Pagante': edition.get('societa_pagante', ''),
-                    'Direzione Pagante': edition.get('direzione_pagante', ''),
-                    'Servizio Pagante': edition.get('servizio_pagante', ''),
-                    'Sottotipologia': edition.get('sottotipologia', ''),
-                    'Finanziata': edition.get('finanziata', ''),
+            # Expander title with quick summary and warning if data looks incomplete
+            expander_label = (
+                f"{'⚠️' if has_errors else '📚'} Edizione {idx + 1}: "
+                f"{edition.get('course_name', 'N/A')} — "
+                f"{edition.get('start_date', '?')} → {edition.get('end_date', '?')} "
+                f"({len(activities)} attività)"
+            )
 
-                }
-                if any(new_fields.values()):
-                    st.markdown("**Attributi Aggiuntivi:**")
-                    col3, col4 = st.columns(2)
-                    fields_list = list(new_fields.items())
-                    with col3:
-                        for label, value in fields_list[:3]:
-                            if value:
-                                st.write(f"**{label}:** {value}")
-                    with col4:
-                        for label, value in fields_list[3:]:
-                            if value:
-                                st.write(f"**{label}:** {value}")
+            with st.expander(expander_label, expanded=(idx == 0)):
 
-                # Activities table
+                # === TABLE 1: Dettagli Edizione ===
+                st.markdown("**📚 Dettagli Edizione**")
+                dettagli = pd.DataFrame({
+                    'Campo': [
+                        'Corso', 'Titolo Edizione', 'Data Inizio', 'Data Fine',
+                        'Aula', 'Fornitore', 'Costo'
+                    ],
+                    'Valore': [
+                        edition.get('course_name', '') or '—',
+                        edition.get('edition_title', '') or '—',
+                        edition.get('start_date', '') or '—',
+                        edition.get('end_date', '') or '—',
+                        edition.get('location', '') or '—',
+                        edition.get('supplier', '') or '—',
+                        f"€{edition.get('price', '')}" if edition.get('price') else '—',
+                    ]
+                })
+                st.dataframe(dettagli, hide_index=True, use_container_width=True)
+
+                # === TABLE 2: Attributi Aggiuntivi ===
+                st.markdown("**🗂️ Attributi Aggiuntivi**")
+                aggiuntivi = pd.DataFrame({
+                    'Campo': [
+                        'Centro di Costo', 'Società Pagante', 'Direzione Pagante',
+                        'Servizio Pagante', 'Sottotipologia', 'Finanziata'
+                    ],
+                    'Valore': [
+                        edition.get('centro_costo', '') or '—',
+                        edition.get('societa_pagante', '') or '—',
+                        edition.get('direzione_pagante', '') or '—',
+                        edition.get('servizio_pagante', '') or '—',
+                        edition.get('sottotipologia', '') or '—',
+                        edition.get('finanziata', '') or '—',
+                    ]
+                })
+                st.dataframe(aggiuntivi, hide_index=True, use_container_width=True)
+
+                # === TABLE 3: Attività ===
+                st.markdown("**📝 Attività**")
                 if activities:
-                    st.write("**Attività:**")
                     activity_data = []
                     for i, act in enumerate(activities):
                         activity_data.append({
                             '#': i + 1,
                             'Titolo': act.get('title', ''),
                             'Data': act.get('date', ''),
-                            'Orario': f"{act.get('start_time', '')} - {act.get('end_time', '')}",
-                            'Ore': act.get('impegno_ore', '-')  # ADD THIS LINE
+                            'Ora Inizio': act.get('start_time', ''),
+                            'Ora Fine': act.get('end_time', ''),
+                            'Impegno (ore)': act.get('impegno_ore', '') or '—'
                         })
-                    st.dataframe(pd.DataFrame(activity_data), width='stretch', hide_index=True)
+                    st.dataframe(
+                        pd.DataFrame(activity_data),
+                        hide_index=True,
+                        use_container_width=True
+                    )
                 else:
-                    st.warning("⚠️ Nessuna attività per questa edizione")
+                    st.warning("⚠️ Nessuna attività per questa edizione.")
 
         st.divider()
 
-        # === INFO MESSAGE ===
-        st.info(
-            f"ℹ️ **Nota:** Le edizioni verranno create una alla volta. Questo processo potrebbe richiedere alcuni minuti.")
+        st.info("ℹ️ **Nota:** Le edizioni verranno create una alla volta. "
+                "Questo processo potrebbe richiedere alcuni minuti.")
 
-        # === BUTTONS ===
         col1, col2, col3 = st.columns([2, 1, 1])
 
         with col1:
-            # === UPDATED BUTTON TEXT ===
             button_text = f"✅ Crea {total_editions} Edizioni con {total_activities} Attività"
-
-            if st.button(button_text, type="primary", width='stretch', key="batch_edition_create_btn"):
-                # Store ALL editions for batch processing
+            if st.button(button_text, type="primary", use_container_width=True,
+                         key="batch_edition_create_btn"):
                 st.session_state.batch_edition_data = {
                     'editions': editions,
                     'total_editions': total_editions,
                     'total_activities': total_activities,
-                    'current_index': 0,  # Track progress
-                    'results': []  # Store results for each edition
+                    'current_index': 0,
+                    'results': []
                 }
                 st.session_state.app_state = "RUNNING_BATCH_EDITION"
                 st.session_state.edition_message = ""
                 st.rerun()
 
-        # with col2:
-        #     if st.button("✏️ Modifica", use_container_width=True, key="batch_edition_edit_btn"):
-        #         # Store data for editing
-        #         st.session_state.edition_edit_mode = True
-        #         st.session_state.edition_to_edit = batch_data  # Store all editions data
-        #         st.session_state.edition_show_summary = False  # Hide preview
-        #         st.rerun()
-
         with col3:
-            if st.button("❌ Annulla", width='stretch', key="batch_edition_cancel_btn"):
+            if st.button("❌ Annulla", use_container_width=True,
+                         key="batch_edition_cancel_btn"):
                 st.session_state.edition_parsed_data = None
                 st.session_state.edition_show_summary = False
                 st.rerun()
@@ -3073,6 +3083,43 @@ class CourseView:
                     key="edit_edition_description",
                     height=100
                 )
+                # Attributi Aggiuntivi section
+                st.markdown("### 🗂️ Attributi Aggiuntivi")
+                col3, col4 = st.columns(2)
+                with col3:
+                    st.text_input(
+                        "Centro di Costo",
+                        value=edition.get('centro_costo', ''),
+                        key="edit_edition_centro_costo"
+                    )
+                    st.text_input(
+                        "Società Pagante",
+                        value=edition.get('societa_pagante', ''),
+                        key="edit_edition_societa_pagante"
+                    )
+                    st.text_input(
+                        "Direzione Pagante",
+                        value=edition.get('direzione_pagante', ''),
+                        key="edit_edition_direzione_pagante"
+                    )
+                with col4:
+                    st.text_input(
+                        "Servizio Pagante",
+                        value=edition.get('servizio_pagante', ''),
+                        key="edit_edition_servizio_pagante"
+                    )
+                    st.text_input(
+                        "Sottotipologia",
+                        value=edition.get('sottotipologia', ''),
+                        key="edit_edition_sottotipologia"
+                    )
+                    st.selectbox(
+                        "Finanziata",
+                        options=['', 'Sì', 'No'],
+                        index=['', 'Sì', 'No'].index(edition.get('finanziata', ''))
+                        if edition.get('finanziata', '') in ['', 'Sì', 'No'] else 0,
+                        key="edit_edition_finanziata"
+                    )
 
             # Activities
             st.markdown("### 📝 Attività")
