@@ -1834,6 +1834,12 @@ class CourseView:
                     'supplier': str(row.iloc[5]).strip() if len(row) > 5 and pd.notna(row.iloc[5]) else '',
                     'price': str(row.iloc[6]).strip() if len(row) > 6 and pd.notna(row.iloc[6]) else '',
                     'description': '',
+                    'centro_costo': '',
+                    'direzione_pagante': '',
+                    'finanziata': '',
+                    'servizio_pagante': '',
+                    'sottotipologia': '',
+                    'societa_pagante': '',
                     'activities': []
                 }
                 continue
@@ -1902,7 +1908,14 @@ class CourseView:
                 'location': ['aula', 'aula principale', 'aula_principale'],
                 'supplier': ['fornitore', 'fornitore formazione'],
                 'price': ['costo', 'prezzo'],
-                'description': ['descrizione', 'desc']
+                'description': ['descrizione', 'desc'],
+                # NEW FIELDS:
+                'centro_costo': ['centro di costo', 'centro_costo', 'cdc'],
+                'direzione_pagante': ['direzione pagante', 'direzione_pagante'],
+                'finanziata': ['finanziata'],
+                'servizio_pagante': ['servizio pagante', 'servizio_pagante'],
+                'sottotipologia': ['sottotipologia'],
+                'societa_pagante': ["società pagante", "societa pagante", 'societa_pagante'],
             }
 
             # Column mappings for activities
@@ -1922,6 +1935,23 @@ class CourseView:
                     if name in df.columns:
                         return name
                 return None
+
+            def safe_val(row, col_key, cols_dict):
+                """Safely extract value from row, returning empty string for None/NaN/Ellipsis"""
+                col = cols_dict.get(col_key)
+                if not col:
+                    return ''
+                val = row.get(col, '')
+                if val is None or val is ...:
+                    return ''
+                try:
+                    if pd.isna(val):
+                        return ''
+                except:
+                    pass
+                result = str(val).strip()
+                # Remove "nan" strings
+                return '' if result.lower() == 'nan' else result
 
             edition_cols = {k: find_column(df_edizioni, v) for k, v in edition_mappings.items()}
             activity_cols = {k: find_column(df_attivita, v) for k, v in activity_mappings.items()}
@@ -1949,20 +1979,20 @@ class CourseView:
 
                 edition = {
                     'id': edition_id,
-                    'course_name': str(course_name).strip(),
-                    'edition_title': str(row[edition_cols['title']]).strip() if edition_cols['title'] and pd.notna(
-                        row[edition_cols['title']]) else '',
+                    'course_name': safe_val(row, 'course_name', edition_cols),
+                    'edition_title': safe_val(row, 'title', edition_cols),
                     'start_date': start_date_str,
                     'end_date': end_date_str,
-                    'location': str(row[edition_cols['location']]).strip() if edition_cols['location'] and pd.notna(
-                        row[edition_cols['location']]) else '',
-                    'supplier': str(row[edition_cols['supplier']]).strip() if edition_cols['supplier'] and pd.notna(
-                        row[edition_cols['supplier']]) else '',
-                    'price': str(row[edition_cols['price']]).strip() if edition_cols['price'] and pd.notna(
-                        row[edition_cols['price']]) else '',
-                    'description': str(row[edition_cols['description']]).strip() if edition_cols[
-                                                                                        'description'] and pd.notna(
-                        row[edition_cols['description']]) else '',
+                    'location': safe_val(row, 'location', edition_cols),
+                    'supplier': safe_val(row, 'supplier', edition_cols),
+                    'price': safe_val(row, 'price', edition_cols),
+                    'description': safe_val(row, 'description', edition_cols),
+                    'centro_costo': safe_val(row, 'centro_costo', edition_cols),
+                    'direzione_pagante': safe_val(row, 'direzione_pagante', edition_cols),
+                    'finanziata': safe_val(row, 'finanziata', edition_cols),
+                    'servizio_pagante': safe_val(row, 'servizio_pagante', edition_cols),
+                    'sottotipologia': safe_val(row, 'sottotipologia', edition_cols),
+                    'societa_pagante': safe_val(row, 'societa_pagante', edition_cols),
                     'activities': []
                 }
                 editions_list.append(edition)
@@ -2060,7 +2090,14 @@ class CourseView:
             'supplier': '',
             'price': '',
             'description': '',
-            'activities': []
+            'activities': [],
+            # NEW:
+            'centro_costo': '',
+            'direzione_pagante': '',
+            'finanziata': '',
+            'servizio_pagante': '',
+            'sottotipologia': '',
+            'societa_pagante': '',
         }
 
         text_lower = text.lower()
@@ -2121,6 +2158,58 @@ class CourseView:
         if price_match:
             parsed['price'] = price_match.group(1)
 
+        # --- Centro di Costo ---
+        centro_costo_match = re.search(
+            r'centro\s+di\s+costo\s*[-–:]\s*([^,]+?)(?:,|\s+direzione|\s+finanziata|$)',
+            text_lower)
+        if centro_costo_match:
+            start = centro_costo_match.start(1)
+            end = centro_costo_match.end(1)
+            parsed['centro_costo'] = text[start:end].strip()
+
+        # --- Direzione Pagante ---
+        direzione_match = re.search(
+            r'direzione\s+pagante\s*[-–:]\s*([^,]+?)(?:,|\s+finanziata|\s+servizio|$)',
+            text_lower)
+        if direzione_match:
+            start = direzione_match.start(1)
+            end = direzione_match.end(1)
+            parsed['direzione_pagante'] = text[start:end].strip()
+
+        # --- Finanziata ---
+        finanziata_match = re.search(
+            r'finanziata\s*[-–:]\s*(s[iì]|no)',
+            text_lower)
+        if finanziata_match:
+            val = finanziata_match.group(1).strip().lower()
+            parsed['finanziata'] = 'Sì' if val in ['si', 'sì'] else 'No'
+
+        # --- Servizio Pagante ---
+        servizio_match = re.search(
+            r'servizio\s+pagante\s*[-–:]\s*([^,]+?)(?:,|\s+sottotipologia|\s+societ|$)',
+            text_lower)
+        if servizio_match:
+            start = servizio_match.start(1)
+            end = servizio_match.end(1)
+            parsed['servizio_pagante'] = text[start:end].strip()
+
+        # --- Sottotipologia ---
+        sottotipologia_match = re.search(
+            r'sottotipologia\s*[-–:]\s*([^,]+?)(?:,|\s+societ|$)',
+            text_lower)
+        if sottotipologia_match:
+            start = sottotipologia_match.start(1)
+            end = sottotipologia_match.end(1)
+            parsed['sottotipologia'] = text[start:end].strip()
+
+        # --- Società Pagante ---
+        societa_match = re.search(
+            r"societ[àa]['\u2019]?\s+pagante\s*[-–:]\s*([^,]+?)(?:,|\s+attivit|$)",
+            text_lower)
+        if societa_match:
+            start = societa_match.start(1)
+            end = societa_match.end(1)
+            parsed['societa_pagante'] = text[start:end].strip()
         # Extract activities
         # Pattern: "primo giorno 12/02/2026 ore 09.00-11.00" or similar
         activity_section = re.search(r'attività[:\s]+(.+)', text_lower, re.DOTALL)
@@ -2287,6 +2376,30 @@ class CourseView:
                          key="edition_supplier_key")
             st.text_input("Prezzo Edizione (€) ", placeholder="Esempio: 1000",
                           key="edition_price_key")
+            st.divider()
+            st.subheader("Attributi Aggiuntivi")
+            st.caption("Campi opzionali — compilare se necessario")
+
+            st.text_input("Centro di Costo",
+                          placeholder="Es: TP00001",
+                          key="edition_centro_costo_key")
+            st.text_input("Società Pagante",
+                          placeholder="Es: Magis Calore S.r.l.",
+                          key="edition_societa_pagante_key")
+            st.text_input("Direzione Pagante",
+                          placeholder="Es: Direzione Operativa - VAM",
+                          key="edition_direzione_pagante_key")
+            st.text_input("Servizio Pagante",
+                          placeholder="Es: Impianti di Cogenerazione",
+                          key="edition_servizio_pagante_key")
+            st.text_input("Sottotipologia",
+                          placeholder="Es: Office Automation & Produttività",
+                          key="edition_sottotipologia_key")
+
+            finanziata_options = ["", "Sì", "No"]
+            st.selectbox("Finanziata",
+                         options=finanziata_options,
+                         key="edition_finanziata_key")
 
             st.divider()
             st.subheader("Dettagli Attività")
@@ -2328,11 +2441,15 @@ class CourseView:
         st.info("""
         **Scrivi una frase che descriva l'edizione e le attività**, ad esempio:
 
-        "Crea edizione per corso Data Science01 titolo Winter Edition
-        data inizio 12/02/2026 data fine 20/02/2026
-        aula Aula de carli fornitore AEIT costo 1000
-        attività: primo giorno 12/02/2026 ore 09.00-11.00,
-        secondo giorno 13/02/2026 ore 10.00-12.00"
+        "Crea edizione per corso Analisi dei dati titolo Analisi dei dati - Base
+         data inizio 12/02/2026 data fine 20/02/2026
+         aula Aula de carli fornitore AEIT costo 1000 con CENTRO DI COSTO - TP00001,
+         DIREZIONE PAGANTE - Direzione Operativa - VAM,	FINANZIATA - no,
+         SERVIZIO PAGANTE - Impianti di Cogenerazione UT Verona,
+         SOTTOTIPOLOGIA-	Office Automation & Produttività,
+         SOCIETA' PAGANTE - Magis Calore S.r.l.
+         attività: primo giorno 12/02/2026 ore 09.00-11.00,
+         secondo giorno 13/02/2026 ore 10.00-12.00"
         """, icon="💡")
 
         # ✅ Initialize the key-based state if not exists
@@ -2536,15 +2653,22 @@ class CourseView:
 
         # ✅ ALL VALIDATION PASSED - Now start automation
         st.session_state.edition_details = {
-            "course_name": course_name,
-            "edition_title": edition_title,
-            "edition_start_date": edition_start,
-            "edition_end_date": edition_end,
-            "location": location,
-            "supplier": supplier,
-            "price": price,
-            "description": description,
-            "activities": activities_list
+            'course_name': course_name,
+            'edition_title': edition_title,
+            'edition_start_date': edition_start,
+            'edition_end_date': edition_end,
+            'location': location,
+            'supplier': supplier,
+            'price': price,
+            'description': description,
+            'activities': activities_list,
+            # NEW FIELDS:
+            'centro_costo': st.session_state.get('edition_centro_costo_key', ''),
+            'direzione_pagante': st.session_state.get('edition_direzione_pagante_key', ''),
+            'finanziata': st.session_state.get('edition_finanziata_key', ''),
+            'servizio_pagante': st.session_state.get('edition_servizio_pagante_key', ''),
+            'sottotipologia': st.session_state.get('edition_sottotipologia_key', ''),
+            'societa_pagante': st.session_state.get('edition_societa_pagante_key', ''),
         }
         st.session_state.app_state = "RUNNING_EDITION"
         st.session_state.edition_message = ""
@@ -2608,31 +2732,48 @@ class CourseView:
             self._render_single_edition_preview(edition_data)
 
     def _render_single_edition_preview(self, edition_data: Dict[str, Any]):
-        """Preview for a single edition with activities"""
+        """Preview for a single edition with activities — 3-table layout"""
 
         st.success("✅ Dati estratti con successo!")
         st.subheader("📋 Anteprima Edizione + Attività")
 
-        # Edition details card
+        # === TABLE 1: Dettagli Edizione ===
         st.markdown("### 📚 Dettagli Edizione")
+        dettagli = {
+            'Campo': ['Corso', 'Titolo Edizione', 'Data Inizio', 'Data Fine',
+                      'Aula', 'Fornitore', 'Costo', 'Descrizione'],
+            'Valore': [
+                edition_data.get('course_name', '-'),
+                edition_data.get('edition_title', '') or 'Default (nome corso + data)',
+                edition_data.get('start_date', '-'),
+                edition_data.get('end_date', '-'),
+                edition_data.get('location', '') or 'Non specificata',
+                edition_data.get('supplier', '') or 'Non specificato',
+                f"€{edition_data.get('price', '0') or '0'}",
+                edition_data.get('description', '') or '-',
+            ]
+        }
+        st.dataframe(pd.DataFrame(dettagli), hide_index=True, width='stretch')
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write(f"**Corso:** {edition_data.get('course_name', '-')}")
-            st.write(f"**Titolo Edizione:** {edition_data.get('edition_title', '-') or 'Default (nome corso + data)'}")
-            st.write(f"**Data Inizio:** {edition_data.get('start_date', '-')}")
-            st.write(f"**Data Fine:** {edition_data.get('end_date', '-')}")
-        with col2:
-            st.write(f"**Aula:** {edition_data.get('location', '-') or 'Non specificata'}")
-            st.write(f"**Fornitore:** {edition_data.get('supplier', '-') or 'Non specificato'}")
-            st.write(f"**Costo:** €{edition_data.get('price', '-') or '0'}")
-            if edition_data.get('description'):
-                st.write(f"**Descrizione:** {edition_data.get('description', '')}")
+        # === TABLE 2: Attributi Aggiuntivi (only if any filled) ===
+        aggiuntivi_values = {
+            'Campo': ['Centro di Costo', 'Società Pagante', 'Direzione Pagante',
+                      'Servizio Pagante', 'Sottotipologia', 'Finanziata'],
+            'Valore': [
+                edition_data.get('centro_costo', '') or '-',
+                edition_data.get('societa_pagante', '') or '-',
+                edition_data.get('direzione_pagante', '') or '-',
+                edition_data.get('servizio_pagante', '') or '-',
+                edition_data.get('sottotipologia', '') or '-',
+                edition_data.get('finanziata', '') or '-',
+            ]
+        }
+        st.markdown("### 🗂️ Attributi Aggiuntivi")
+        st.dataframe(pd.DataFrame(aggiuntivi_values), hide_index=True, width='stretch')
 
-        # Activities table
+        # === TABLE 3: Attività ===
         st.markdown("### 📝 Attività")
         activities = edition_data.get('activities', [])
-
         if activities:
             activities_preview = []
             for idx, act in enumerate(activities):
@@ -2642,31 +2783,25 @@ class CourseView:
                     'Data': act.get('date', ''),
                     'Ora Inizio': act.get('start_time', ''),
                     'Ora Fine': act.get('end_time', ''),
-                    'Impegno (ore)': act.get('impegno_ore', '') or act.get('impegno_previsto_in_ore', '')
+                    'Impegno (ore)': act.get('impegno_ore', '') or act.get('impegno_previsto_in_ore', '') or '-'
                 })
-
-            activities_df = pd.DataFrame(activities_preview)
-            st.dataframe(activities_df, width='stretch', hide_index=True)
+            st.dataframe(pd.DataFrame(activities_preview), hide_index=True, width='stretch')
         else:
-            st.warning("⚠️ Nessuna attività trovata. Aggiungi attività nella modalità Modifica.")
+            st.warning("⚠️ Nessuna attività trovata.")
 
         st.divider()
 
-        # Action buttons (NO FORM - regular buttons)
         col1, col2, col3 = st.columns([2, 1, 1])
-
         with col1:
             if st.button("✅ Conferma e Crea Edizione", type="primary", width='stretch',
                          key="edition_preview_confirm_btn"):
                 self._start_edition_creation(edition_data)
-
         with col2:
             if st.button("✏️ Modifica", width='stretch', key="edition_preview_edit_btn"):
                 st.session_state.edition_edit_mode = True
                 st.session_state.edition_to_edit = edition_data.copy()
                 st.session_state.edition_show_summary = False
                 st.rerun()
-
         with col3:
             if st.button("❌ Annulla", width='stretch', key="edition_preview_cancel_btn"):
                 st.session_state.edition_parsed_data = None
@@ -2700,6 +2835,29 @@ class CourseView:
                     st.write(f"**Aula:** {edition.get('location', 'N/A')}")
                     st.write(f"**Fornitore:** {edition.get('supplier', 'N/A')}")
                     st.write(f"**Costo:** €{edition.get('price', 'N/A')}")
+
+                # Show Attributi Aggiuntivi if present
+                new_fields = {
+                    'Centro di Costo': edition.get('centro_costo', ''),
+                    'Società Pagante': edition.get('societa_pagante', ''),
+                    'Direzione Pagante': edition.get('direzione_pagante', ''),
+                    'Servizio Pagante': edition.get('servizio_pagante', ''),
+                    'Sottotipologia': edition.get('sottotipologia', ''),
+                    'Finanziata': edition.get('finanziata', ''),
+
+                }
+                if any(new_fields.values()):
+                    st.markdown("**Attributi Aggiuntivi:**")
+                    col3, col4 = st.columns(2)
+                    fields_list = list(new_fields.items())
+                    with col3:
+                        for label, value in fields_list[:3]:
+                            if value:
+                                st.write(f"**{label}:** {value}")
+                    with col4:
+                        for label, value in fields_list[3:]:
+                            if value:
+                                st.write(f"**{label}:** {value}")
 
                 # Activities table
                 if activities:
@@ -2802,7 +2960,13 @@ class CourseView:
                 'supplier': edition_data.get('supplier', ''),
                 'price': edition_data.get('price', ''),
                 'description': edition_data.get('description', ''),
-                'activities': activities_list
+                'activities': activities_list,
+                'centro_costo': edition_data.get('centro_costo', ''),
+                'direzione_pagante': edition_data.get('direzione_pagante', ''),
+                'finanziata': edition_data.get('finanziata', ''),
+                'servizio_pagante': edition_data.get('servizio_pagante', ''),
+                'sottotipologia': edition_data.get('sottotipologia', ''),
+                'societa_pagante': edition_data.get('societa_pagante', ''),
             }
 
             # Start automation
@@ -3080,7 +3244,13 @@ class CourseView:
             'supplier': supplier,
             'price': price,
             'description': description,
-            'activities': activities_list
+            'activities': activities_list,
+            'centro_costo': original_edition.get('centro_costo', ''),
+            'societa_pagante': original_edition.get('societa_pagante', ''),
+            'direzione_pagante': original_edition.get('direzione_pagante', ''),
+            'servizio_pagante': original_edition.get('servizio_pagante', ''),
+            'sottotipologia': original_edition.get('sottotipologia', ''),
+            'finanziata': original_edition.get('finanziata', ''),
         }
 
         st.session_state.app_state = "RUNNING_EDITION"
@@ -3116,7 +3286,13 @@ class CourseView:
             'supplier': st.session_state.get('edit_edition_supplier', ''),
             'price': st.session_state.get('edit_edition_price', ''),
             'description': st.session_state.get('edit_edition_description', ''),
-            'activities': updated_activities
+            'activities': updated_activities,
+            'centro_costo': original_edition.get('centro_costo', ''),
+            'societa_pagante': original_edition.get('societa_pagante', ''),
+            'direzione_pagante': original_edition.get('direzione_pagante', ''),
+            'servizio_pagante': original_edition.get('servizio_pagante', ''),
+            'sottotipologia': original_edition.get('sottotipologia', ''),
+            'finanziata': original_edition.get('finanziata', ''),
         }
 
         st.session_state.edition_parsed_data = updated_edition

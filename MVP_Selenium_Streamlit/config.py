@@ -46,11 +46,11 @@ NAV_EDIZIONI_LINK   = '//a[@title="Edizioni" and text()="Edizioni"]'
 # =============================================================================
 # COURSES PAGE - SEARCH
 # =============================================================================
-COURSE_SEARCH_NAME_INPUT = 'pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value00'  # used with By.NAME
-COURSE_SEARCH_DATE_INPUT = '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value10::content"]'
-COURSE_SEARCH_BUTTON     = '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'
+COURSE_SEARCH_NAME_INPUT = '_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value20'  # used with By.NAME
+COURSE_SEARCH_DATE_INPUT = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value40::content"]'
+COURSE_SEARCH_BUTTON     = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'
 COURSE_NO_DATA_MESSAGE   = '//*[contains(text(),"Nessun dato da visualizzare.")]'
-COURSE_TABLE_SUMMARY     = 'Corsi'                      # used in //table[@summary='Corsi']
+COURSE_TABLE_SUMMARY     = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srSdh"]'                      # used in //table[@summary='Corsi']
 
 
 # =============================================================================
@@ -134,6 +134,18 @@ EDITION_PRICE_ADD_LINE_BTN  = "//img[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:
 EDITION_PRICE_LINE_DROPDOWN = "//a[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:t1:0:soc2::drop')]"
 EDITION_PRICE_LISTINO_OPTION = '//*[contains(text(),"Prezzo di listino")]'
 EDITION_PRICE_COST_INPUT    = "//input[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:t1:0:it1::content')]"
+
+# =============================================================================
+# EDITION - ATTRIBUTI AGGIUNTIVI (new fields after price)
+# =============================================================================
+EDITION_CENTRO_COSTO_INPUT     = '//input[contains(@id, "IteratorcomuneFuoriComune__FLEX_EMPTY::content")]'
+EDITION_DIREZIONE_PAG_INPUT    = '//input[contains(@id, "IteratordirezionePagante__FLEX_EMPTY::content")]'
+EDITION_FINANZIATA_LOV         = '//a[contains(@id, "Iteratorfinanziata_Display__FLEX_EMPTY::lovIconId")]'
+EDITION_FINANZIATA_SI          = '//td[contains(@class,"xen")]//span[normalize-space(text())="Sì"]'
+EDITION_FINANZIATA_NO          = '//td[contains(@class,"xen")]//span[normalize-space(text())="No"]'
+EDITION_SERVIZIO_PAG_INPUT     = '//input[contains(@id, "IteratorservizioPagante__FLEX_EMPTY::content")]'
+EDITION_SOTTOTIPOLOGIA_INPUT   = '//input[contains(@id, "Iteratorsottotipologia__FLEX_EMPTY::content")]'
+EDITION_SOCIETA_PAG_INPUT      = '//input[contains(@id, "IteratorsocietaPagante__FLEX_EMPTY::content")]'
 
 # =============================================================================
 # EDITION SEARCH RESULTS - DATE EXTRACTION (from search results row)

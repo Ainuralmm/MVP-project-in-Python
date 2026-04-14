@@ -132,6 +132,12 @@ class OracleAutomator:
                 (By.ID, NAV_LEARN_ADMIN))).click()
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, NAV_CORSI_LINK))).click()
+
+            #Wait for courses page to fully load
+            print("Model: Waiting for Corsi page to load...")
+            WebDriverWait(self.driver, 30).until(
+                EC.presence_of_element_located(
+                    (By.NAME, COURSE_SEARCH_NAME_INPUT)))
             print("Model: Navigated to 'Corsi' page.")
             return True
         except Exception as e:
@@ -171,6 +177,15 @@ class OracleAutomator:
             cleaned_course_name = course_name.strip()
             capitalised_course_name = cleaned_course_name.title()
 
+            # Wait for page to fully stabilize
+            time.sleep(3)
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
             # Fill search name
             search_box_locator = (By.NAME, COURSE_SEARCH_NAME_INPUT)
             search_box = self.wait.until(EC.element_to_be_clickable(search_box_locator))
@@ -184,6 +199,7 @@ class OracleAutomator:
             date_input.clear()
             date_input.send_keys("01/01/2000")
             self._pause_for_visual_check()
+            time.sleep(3)
 
             # Click search button
             search_button = self.wait.until(EC.element_to_be_clickable(
@@ -191,54 +207,104 @@ class OracleAutomator:
             search_button.click()
             print(f"Clicked Search button for course: '{capitalised_course_name}'")
 
-            # Wait for results or 'no data' message
-            short_wait = WebDriverWait(self.driver, 7)
+            result_container_xpath = COURSE_TABLE_SUMMARY
+
+            # Wait for Oracle to process the search (blocking overlay)
+            time.sleep(2)
+            try:
+                WebDriverWait(self.driver, 15).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(1)
+
+
+            try:
+                # Wait for result container to be present
+                WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, COURSE_TABLE_SUMMARY)))
+            except:
+                print("   ⚠️ Could not find result container")
+
+            # Check for "no data" message
+            short_wait = WebDriverWait(self.driver, 5)
             try:
                 short_wait.until(EC.presence_of_element_located(
                     (By.XPATH, COURSE_NO_DATA_MESSAGE)))
-                print(f"Search result: Course '{course_name}' NOT found (no data message)")
+                print(f"Search result: Course '{course_name}' NOT found")
                 return False
             except TimeoutException:
-                course_name_lower = cleaned_course_name.lower()
-                case_insensitive_xpath = (
-                    f"//table[@summary='{COURSE_TABLE_SUMMARY}']//a"
-                    f"[translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',"
-                    f" 'abcdefghijklmnopqrstuvwxyz')='{course_name_lower}']"
+                pass
+
+            # Look for the course name as a link inside the result container
+            course_name_lower = cleaned_course_name.lower()
+            course_link_xpath = (
+                f'{result_container_xpath}//a'
+                f'[translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
+                f' "abcdefghijklmnopqrstuvwxyz")="{course_name_lower}"]'
+            )
+            try:
+                short_wait.until(EC.presence_of_element_located(
+                    (By.XPATH, course_link_xpath)))
+                print(f"Search result: Course '{course_name}' FOUND")
+                return True
+            except TimeoutException:
+                # Fallback: check if any link in the container contains the name
+                fallback_xpath = (
+                    f'{result_container_xpath}//a'
+                    f'[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
+                    f' "abcdefghijklmnopqrstuvwxyz"), "{course_name_lower}")]'
                 )
                 try:
                     short_wait.until(EC.presence_of_element_located(
-                        (By.XPATH, case_insensitive_xpath)))
-                    print(f"Search result: Course '{course_name}' FOUND (exact match)")
+                        (By.XPATH, fallback_xpath)))
+                    print(f"Search result: Course '{course_name}' FOUND (partial match)")
                     return True
                 except TimeoutException:
-                    print(f"Search result: Course '{course_name}' NOT found (no exact match)")
+                    print(f"Search result: Course '{course_name}' NOT found")
                     return False
-
         except Exception as e:
-            print(f"Error during search_course for '{course_name}': {e}")
+            print(f"Error during course search: {e}")
             return False
 
     def open_course_from_list(self, course_name):
         try:
+            result_container_xpath = COURSE_TABLE_SUMMARY
             course_name_lower = course_name.lower()
-            case_insensitive_xpath = (
-                f"//table[@summary='{COURSE_TABLE_SUMMARY}']//a"
-                f"[translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',"
-                f" 'abcdefghijklmnopqrstuvwxyz')='{course_name_lower}']"
+
+            # Exact match first
+            course_link_xpath = (
+                f'{result_container_xpath}//a'
+                f'[translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
+                f' "abcdefghijklmnopqrstuvwxyz")="{course_name_lower}"]'
             )
-            link = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, case_insensitive_xpath)))
+
+            try:
+                link = self.wait.until(EC.element_to_be_clickable(
+                    (By.XPATH, course_link_xpath)))
+            except:
+                # Fallback: partial match
+                course_link_xpath = (
+                    f'{result_container_xpath}//a'
+                    f'[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
+                    f' "abcdefghijklmnopqrstuvwxyz"), "{course_name_lower}")]'
+                )
+                link = self.wait.until(EC.element_to_be_clickable(
+                    (By.XPATH, course_link_xpath)))
+
             link.click()
             self._pause_for_visual_check()
-            print(f"Model: Clicked on existing course '{course_name}' in list.")
+            print(f"Model: Clicked on course '{course_name}' in list.")
 
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, COURSE_DETAIL_EDIZIONI_TAB)))
-            print(f"Model: Course details page loaded successfully (found Edizioni tab).")
+            print(f"Model: Course details page loaded.")
             return True
 
         except Exception as e:
-            print(f"Model: Could not find or click the link for '{course_name}'. Error: {e}")
+            print(f"Model: Could not open course '{course_name}'. Error: {e}")
             return False
 
     def create_course(self, course_details):
@@ -801,23 +867,63 @@ class OracleAutomator:
         self.wait.until(EC.presence_of_element_located(
             (By.XPATH, EDITION_AULA_RESULTS_TABLE)))
 
+        # Wait for results to load
+        time.sleep(2)
         try:
-            short_wait = WebDriverWait(self.driver, 3)
-            short_wait.until(EC.presence_of_element_located((By.XPATH,
-                f'{EDITION_AULA_RESULTS_TABLE}//tr'
-                f'[.//text()[contains(., "Nessuna riga da visualizzare")]]')))
-            print(f"⚠️ The location '{location}' was not found.")
+            WebDriverWait(self.driver, 5).until(
+                EC.invisibility_of_element_located(
+                    (By.CLASS_NAME, "AFBlockingGlassPane")))
+        except:
+            pass
+
+        location_lower = location.lower()
+
+        # Check for "no results" first
+        try:
+            WebDriverWait(self.driver, 3).until(
+                EC.presence_of_element_located((By.XPATH,
+                                                '//*[contains(text(), "Nessuna riga") or '
+                                                'contains(text(), "Nessun dato")]')))
+            print(f"⚠️ Location '{location}' not found in popup.")
+            # Click Annulla to close popup gracefully
+            try:
+                annulla = self.driver.find_element(
+                    By.XPATH, "//button[text()='Annulla' or text()='Cancel']")
+                annulla.click()
+            except:
+                pass
+            return
         except TimeoutException:
-            location_lower = location.lower()
-            case_insensitive_xpath = (
-                f"//td[contains(@class, 'xen') and .//span"
-                f"[translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',"
-                f" 'abcdefghijklmnopqrstuvwxyz')='{location_lower}']]"
-            )
-            list_aula_option_row = self.wait.until(
-                EC.element_to_be_clickable((By.XPATH, case_insensitive_xpath)))
-            list_aula_option_row.click()
-            self._pause_for_visual_check()
+            pass
+
+        # Try multiple strategies to click the matching row
+        found = False
+
+        # Strategy 1: exact match on td text (direct text, no span required)
+        for xpath in [
+            # Exact match anywhere in the row's text
+            f'{EDITION_AULA_RESULTS_TABLE}//tr[.//td['
+            f'translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", '
+            f'"abcdefghijklmnopqrstuvwxyz")="{location_lower}"]]',
+            # Contains match (more lenient)
+            f'{EDITION_AULA_RESULTS_TABLE}//tr[.//td['
+            f'contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", '
+            f'"abcdefghijklmnopqrstuvwxyz"), "{location_lower}")]]',
+        ]:
+            try:
+                row = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath)))
+                row.click()
+                print(f"   ✅ Selected location: {location}")
+                found = True
+                break
+            except:
+                continue
+
+        if not found:
+            print(f"   ⚠️ Could not click row for '{location}', proceeding anyway")
+
+        self._pause_for_visual_check()
 
         ok_button = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, EDITION_AULA_OK_BUTTON)))
@@ -961,6 +1067,96 @@ class OracleAutomator:
         print(f"Confirmed the selected language: {EDITION_LANGUAGE_DEFAULT}")
         self._pause_for_visual_check()
 
+    def _fill_edition_attributi_aggiuntivi(self, centro_costo, direzione_pagante,
+                                           finanziata, servizio_pagante,
+                                           sottotipologia, societa_pagante):
+        """Helper: fill the Attributi Aggiuntivi fields after price section."""
+
+        # --- Centro di Costo ---
+        if centro_costo:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_CENTRO_COSTO_INPUT)))
+                field.clear()
+                field.send_keys(centro_costo)
+                print(f"   ✅ Centro di Costo: {centro_costo}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Centro di Costo: {e}")
+
+        # --- Direzione Pagante ---
+        if direzione_pagante:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_DIREZIONE_PAG_INPUT)))
+                field.clear()
+                field.send_keys(direzione_pagante)
+                print(f"   ✅ Direzione Pagante: {direzione_pagante}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Direzione Pagante: {e}")
+
+        # --- Finanziata (dropdown: Sì / No) ---
+        if finanziata:
+            try:
+                # Click the LOV icon to open dropdown
+                lov_icon = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, EDITION_FINANZIATA_LOV)))
+                lov_icon.click()
+                self._pause_for_visual_check()
+
+                # Select Sì or No
+                finanziata_clean = finanziata.strip().lower()
+                if finanziata_clean in ['si', 'sì', 'yes', 's']:
+                    option_xpath = EDITION_FINANZIATA_SI
+                else:
+                    option_xpath = EDITION_FINANZIATA_NO
+
+                option = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, option_xpath)))
+                option.click()
+                print(f"   ✅ Finanziata: {finanziata}")
+                self._pause_for_visual_check()
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Finanziata: {e}")
+
+        # --- Servizio Pagante ---
+        if servizio_pagante:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_SERVIZIO_PAG_INPUT)))
+                field.clear()
+                field.send_keys(servizio_pagante)
+                print(f"   ✅ Servizio Pagante: {servizio_pagante}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Servizio Pagante: {e}")
+
+        # --- Sottotipologia ---
+        if sottotipologia:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_SOTTOTIPOLOGIA_INPUT)))
+                field.clear()
+                field.send_keys(sottotipologia)
+                print(f"   ✅ Sottotipologia: {sottotipologia}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Sottotipologia: {e}")
+
+        # --- Società Pagante ---
+        if societa_pagante:
+            try:
+                field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, EDITION_SOCIETA_PAG_INPUT)))
+                field.clear()
+                field.send_keys(societa_pagante)
+                print(f"   ✅ Società Pagante: {societa_pagante}")
+            except Exception as e:
+                print(f"   ⚠️ Could not fill Società Pagante: {e}")
+
     def create_edition_and_activities(self, edition_details):
         """
         Create edition and its activities.
@@ -977,6 +1173,12 @@ class OracleAutomator:
             supplier = edition_details.get('supplier', "")
             price = edition_details.get('price', "")
             description = edition_details.get('description', "")
+            centro_costo = edition_details.get('centro_costo', '')
+            direzione_pagante = edition_details.get('direzione_pagante', '')
+            finanziata = edition_details.get('finanziata', '')
+            servizio_pagante = edition_details.get('servizio_pagante', '')
+            sottotipologia = edition_details.get('sottotipologia', '')
+            societa_pagante = edition_details.get('societa_pagante', '')
             activities = edition_details.get('activities', [])
 
             print(f"Model (EDITION): Creating edition for {course_name} "
@@ -1013,7 +1215,7 @@ class OracleAutomator:
                 desc_edizione = self.wait.until(EC.presence_of_element_located(
                     (By.XPATH, EDITION_DESCRIPTION_INPUT)))
                 full_desc = (f"{course_name}-{edition_start_date.strftime('%d/%m/%Y')}"
-                             f"-/n{description}")
+                             f"-\n{description}")
                 desc_edizione.send_keys(full_desc)
                 self._pause_for_visual_check()
 
@@ -1053,6 +1255,16 @@ class OracleAutomator:
             self._fill_edition_language()
             self._fill_edition_supplier(supplier)
             self._fill_edition_price(price)
+
+            # Fill Attributi Aggiuntivi
+            self._fill_edition_attributi_aggiuntivi(
+                centro_costo=centro_costo,
+                direzione_pagante=direzione_pagante,
+                finanziata=finanziata,
+                servizio_pagante=servizio_pagante,
+                sottotipologia=sottotipologia,
+                societa_pagante=societa_pagante,
+            )
 
             time.sleep(1)
             # Save and close edition
@@ -1109,7 +1321,14 @@ class OracleAutomator:
             price: str = "",
             description: str = "",
             activities: list = None,
-            return_to_courses_page: bool = True
+            return_to_courses_page: bool = True,
+            # NEW PARAMETERS:
+            centro_costo: str = "",
+            direzione_pagante: str = "",
+            finanziata: str = "",
+            servizio_pagante: str = "",
+            sottotipologia: str = "",
+            societa_pagante: str = "",
     ) -> bool:
         """Create a single edition with activities for BATCH processing."""
         try:
@@ -1225,6 +1444,16 @@ class OracleAutomator:
             self._fill_edition_supplier(supplier)
             self._fill_edition_price(price)
 
+            # Fill Attributi Aggiuntivi
+            self._fill_edition_attributi_aggiuntivi(
+                centro_costo=centro_costo,
+                direzione_pagante=direzione_pagante,
+                finanziata=finanziata,
+                servizio_pagante=servizio_pagante,
+                sottotipologia=sottotipologia,
+                societa_pagante=societa_pagante
+            )
+
             # Step 6: Save edition
             print(f"\n[6] Saving edition...")
             time.sleep(1)
@@ -1312,6 +1541,7 @@ class OracleAutomator:
             print(f"{'=' * 60}\n")
             return True
 
+
         except Exception as e:
             print(f"\n❌ BATCH ERROR: {str(e)}")
             import traceback
@@ -1319,8 +1549,19 @@ class OracleAutomator:
             try:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 self.driver.save_screenshot(f"batch_error_{timestamp}.png")
+
             except:
                 pass
+
+            # Try to navigate back to courses page for next iteration
+
+            try:
+                print("   Attempting recovery: navigating back to Corsi page...")
+                self.navigate_to_courses_page()
+                print("   ✅ Recovery successful")
+
+            except:
+                print("   ❌ Recovery failed")
             return False
 
     def open_edizioni_tab(self):
