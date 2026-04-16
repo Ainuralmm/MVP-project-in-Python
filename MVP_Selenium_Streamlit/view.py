@@ -2064,9 +2064,77 @@ class CourseView:
             st.code(traceback.format_exc())
             return None
 
-    def _parse_edition_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
+    def _parse_edition_nlp_input(self, text:str)->Optional[Dict[str,Any]]:
+        """Parse free-text NLP input using spaCy + Regex"""
+        import re
+        try:
+            import spacy
+            from spacy.matcher import Matcher
+        except ImportError:
+            print("ℹ️ SpaCy non disponibile. Uso regex di fallback")
+            return self._parse_edition_nlp_input_regex(text)
+
+        #===============================================================================
+        #STEP 1:Load the italian spacy model "it_core_news_sm"
+        try:
+            nlp = spacy.load("it_core_web_sm")
+        except OSError:
+            #if model not installed , using blank italian pipeline.
+            #blank still gives us tokenization, just no grammar understangin
+            nlp = spacy.blank("it")
+
+        #================================================================================
+        #STEP 2: Process the text
+        doc = nlp(text.lower()) #lowercase for case-insensitive matching
+
+        #================================================================================
+        #STEP 3: Define field patterns using spaCy Matcher. The Matcher finds sequences of tokens matching a pattern
+        matcher =Matcher(nlp.vocab)
+        #define all field label patterns
+        field_patterns = {
+            'corso': [
+                [{"LOWER":"corso"}],
+                [{"LOWER":"nome"},{"LOWER":"corso"}],
+                [{"LOWER":"per"},{"LOWER":"corso"}],
+            ],
+            'titolo':[
+                [{"LOWER":"titolo"}],
+                [{"LOWER":"titolo"},{"LOWER":"edizione"}],
+            ],
+            'data_inizio':[
+                [{"LOWER":'data'},{"LOWER":"fine"}],
+                [{"LOWER":"fine"}],
+                [{"LOWER":"al"}],
+            ],
+            'data_fine':[
+                [{"LOWER":"data"},{"LOWER":"fine"}],
+                [{"LOWER":"fine"}],
+                [{"LOWER":"al"}],
+            ],
+            'aula':[
+                [{"LOWER":"aula"}],
+                [{"LOWER":"luogo"}],
+                [{"LOWER":"sede"}],
+            ],
+            'fornitore':[
+                [{"LOWER":"fornitore"}],
+                [{"LOWER":"erogato"},{"LOWER":"da"}],
+            ],
+            'costo':[
+                [{"LOWER":"costo"}],
+                [{"LOWER":"prezzo"}],
+                [{"LOWER": "€"}],
+                [{"LOWER":"euro"}],
+            ],
+
+
+        }
+
+
+
+    def _parse_edition_nlp_input_regex(self, text: str) -> Optional[Dict[str, Any]]:
         """
-        Parse natural language input to extract edition and activities.
+        Parse natural language input to extract edition and activities with REGEX.
 
         Example input:
         "Crea edizione per corso Analisi dei dati titolo Analisi dei dati - Base
