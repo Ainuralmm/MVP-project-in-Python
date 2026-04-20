@@ -138,7 +138,7 @@ EDITION_PRICE_COST_INPUT    = "//input[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_AT
 # =============================================================================
 # EDITION - ATTRIBUTI AGGIUNTIVI (new fields after price)
 # =============================================================================
-EDITION_CENTRO_COSTO_INPUT     = '//input[contains(@id, "IteratorcomuneFuoriComune__FLEX_EMPTY::content")]'
+EDITION_CENTRO_COSTO_INPUT     = '//input[contains(@id, ":df1_OfferingDFF1IteratorcentroDiCostoPagante__FLEX_EMPTY::content")]'
 EDITION_DIREZIONE_PAG_INPUT    = '//input[contains(@id, "IteratordirezionePagante__FLEX_EMPTY::content")]'
 EDITION_FINANZIATA_LOV         = '//a[contains(@id, "Iteratorfinanziata_Display__FLEX_EMPTY::lovIconId")]'
 EDITION_FINANZIATA_SI          = '//td[contains(@class,"xen")]//span[normalize-space(text())="Sì"]'
