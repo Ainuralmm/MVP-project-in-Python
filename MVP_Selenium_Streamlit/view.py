@@ -2126,7 +2126,40 @@ class CourseView:
                 [{"LOWER": "€"}],
                 [{"LOWER":"euro"}],
             ],
-
+            'descrizione':[
+                [{"LOWER":"descizione"}],
+                [{"LOWER": "desc"}],
+            ],
+            'centro_costo':[
+                [{"LOWER":"centro"},{"LOWER":"di"},{"LOWER":"costo"}],
+                [{"LOWER": "centro"},{"LOWER":"costo"}],
+                [{"LOWER": "cdc"}],
+                [{"LOWER": "centrodicosto"}],
+            ],
+            'societa_pagante':[
+                [{"LOWER": "societa"},{"LOWER":"pagante"}],
+                [{"LOWER": "sociatà"},{"LOWER":"pagante"}],
+                [{"LOWER": "societa'"},{"LOWER":"pagante"}],
+            ],
+            'direzione_pagante':[
+                [{"LOWER":"direzione"},{"LOWER":"pagante"}],
+                [{"LOWER": "dir"},{"LOWER":"pagante"}],
+            ],
+            'sottotipologia':[
+                [{"LOWER": "sotto"},{"LOWER":"tipologia"}],
+                [{"LOWER": "sottotipo"}],
+            ],
+            'finanziata':[
+                [{"LOWER": "finanziata"}],
+                [{"LOWER": "finanziato"}],
+                [{"LOWER": "finan"}],
+            ],
+            'attivita_marker':[
+                [{"LOWER": "attività"},{"IS_PUNCT":True,"OP":"?"}],
+                [{"LOWER": "attivita"},{"IS_PUNCT":True,"OP":"?"}],
+                [{"LOWER": "attivita"},{"LOWER":":"}],
+                [{"LOWER": "attività"},{"LOWER":":"}],
+            ],
 
         }
 
