@@ -1252,9 +1252,16 @@ class OracleAutomator:
 
             # Location, Language, Supplier, Price via helpers
             self._fill_edition_location(location)
+            self._pause_for_visual_check()
+
             self._fill_edition_language()
+            self._pause_for_visual_check()
+
             self._fill_edition_supplier(supplier)
+            self._pause_for_visual_check()
+
             self._fill_edition_price(price)
+            self._pause_for_visual_check()
 
             # Fill Attributi Aggiuntivi
             self._fill_edition_attributi_aggiuntivi(
@@ -1265,8 +1272,8 @@ class OracleAutomator:
                 sottotipologia=sottotipologia,
                 societa_pagante=societa_pagante,
             )
+            self._pause_for_visual_check()
 
-            time.sleep(1)
             # Save and close edition
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, EDITION_SAVE_CLOSE_BUTTON))).click()
@@ -1440,9 +1447,16 @@ class OracleAutomator:
 
             # Location, Language, Supplier, Price via helpers
             self._fill_edition_location(location)
+            self._pause_for_visual_check()
+
             self._fill_edition_language()
+            self._pause_for_visual_check()
+
             self._fill_edition_supplier(supplier)
+            self._pause_for_visual_check()
+
             self._fill_edition_price(price)
+            self._pause_for_visual_check()
 
             # Fill Attributi Aggiuntivi
             self._fill_edition_attributi_aggiuntivi(
@@ -1451,8 +1465,9 @@ class OracleAutomator:
                 finanziata=finanziata,
                 servizio_pagante=servizio_pagante,
                 sottotipologia=sottotipologia,
-                societa_pagante=societa_pagante
+                societa_pagante=societa_pagante,
             )
+            self._pause_for_visual_check()
 
             # Step 6: Save edition
             print(f"\n[6] Saving edition...")
