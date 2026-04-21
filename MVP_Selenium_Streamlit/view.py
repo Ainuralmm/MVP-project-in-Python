@@ -454,6 +454,116 @@ class CourseView:
         self.edition_output_placeholder = None
         self.student_output_placeholder = None
 
+        # Load saved theme preferences if they exist
+        import json, os
+        prefs_path = os.path.join(os.path.dirname(__file__), 'user_preferences.json')
+        if os.path.exists(prefs_path):
+            try:
+                with open(prefs_path, 'r', encoding='utf-8') as f:
+                    prefs = json.load(f)
+                if 'user_theme' not in st.session_state:
+                    st.session_state.user_theme = prefs.get(
+                        'user_theme', 'Scuro (default)')
+                if 'user_font' not in st.session_state:
+                    st.session_state.user_font = prefs.get(
+                        'user_font', 'Sans-serif (default)')
+            except:
+                pass
+
+    def _apply_theme(self):
+        """
+        Inject user's chosen theme as CSS into the Streamlit page.
+        Called at the very start of render_ui() so it applies everywhere.
+        """
+
+        import json
+        import os
+
+        # Load available themes
+        themes_path = os.path.join(os.path.dirname(__file__), 'themes.json')
+        try:
+            with open(themes_path, 'r', encoding='utf-8') as f:
+                themes_config = json.load(f)
+        except:
+            return  # If file missing, just use default Streamlit theme
+
+        # Get current user's saved preferences (defaults to 'Scuro')
+        current_theme_name = st.session_state.get(
+            'user_theme', 'Scuro (default)')
+        current_font_name = st.session_state.get(
+            'user_font', 'Sans-serif (default)')
+
+        theme = themes_config['themes'].get(
+            current_theme_name,
+            themes_config['themes']['Scuro (default)'])
+        font = themes_config['fonts'].get(
+            current_font_name,
+            'sans-serif')
+
+        st.markdown(f"""
+            <style>
+            @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+            .stApp {{
+                background-color: {theme['bg_color']};
+                color: {theme['text_color']};
+                font-family: {font};
+            }}
+
+            [data-testid="stSidebar"] {{
+                background-color: {theme['secondary_bg']};
+            }}
+
+            /* Text elements - EXCLUDE header spans to avoid keyboard text issue */
+            p, label, h1, h2, h3, h4 {{
+                color: {theme['text_color']} !important;
+                font-family: {font} !important;
+            }}
+
+            /* Only target main content divs, not header */
+            [data-testid="stMain"] div,
+            [data-testid="stSidebar"] div,
+            [data-testid="stMain"] span,
+            [data-testid="stSidebar"] span {{
+                color: {theme['text_color']};
+                font-family: {font};
+            }}
+
+            .stTextInput > div > div > input,
+            .stTextArea > div > div > textarea,
+            .stSelectbox > div > div {{
+                background-color: {theme['secondary_bg']};
+                color: {theme['text_color']};
+                font-family: {font};
+            }}
+
+            .stDataFrame {{
+                background-color: {theme['secondary_bg']};
+            }}
+
+            [data-testid="stExpander"] {{
+                background-color: {theme['secondary_bg']};
+                border-color: {theme['text_color']}22;
+            }}
+
+            /* Hide footer and deploy */
+            footer {{visibility: hidden;}}
+            .stDeployButton {{display: none;}}
+            [data-testid="stAppDeployButton"] {{display: none;}}
+
+            /* Hide the header bar completely - keyboard text lives here */
+            header[data-testid="stHeader"] {{
+                display: none !important;
+            }}
+
+            /* Show sidebar toggle differently */
+            [data-testid="stSidebarCollapsedControl"] {{
+                display: flex !important;
+                background-color: {theme['secondary_bg']};
+            }}
+
+            </style>
+        """, unsafe_allow_html=True)
     def _update_nlp_text(self):
         """
         Callback function for NLP text area.
@@ -486,7 +596,94 @@ class CourseView:
                 debug_pause = st.sidebar.slider("Durata pausa (secondi)", 1, 5, 2)
         return headless, debug_mode, debug_pause
 
+    def _render_impostazioni(self, themes_config):
+        """
+        Renders the Impostazioni colori panel in the sidebar.
+        Users pick their theme and font — saved to session_state.
+        """
+        import json
+        import os
+
+        themes_path = os.path.join(os.path.dirname(__file__), 'themes.json')
+        try:
+            with open(themes_path, 'r', encoding='utf-8') as f:
+                themes_config = json.load(f)
+        except:
+            st.sidebar.warning("⚠️ File temi non trovato.")
+            return
+
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### ⚙️ Impostazioni colori")
+
+        theme_names = list(themes_config['themes'].keys())
+        font_names = list(themes_config['fonts'].keys())
+
+        # Show color preview dots next to theme names
+        theme_labels = []
+        for name, props in themes_config['themes'].items():
+            theme_labels.append(f"{name}")
+
+        current_theme = st.session_state.get('user_theme', 'Scuro (default)')
+        current_font = st.session_state.get('user_font', 'Sans-serif (default)')
+
+        selected_theme = st.sidebar.selectbox(
+            "🎨 Tema colori",
+            options=theme_names,
+            index=theme_names.index(current_theme)
+            if current_theme in theme_names else 0,
+            key="theme_selector"
+        )
+
+        selected_font = st.sidebar.selectbox(
+            "🔤 Tipo di carattere",
+            options=font_names,
+            index=font_names.index(current_font)
+            if current_font in font_names else 0,
+            key="font_selector"
+        )
+
+        # Show a live preview swatch
+        theme_props = themes_config['themes'].get(selected_theme, {})
+        st.sidebar.markdown(
+            f"""<div style="
+                background-color: {theme_props.get('bg_color', '#000')};
+                color: {theme_props.get('text_color', '#fff')};
+                font-family: {themes_config['fonts'].get(selected_font, 'sans-serif')};
+                padding: 10px;
+                border-radius: 8px;
+                margin-top: 8px;
+                font-size: 13px;
+                border: 1px solid #ccc;
+            ">
+            👁️ Anteprima testo<br>
+            <small>Sfondo: {theme_props.get('bg_color', '')}</small>
+            </div>""",
+            unsafe_allow_html=True
+        )
+
+        if st.sidebar.button("Applica tema", key="apply_theme_btn"):
+            st.session_state.user_theme = selected_theme
+            st.session_state.user_font = selected_font
+            st.rerun()
+
+        # Save to file for persistence across sessions
+        prefs_path = os.path.join(
+            os.path.dirname(__file__), 'user_preferences.json')
+        if st.sidebar.button("💾 Salva preferenze", key="save_theme_btn"):
+            prefs = {
+                'user_theme': selected_theme,
+                'user_font': selected_font
+            }
+            with open(prefs_path, 'w', encoding='utf-8') as f:
+                json.dump(prefs, f)
+            st.sidebar.success("✅ Preferenze salvate!")
+
     def render_ui(self):
+        # Apply theme FIRST before rendering anything else
+        self._apply_theme()
+
+        # Render settings in sidebar
+        self._render_impostazioni({})
         is_running = st.session_state.app_state != "IDLE"
 
         # === SHOW BATCH EDITION RESULTS PROMINENTLY (if any) ===
