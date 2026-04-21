@@ -504,31 +504,36 @@ class CourseView:
             <style>
             @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
+            /* Main background */
             .stApp {{
                 background-color: {theme['bg_color']};
                 color: {theme['text_color']};
                 font-family: {font};
             }}
 
+            /* Sidebar background */
             [data-testid="stSidebar"] {{
                 background-color: {theme['secondary_bg']};
             }}
 
-            /* Text elements - EXCLUDE header spans to avoid keyboard text issue */
-            p, label, h1, h2, h3, h4 {{
+            /* Text elements - only main content, NOT header */
+            [data-testid="stMain"] p,
+            [data-testid="stMain"] label,
+            [data-testid="stMain"] h1,
+            [data-testid="stMain"] h2,
+            [data-testid="stMain"] h3,
+            [data-testid="stMain"] h4,
+            [data-testid="stSidebar"] p,
+            [data-testid="stSidebar"] label,
+            [data-testid="stSidebar"] h1,
+            [data-testid="stSidebar"] h2,
+            [data-testid="stSidebar"] h3,
+            [data-testid="stSidebar"] h4 {{
                 color: {theme['text_color']} !important;
                 font-family: {font} !important;
             }}
 
-            /* Only target main content divs, not header */
-            [data-testid="stMain"] div,
-            [data-testid="stSidebar"] div,
-            [data-testid="stMain"] span,
-            [data-testid="stSidebar"] span {{
-                color: {theme['text_color']};
-                font-family: {font};
-            }}
-
+            /* Input fields */
             .stTextInput > div > div > input,
             .stTextArea > div > div > textarea,
             .stSelectbox > div > div {{
@@ -537,29 +542,26 @@ class CourseView:
                 font-family: {font};
             }}
 
+            /* Dataframes */
             .stDataFrame {{
                 background-color: {theme['secondary_bg']};
             }}
 
+            /* Expanders */
             [data-testid="stExpander"] {{
                 background-color: {theme['secondary_bg']};
                 border-color: {theme['text_color']}22;
             }}
 
-            /* Hide footer and deploy */
+            /* Hide footer and deploy only */
             footer {{visibility: hidden;}}
             .stDeployButton {{display: none;}}
             [data-testid="stAppDeployButton"] {{display: none;}}
 
-            /* Hide the header bar completely - keyboard text lives here */
-            header[data-testid="stHeader"] {{
-                display: none !important;
-            }}
-
-            /* Show sidebar toggle differently */
-            [data-testid="stSidebarCollapsedControl"] {{
-                display: flex !important;
-                background-color: {theme['secondary_bg']};
+            /* Hide keyboard text in header WITHOUT hiding the header itself */
+            header[data-testid="stHeader"] span {{
+                color: transparent !important;
+                font-size: 0px !important;
             }}
 
             </style>
