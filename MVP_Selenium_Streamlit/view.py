@@ -2064,105 +2064,377 @@ class CourseView:
             st.code(traceback.format_exc())
             return None
 
-    def _parse_edition_nlp_input(self, text:str)->Optional[Dict[str,Any]]:
-        """Parse free-text NLP input using spaCy + Regex"""
+    def _parse_edition_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse free-text NLP input using spaCy + regex.
+
+        HOW IT WORKS (for colleagues):
+
+        1. spaCy tokenizes the text into words and sentences
+        2. We use spaCy's Matcher to find field LABELS (like "centro di costo")
+           regardless of order, capitalization, or surrounding punctuation
+        3. Once we find WHERE a label is, we extract the VALUE after it using
+           simple string slicing + regex cleanup
+        4. This means "costo 1000 aula Roma" and "aula Roma costo 1000" both work
+        """
         import re
         try:
             import spacy
             from spacy.matcher import Matcher
         except ImportError:
-            print("ℹ️ SpaCy non disponibile. Uso regex di fallback")
-            return self._parse_edition_nlp_input_regex(text)
+            st.warning("⚠️ SpaCy non disponibile. Uso regex di fallback.")
+            return self._parse_edition_nlp_regex_fallback(text)
 
-        #===============================================================================
-        #STEP 1:Load the italian spacy model "it_core_news_sm"
+        # =========================================================
+        # STEP 1: Load the Italian spaCy model
+
         try:
-            nlp = spacy.load("it_core_web_sm")
+            nlp = spacy.load("it_core_news_sm")
         except OSError:
-            #if model not installed , using blank italian pipeline.
-            #blank still gives us tokenization, just no grammar understangin
             nlp = spacy.blank("it")
 
-        #================================================================================
-        #STEP 2: Process the text
-        doc = nlp(text.lower()) #lowercase for case-insensitive matching
+        # =========================================================
+        # STEP 2: Process the text
+        doc = nlp(text.lower())  # lowercase for case-insensitive matching
 
-        #================================================================================
-        #STEP 3: Define field patterns using spaCy Matcher. The Matcher finds sequences of tokens matching a pattern
-        matcher =Matcher(nlp.vocab)
-        #define all field label patterns
+        # =========================================================
+        # STEP 3: Define field patterns using spaCy Matcher
+        matcher = Matcher(nlp.vocab)
+
+        # Define all field label patterns
+        # Each tuple: (field_name, list_of_pattern_variants)
         field_patterns = {
             'corso': [
-                [{"LOWER":"corso"}],
-                [{"LOWER":"nome"},{"LOWER":"corso"}],
-                [{"LOWER":"per"},{"LOWER":"corso"}],
+                [{"LOWER": "corso"}],
+                [{"LOWER": "nome"}, {"LOWER": "corso"}],
+                [{"LOWER": "per"}, {"LOWER": "corso"}],
             ],
-            'titolo':[
-                [{"LOWER":"titolo"}],
-                [{"LOWER":"titolo"},{"LOWER":"edizione"}],
+            'titolo': [
+                [{"LOWER": "titolo"}],
+                [{"LOWER": "titolo"}, {"LOWER": "edizione"}],
             ],
-            'data_inizio':[
-                [{"LOWER":'data'},{"LOWER":"fine"}],
-                [{"LOWER":"fine"}],
-                [{"LOWER":"al"}],
+            'data_inizio': [
+                [{"LOWER": "data"}, {"LOWER": "inizio"}],
+                [{"LOWER": "inizio"}],
+                [{"LOWER": "dal"}],
             ],
-            'data_fine':[
-                [{"LOWER":"data"},{"LOWER":"fine"}],
-                [{"LOWER":"fine"}],
-                [{"LOWER":"al"}],
+            'data_fine': [
+                [{"LOWER": "data"}, {"LOWER": "fine"}],
+                [{"LOWER": "fine"}],
+                [{"LOWER": "al"}],
             ],
-            'aula':[
-                [{"LOWER":"aula"}],
-                [{"LOWER":"luogo"}],
-                [{"LOWER":"sede"}],
+            'aula': [
+                [{"LOWER": "aula"}],
+                [{"LOWER": "luogo"}],
+                [{"LOWER": "sede"}],
             ],
-            'fornitore':[
-                [{"LOWER":"fornitore"}],
-                [{"LOWER":"erogato"},{"LOWER":"da"}],
+            'fornitore': [
+                [{"LOWER": "fornitore"}],
+                [{"LOWER": "erogato"}, {"LOWER": "da"}],
             ],
-            'costo':[
-                [{"LOWER":"costo"}],
-                [{"LOWER":"prezzo"}],
+            'costo': [
+                [{"LOWER": "costo"}],
+                [{"LOWER": "prezzo"}],
                 [{"LOWER": "€"}],
-                [{"LOWER":"euro"}],
             ],
-            'descrizione':[
-                [{"LOWER":"descizione"}],
+            'descrizione': [
+                [{"LOWER": "descrizione"}],
                 [{"LOWER": "desc"}],
             ],
-            'centro_costo':[
-                [{"LOWER":"centro"},{"LOWER":"di"},{"LOWER":"costo"}],
-                [{"LOWER": "centro"},{"LOWER":"costo"}],
+            'centro_costo': [
+                [{"LOWER": "centro"}, {"LOWER": "di"}, {"LOWER": "costo"}],
+                [{"LOWER": "centro"}, {"LOWER": "costo"}],
                 [{"LOWER": "cdc"}],
-                [{"LOWER": "centrodicosto"}],
             ],
-            'societa_pagante':[
-                [{"LOWER": "societa"},{"LOWER":"pagante"}],
-                [{"LOWER": "sociatà"},{"LOWER":"pagante"}],
-                [{"LOWER": "societa'"},{"LOWER":"pagante"}],
+            'societa_pagante': [
+                [{"LOWER": "società"}, {"LOWER": "pagante"}],
+                [{"LOWER": "societa"}, {"LOWER": "pagante"}],
+                [{"LOWER": "societa'"}, {"LOWER": "pagante"}],  # with apostrophe
+                [{"LOWER": "societa"}, {"IS_PUNCT": True, "OP": "?"}, {"LOWER": "pagante"}],
+                [{"TEXT": {"REGEX": "socie[tà]+"}, "OP": "?"}, {"LOWER": "pagante"}],
             ],
-            'direzione_pagante':[
-                [{"LOWER":"direzione"},{"LOWER":"pagante"}],
-                [{"LOWER": "dir"},{"LOWER":"pagante"}],
+            'direzione_pagante': [
+                [{"LOWER": "direzione"}, {"LOWER": "pagante"}],
             ],
-            'sottotipologia':[
-                [{"LOWER": "sotto"},{"LOWER":"tipologia"}],
+            'servizio_pagante': [
+                [{"LOWER": "servizio"}, {"LOWER": "pagante"}],
+            ],
+            'sottotipologia': [
+                [{"LOWER": "sottotipologia"}],
+                [{"LOWER": "sotto"}, {"LOWER": "tipologia"}],  # keeps two-word variant
                 [{"LOWER": "sottotipo"}],
             ],
-            'finanziata':[
+            'finanziata': [
                 [{"LOWER": "finanziata"}],
                 [{"LOWER": "finanziato"}],
-                [{"LOWER": "finan"}],
             ],
-            'attivita_marker':[
-                [{"LOWER": "attività"},{"IS_PUNCT":True,"OP":"?"}],
-                [{"LOWER": "attivita"},{"IS_PUNCT":True,"OP":"?"}],
-                [{"LOWER": "attivita"},{"LOWER":":"}],
-                [{"LOWER": "attività"},{"LOWER":":"}],
+            'attivita_marker': [
+                [{"LOWER": "attività"}, {"IS_PUNCT": True, "OP": "?"}],
+                [{"LOWER": "attivita"}, {"IS_PUNCT": True, "OP": "?"}],
+                [{"LOWER": "attività"}, {"LOWER": ":"}],
             ],
-
         }
 
+        # Add all patterns to matcher
+        for field_name, patterns in field_patterns.items():
+            matcher.add(field_name, patterns)
+
+        # =========================================================
+        # STEP 4: Run the matcher and collect all matches with positions
+        matches = matcher(doc)
+
+        # =========================================================
+        # STEP 5: Convert matches to character positions
+        field_positions = {}  # {field_name: char_position_after_label}
+
+        for match_id, start, end in matches:
+            field_name = nlp.vocab.strings[match_id]
+            # doc[end-1].idx = start of last token, doc[end-1].__len__ = length
+            last_token = doc[end - 1]
+            char_pos_after_label = last_token.idx + len(last_token.text)
+
+            # Keep only the FIRST occurrence of each field
+            if field_name not in field_positions:
+                field_positions[field_name] = char_pos_after_label
+
+        # =========================================================
+        # STEP 6: Sort fields by position in text
+        original_text = text
+
+        sorted_fields = sorted(field_positions.items(), key=lambda x: x[1])
+
+        def extract_value_between(start_pos, end_pos=None):
+            if end_pos:
+                raw = original_text[start_pos:end_pos]
+            else:
+                raw = original_text[start_pos:]
+            raw = re.sub(r'^[\s:,\-–]+', '', raw)
+            raw = re.sub(r'[\s,]+$', '', raw)
+            if len(raw.strip()) < 2:
+                return ''
+            return raw.strip()
+
+        # ✅ FUNCTION ENDS HERE — next lines are at method level
+
+        # =========================================================
+        # STEP 7: Extract simple fields using spaCy positions
+        # =========================================================
+        extracted = {}
+
+        simple_fields = ['corso', 'titolo', 'data_inizio', 'data_fine',
+                         'aula', 'fornitore', 'costo', 'descrizione']
+
+        simple_positions = [(f, p) for f, p in sorted_fields
+                            if f in simple_fields]
+
+        for i, (field_name, start_pos) in enumerate(simple_positions):
+            end_pos = None
+            if i + 1 < len(simple_positions):
+                next_field_name, _ = simple_positions[i + 1]
+                next_patterns = field_patterns.get(next_field_name, [])
+                for pattern in next_patterns:
+                    candidate = ' '.join(
+                        p.get('LOWER', '') for p in pattern
+                        if p.get('LOWER'))
+                    if not candidate:
+                        continue
+                    idx = original_text.lower().find(
+                        candidate.lower(), start_pos)
+                    if idx != -1:
+                        end_pos = idx
+                        break
+            value = extract_value_between(start_pos, end_pos)
+            extracted[field_name] = value
+
+        # =========================================================
+        # OVERRIDE: Extract all simple fields with regex
+        # =========================================================
+        corso_match = re.search(
+            r'(?:per\s+)?corso\s+(.+?)'
+            r'(?=\s+titolo\s+|\s+data\s+inizio|\s+data\s+fine'
+            r'|\s+aula\s+|\s+fornitore\s+|\s+costo\s+|$)',
+            original_text, re.IGNORECASE)
+        if corso_match:
+            extracted['corso'] = corso_match.group(1).strip()
+
+        titolo_match = re.search(
+            r'\btitolo\s+(.+?)'
+            r'(?=\s+data\s+inizio|\s+data\s+fine'
+            r'|\s+aula\s+|\s+fornitore\s+|\s+costo\s+|$)',
+            original_text, re.IGNORECASE)
+        if titolo_match:
+            extracted['titolo'] = titolo_match.group(1).strip()
+
+        data_inizio_match = re.search(
+            r'data\s+inizio\s+(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})',
+            original_text, re.IGNORECASE)
+        if data_inizio_match:
+            extracted['data_inizio'] = data_inizio_match.group(1)
+
+        data_fine_match = re.search(
+            r'data\s+fine\s+(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})',
+            original_text, re.IGNORECASE)
+        if data_fine_match:
+            extracted['data_fine'] = data_fine_match.group(1)
+
+        aula_match = re.search(
+            r'\baula\s+(.+?)'
+            r'(?=\s+fornitore\s+|\s+costo\s+|\s+con\s+|\s+attività|$)',
+            original_text, re.IGNORECASE)
+        if aula_match:
+            extracted['aula'] = aula_match.group(1).strip()
+
+        fornitore_match = re.search(
+            r'\bfornitore\s+(.+?)'
+            r'(?=\s+costo\s+|\s+con\s+|\s+aula\s+|\s+attività|$)',
+            original_text, re.IGNORECASE)
+        if fornitore_match:
+            extracted['fornitore'] = fornitore_match.group(1).strip()
+
+        costo_match_val = re.search(
+            r'\bcosto\s+(\d+(?:[.,]\d+)?)',
+            original_text, re.IGNORECASE)
+        if costo_match_val:
+            extracted['costo'] = costo_match_val.group(1)
+
+        # =========================================================
+        # STEP 8: Parse attributi aggiuntivi with REGEX
+        # =========================================================
+        aggiuntivi_raw = ''
+
+        aggiuntivi_match = re.search(
+            r'\bcon\b(.+?)(?=attività\s*:|attivita\s*:|$)',
+            original_text, re.IGNORECASE | re.DOTALL)
+
+        if aggiuntivi_match:
+            aggiuntivi_raw = aggiuntivi_match.group(1)
+        else:
+            costo_fallback = re.search(
+                r'costo\s+\d+(.+?)(?=attività\s*:|attivita\s*:|$)',
+                original_text, re.IGNORECASE | re.DOTALL)
+            if costo_fallback:
+                aggiuntivi_raw = costo_fallback.group(1)
+
+        def extract_aggiuntivi_field(pattern, text):
+            m = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if not m:
+                return ''
+            return text[m.start(1):m.end(1)].strip().strip(',').strip()
+
+        centro_costo = extract_aggiuntivi_field(
+            r'centro\s+di\s+costo\s*[-–:]\s*([^,\n]+?)(?=\s*\w+\s*pagante|,|attività|$)',
+            aggiuntivi_raw)
+
+        direzione_pagante = extract_aggiuntivi_field(
+            r'direzione\s+pagante\s*[-–:]\s*([^,\n]+?)(?=,|attività|$)',
+            aggiuntivi_raw)
+
+        finanziata_raw = extract_aggiuntivi_field(
+            r'finanziata\s*[-–:]\s*([^,\n]+?)(?=,|attività|$)',
+            aggiuntivi_raw)
+
+        servizio_pagante = extract_aggiuntivi_field(
+            r'servizio\s+pagante\s*[-–:]\s*([^,\n]+?)(?=,|attività|$)',
+            aggiuntivi_raw)
+
+        sottotipologia = extract_aggiuntivi_field(
+            r'sottotipologia\s*[-–:]\s*([^,\n]+?)(?=,|attività|$)',
+            aggiuntivi_raw)
+
+        societa_pagante = extract_aggiuntivi_field(
+            r"socie(?:t[aà]['\u2019]?)\s*pagante\s*[-–:]\s*([^,\n]+?)(?=\s*attività|\s*attivita|,|$)",
+            aggiuntivi_raw)
+
+        if not societa_pagante:
+            societa_fallback = re.search(
+                r"socie(?:t[aà]['\u2019]?)\s*pagante\s*[-–:]\s*([^,\n]+?)(?=\s*attività|\s*attivita|,|$)",
+                original_text, re.IGNORECASE)
+            if societa_fallback:
+                societa_pagante = original_text[
+                                  societa_fallback.start(1):societa_fallback.end(1)
+                                  ].strip().strip(',').strip()
+        if finanziata_raw.lower() in ['si', 'sì', 'yes', 's']:
+            finanziata_val = 'Sì'
+        elif finanziata_raw.lower() in ['no', 'n']:
+            finanziata_val = 'No'
+        else:
+            finanziata_val = finanziata_raw.strip()
+
+        # =========================================================
+        # STEP 9: Parse activities
+        # =========================================================
+        activities = []
+        attivita_match = re.search(
+            r'attività\s*[:\-]\s*(.+?)$',
+            original_text, re.IGNORECASE | re.DOTALL)
+
+        if attivita_match:
+            activities_text = attivita_match.group(1)
+            activity_pattern = re.compile(
+                r'([^,]+?)'
+                r'(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})'
+                r'[^0-9]*ore\s*'
+                r'(\d{1,2}[.:]\d{2})'
+                r'\s*[-–]\s*'
+                r'(\d{1,2}[.:]\d{2})',
+                re.IGNORECASE)
+            for match in activity_pattern.finditer(activities_text):
+                title = match.group(1).strip().strip(',').strip()
+                date_str = normalize_date(match.group(2))
+                start_time = match.group(3).replace(':', '.')
+                end_time = match.group(4).replace(':', '.')
+                if title and date_str:
+                    activities.append({
+                        'title': title,
+                        'description': '',
+                        'date': date_str,
+                        'start_time': start_time,
+                        'end_time': end_time,
+                        'impegno_ore': ''
+                    })
+
+        # =========================================================
+        # STEP 10: Clean and build final result
+        # =========================================================
+        def clean(val):
+            if not val:
+                return ''
+            val = re.sub(r'\battività\b.*', '', val,
+                         flags=re.IGNORECASE).strip()
+            return val.strip(' ,;:-–')
+
+        course_name = clean(extracted.get('corso', ''))
+        start_date = clean(extracted.get('data_inizio', ''))
+        end_date = clean(extracted.get('data_fine', ''))
+
+        if not course_name:
+            st.error("❌ Nome corso non trovato. Scrivi 'corso [nome]'.")
+            return None
+
+        start_date_str = normalize_date(start_date) if start_date else ''
+        end_date_str = normalize_date(end_date) if end_date else ''
+
+        if not start_date_str or not end_date_str:
+            st.error("❌ Date non trovate. Usa formato GG/MM/AAAA.")
+            return None
+
+        return {
+            'course_name': course_name,
+            'edition_title': clean(extracted.get('titolo', '')),
+            'start_date': start_date_str,
+            'end_date': end_date_str,
+            'location': clean(extracted.get('aula', '')),
+            'supplier': clean(extracted.get('fornitore', '')),
+            'price': clean(extracted.get('costo', '')),
+            'description': clean(extracted.get('descrizione', '')),
+            'centro_costo': centro_costo,
+            'societa_pagante': societa_pagante,
+            'direzione_pagante': direzione_pagante,
+            'servizio_pagante': servizio_pagante,
+            'sottotipologia': sottotipologia,
+            'finanziata': finanziata_val,
+            'activities': activities,
+        }
 
 
     def _parse_edition_nlp_input_regex(self, text: str) -> Optional[Dict[str, Any]]:
