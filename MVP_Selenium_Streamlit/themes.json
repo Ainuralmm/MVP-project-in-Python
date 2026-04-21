@@ -1,0 +1,48 @@
+{
+  "themes": {
+    "Scuro (default)": {
+      "bg_color": "#0e1117",
+      "secondary_bg": "#1e2130",
+      "text_color": "#fafafa",
+      "font": "sans-serif"
+    },
+    "Chiaro": {
+      "bg_color": "#ffffff",
+      "secondary_bg": "#f0f2f6",
+      "text_color": "#262730",
+      "font": "sans-serif"
+    },
+    "Beige caldo": {
+      "bg_color": "#f5f0e8",
+      "secondary_bg": "#ede8dc",
+      "text_color": "#2c2c2c",
+      "font": "Georgia, serif"
+    },
+    "Blu notte": {
+      "bg_color": "#0d1b2a",
+      "secondary_bg": "#1b2a3b",
+      "text_color": "#e0e0e0",
+      "font": "sans-serif"
+    },
+    "Verde salvia": {
+      "bg_color": "#f0f4f0",
+      "secondary_bg": "#e0e8e0",
+      "text_color": "#1a2e1a",
+      "font": "sans-serif"
+    },
+    "Grigio professionale": {
+      "bg_color": "#f8f9fa",
+      "secondary_bg": "#e9ecef",
+      "text_color": "#212529",
+      "font": "Arial, sans-serif"
+    }
+  },
+  "fonts": {
+    "Sans-serif (default)": "sans-serif",
+    "Arial": "Arial, sans-serif",
+    "Roboto": "Roboto, sans-serif",
+    "Georgia (elegante)": "Georgia, serif",
+    "Helvetica": "Helvetica, sans-serif",
+    "Times New Roman": "Times New Roman, serif"
+  }
+}
