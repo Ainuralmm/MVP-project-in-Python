@@ -1,6 +1,3 @@
-[theme]
-base = "dark"
-
 [client]
 toolbarMode = "minimal"
 showSidebarNavigation = false
