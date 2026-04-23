@@ -12,37 +12,63 @@
       "text_color": "#262730",
       "font": "sans-serif"
     },
-    "Beige caldo": {
-      "bg_color": "#f5f0e8",
-      "secondary_bg": "#ede8dc",
-      "text_color": "#2c2c2c",
-      "font": "Georgia, serif"
-    },
     "Blu notte": {
       "bg_color": "#0d1b2a",
       "secondary_bg": "#1b2a3b",
       "text_color": "#e0e0e0",
       "font": "sans-serif"
     },
-    "Verde salvia": {
-      "bg_color": "#f0f4f0",
-      "secondary_bg": "#e0e8e0",
-      "text_color": "#1a2e1a",
-      "font": "sans-serif"
-    },
     "Grigio professionale": {
       "bg_color": "#f8f9fa",
       "secondary_bg": "#e9ecef",
       "text_color": "#212529",
-      "font": "Arial, sans-serif"
+      "font": "sans-serif"
+    },
+    "Beige caldo": {
+      "bg_color": "#fdf6e3",
+      "secondary_bg": "#f5ead0",
+      "text_color": "#3c3c3c",
+      "font": "Georgia, serif"
+    },
+    "Blu aziendale": {
+      "bg_color": "#1a237e",
+      "secondary_bg": "#283593",
+      "text_color": "#e8eaf6",
+      "font": "sans-serif"
+    },
+    "Viola elegante": {
+      "bg_color": "#1a1a2e",
+      "secondary_bg": "#16213e",
+      "text_color": "#e0aaff",
+      "font": "sans-serif"
+    },
+    "Carta da zucchero": {
+      "bg_color": "#e8f4f8",
+      "secondary_bg": "#d0eaf4",
+      "text_color": "#1a3c4e",
+      "font": "sans-serif"
+    },
+    "Grafite": {
+      "bg_color": "#1c1c1e",
+      "secondary_bg": "#2c2c2e",
+      "text_color": "#f2f2f7",
+      "font": "sans-serif"
+    },
+    "Crema e cioccolato": {
+      "bg_color": "#faf0dc",
+      "secondary_bg": "#f0e0c0",
+      "text_color": "#3e2000",
+      "font": "Georgia, serif"
     }
   },
   "fonts": {
     "Sans-serif (default)": "sans-serif",
-    "Arial": "Arial, sans-serif",
-    "Roboto": "Roboto, sans-serif",
     "Georgia (elegante)": "Georgia, serif",
-    "Helvetica": "Helvetica, sans-serif",
-    "Times New Roman": "Times New Roman, serif"
+    "Times New Roman": "Times New Roman, serif",
+    "Trebuchet MS": "Trebuchet MS, sans-serif",
+    "Palatino (classico)": "Palatino Linotype, serif",
+    "Courier New (codice)": "Courier New, monospace",
+    "Verdana (leggibile)": "Verdana, sans-serif",
+    "Garamond (letterario)": "Garamond, serif"
   }
 }
