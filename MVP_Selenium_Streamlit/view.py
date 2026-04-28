@@ -562,6 +562,29 @@ class CourseView:
             header[data-testid="stHeader"] span {{
                 color: transparent !important;
                 font-size: 0px !important;
+            /* Make sidebar toggle button visible */
+            [data-testid="stBaseButton-headerNoPadding"] {{
+                color: {theme['text_color']} !important;
+                opacity: 1 !important;
+            }}
+            
+            /* Show the << >> arrow icons */
+            [data-testid="stBaseButton-headerNoPadding"] svg {{
+                fill: {theme['text_color']} !important;
+                opacity: 1 !important;
+            }}
+            
+            /* Make sure header button spans are visible except keyboard text */
+            header button span {{
+                color: {theme['text_color']} !important;
+                visibility: visible !important;
+                font-size: inherit !important;
+            }}
+            
+            /* But still hide the keyboard_double_arrow text specifically */
+            header [data-testid="collapsedControl"] > div > span:first-child {{
+                display: none !important;
+            }}
             }}
 
             </style>
