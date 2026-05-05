@@ -422,6 +422,12 @@ class CourseView:
         if "preserved_student_data" not in st.session_state:
             st.session_state.preserved_student_data = {}
 
+        #presenza
+        if "presenza_data" not in st.session_state:
+            st.session_state.presenza_data = None
+        if "presenza_show_summary" not in st.session_state:
+            st.session_state.presenza_show_summary = False
+
         # --- Initialize Widget States ---
         if "course_date_str_key" not in st.session_state:
             st.session_state.course_date_str_key = "01/01/2023"
@@ -589,6 +595,7 @@ class CourseView:
 
             </style>
         """, unsafe_allow_html=True)
+
     def _update_nlp_text(self):
         """
         Callback function for NLP text area.
@@ -727,11 +734,12 @@ class CourseView:
                 st.rerun()
             st.markdown("---")
 
-        # Create three tabs
-        tab1, tab2, tab3 = st.tabs([
+        # Create 4 tabs
+        tab1, tab2, tab3, tab4 = st.tabs([
             "1. Creazione Corso",
             "2. Creazione Edizione + Attività",
-            "3. Aggiungi Allievi"
+            "3. Aggiungi Allievi",
+            "4. Assegnazione Presenza"
         ])
 
         # --- Tab1:Course Form Container ---
@@ -768,6 +776,17 @@ class CourseView:
                 self._render_student_form(is_disabled=is_running)
                 self.student_output_placeholder = st.empty()
                 if st.session_state.student_message:
+                    self.show_message("student", st.session_state.student_message, True)
+
+        # --- Tab4:Student Attendance ---
+        with tab4:
+            st.header("Assegnazione Presenza")
+            if st.session_state.app_state == "RUNNING_PRESENZA":
+                self.student_output_placeholder = st.empty()
+            else:
+                self._render_presenza_form(is_disabled=is_running)
+                if st.session_state.student_message and \
+                        "Assegnazione Presenza" in st.session_state.student_message:
                     self.show_message("student", st.session_state.student_message, True)
 
     def _clear_course_form_callback(self):
@@ -4407,6 +4426,340 @@ class CourseView:
                     st.session_state.student_parsed_data = None
                     st.session_state.student_show_summary = False
                     st.rerun()
+
+    def _render_presenza_form(self, is_disabled: bool = False):
+        """
+        Form for Assegnazione Presenza.
+        Three input methods: Structured, Excel, NLP.
+
+        Pipeline:
+        - User provides: edition_code + list of person numbers + stato
+        - Automation: login → navigate to edition → find each student
+          → click Gestisci attività → fill Data completamento + Stato → Salva
+        """
+
+        # === CHECK FOR PREVIEW MODE ===
+        if st.session_state.get('presenza_show_summary') and \
+                st.session_state.get('presenza_data'):
+            self._render_presenza_preview(st.session_state.presenza_data)
+            return
+
+        st.subheader("Scegli il Metodo di Inserimento")
+
+        input_method = st.radio(
+            "Come vuoi inserire i dati?",
+            options=["structured", "excel", "nlp"],
+            format_func=lambda x: {
+                "structured": "📝 Input Strutturato (Form)",
+                "excel": "📊 Caricamento File Excel",
+                "nlp": "💬 Compilazione con AI"
+            }[x],
+            key="presenza_input_method",
+            horizontal=True
+        )
+
+        st.divider()
+
+        if input_method == "structured":
+            self._render_presenza_structured(is_disabled)
+        elif input_method == "excel":
+            self._render_presenza_excel(is_disabled)
+        elif input_method == "nlp":
+            self._render_presenza_nlp(is_disabled)
+
+    def _render_presenza_structured(self, is_disabled: bool):
+        """Structured form for presenza assignment."""
+        st.info(
+            "Inserisci il codice edizione, i numeri persona degli allievi "
+            "e lo stato di completamento.",
+            icon="📝"
+        )
+
+        with st.form(key='presenza_structured_form'):
+            st.subheader("Dati Presenza")
+
+            edition_code = st.text_input(
+                "Codice Edizione *",
+                placeholder="Es: OLC466201",
+                key="presenza_edition_code"
+            )
+
+            stato = st.selectbox(
+                "Stato Completamento *",
+                options=["Completato", "Esente", "Non passato"],
+                index=0,
+                key="presenza_stato"
+            )
+
+            st.markdown("**Numeri Persona Allievi** (uno per riga)")
+            students_text = st.text_area(
+                "Numeri persona",
+                height=150,
+                placeholder="1168\n1189\n1199\n1216",
+                key="presenza_students_text"
+            )
+
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                submitted = st.form_submit_button(
+                    "📋 Anteprima", type="primary",
+                    disabled=is_disabled, width='stretch')
+            with col2:
+                st.form_submit_button(
+                    "Pulisci 🧹", width='stretch',
+                    on_click=self._clear_presenza_callback)
+
+        if submitted:
+            import re
+            if not edition_code.strip():
+                st.error("❌ Codice Edizione obbligatorio.")
+                st.stop()
+
+            students = [
+                s.strip() for s in re.split(r'[\n,;]+', students_text)
+                if s.strip()
+            ]
+
+            if not students:
+                st.error("❌ Inserisci almeno un numero persona.")
+                st.stop()
+
+            st.session_state.presenza_data = {
+                'edition_code': edition_code.strip(),
+                'students': students,
+                'stato': stato
+            }
+            st.session_state.presenza_show_summary = True
+            st.rerun()
+
+    def _render_presenza_excel(self, is_disabled: bool):
+        """Excel upload for presenza — reuses student Excel format."""
+        st.info(
+            "Formato Excel richiesto (foglio `ALLIEVI`):\n\n"
+            "| CODICE EDIZIONE | PERSON NUMBER |\n"
+            "|-----------------|---------------|\n"
+            "| OLC466201       | 1168          |\n\n"
+            "Stesso formato usato per Aggiungi Allievi.",
+            icon="📊"
+        )
+
+        stato = st.selectbox(
+            "Stato Completamento",
+            options=["Completato", "Esente", "Non passato"],
+            index=0,
+            key="presenza_excel_stato"
+        )
+
+        uploaded_file = st.file_uploader(
+            "Carica File Excel (.xlsx)",
+            type=['xlsx', 'xls'],
+            key="presenza_excel_uploader"
+        )
+
+        if uploaded_file:
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                if st.button("📊 Analizza File", type="primary",
+                             width='stretch', key="presenza_analyze_excel"):
+                    with st.spinner("🔍 Lettura file..."):
+                        parsed = self._parse_student_excel_file(uploaded_file)
+
+                    if parsed and parsed.get('editions'):
+                        # Flatten all students into one list per edition
+                        # For presenza we process one edition at a time
+                        editions = parsed['editions']
+                        if len(editions) == 1:
+                            st.session_state.presenza_data = {
+                                'edition_code': editions[0]['edition_code'],
+                                'students': editions[0]['students'],
+                                'stato': stato
+                            }
+                        else:
+                            # Multiple editions — process first one
+                            # (presenza is done per-edition)
+                            st.warning(
+                                f"⚠️ Trovate {len(editions)} edizioni. "
+                                "La presenza viene assegnata per una edizione "
+                                "alla volta. Verrà processata la prima.")
+                            st.session_state.presenza_data = {
+                                'edition_code': editions[0]['edition_code'],
+                                'students': editions[0]['students'],
+                                'stato': stato
+                            }
+
+                        st.session_state.presenza_show_summary = True
+                        st.rerun()
+                    else:
+                        st.error("❌ Impossibile leggere il file.")
+
+            with col2:
+                if st.button("🧹 Cancella", width='stretch',
+                             key="presenza_clear_excel"):
+                    st.rerun()
+
+    def _render_presenza_nlp(self, is_disabled: bool):
+        """NLP input for presenza assignment."""
+        st.info(
+            "**Esempi di frasi accettate:**\n\n"
+            '- "Edizione OLC466201 completato: 1168, 1189, 1199"\n'
+            '- "Per edizione OLC466201 segna come completato i numeri 1168 1189"\n'
+            '- "Assegna presenza edizione OLC466201 stato non passato allievi 1168 1199"',
+            icon="💬"
+        )
+
+        if "presenza_nlp_text" not in st.session_state:
+            st.session_state.presenza_nlp_text = ""
+
+        nlp_text = st.text_area(
+            "Descrivi l'assegnazione presenza:",
+            height=150,
+            key="presenza_nlp_text"
+        )
+
+        text_length = len(nlp_text.strip()) if nlp_text else 0
+        if text_length > 0:
+            st.caption(f"✏️ {text_length} caratteri inseriti")
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            if st.button("🤖 Analizza", type="primary", width='stretch',
+                         key="presenza_nlp_analyze"):
+                if not nlp_text.strip():
+                    st.error("❌ Inserisci del testo.")
+                    st.stop()
+
+                parsed = self._parse_presenza_nlp(nlp_text)
+
+                if parsed and parsed.get('edition_code') and parsed.get('students'):
+                    st.session_state.presenza_data = parsed
+                    st.session_state.presenza_show_summary = True
+                    st.rerun()
+                else:
+                    st.error(
+                        "❌ Non è stato possibile estrarre i dati.\n\n"
+                        "Assicurati di includere:\n"
+                        "- **Codice edizione** (es: OLC466201)\n"
+                        "- **Numeri persona** allievi\n"
+                        "- **Stato** (completato / non passato / esente)"
+                    )
+
+        with col2:
+            if st.button("🧹 Cancella", width='stretch',
+                         key="presenza_nlp_clear"):
+                st.session_state.presenza_nlp_text = ""
+                st.rerun()
+
+    def _parse_presenza_nlp(self, text: str) -> 'Optional[Dict[str, Any]]':
+        """
+        Parse NLP input for presenza assignment.
+        Extracts: edition_code, students list, stato.
+        Uses pure regex — no spaCy needed for this simple structure.
+        """
+        import re
+
+        result = {
+            'edition_code': '',
+            'students': [],
+            'stato': 'Completato'  # default
+        }
+
+        # Extract edition code
+        edition_patterns = [
+            r"edizione\s+([A-Za-z0-9]+)",
+            r'\b([A-Z]{2,5}\d{4,})\b',
+            r'\b(\d{8,})\b',
+        ]
+        for pattern in edition_patterns:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if m:
+                result['edition_code'] = m.group(1).strip()
+                break
+
+        # Extract stato
+        text_lower = text.lower()
+        if 'non passato' in text_lower or 'non_passato' in text_lower:
+            result['stato'] = 'Non passato'
+        elif 'esente' in text_lower:
+            result['stato'] = 'Esente'
+        else:
+            result['stato'] = 'Completato'  # default
+
+        # Extract person numbers (3-7 digit numbers, exclude edition code)
+        text_no_edition = text
+        if result['edition_code']:
+            text_no_edition = text_no_edition.replace(result['edition_code'], '')
+
+        numbers = re.findall(r'\b(\d{3,7})\b', text_no_edition)
+        seen = set()
+        for n in numbers:
+            if n not in seen:
+                seen.add(n)
+                result['students'].append(n)
+
+        return result if result['edition_code'] and result['students'] else None
+
+    def _render_presenza_preview(self, presenza_data: dict):
+        """Preview screen before launching presenza automation."""
+
+        edition_code = presenza_data.get('edition_code', '')
+        students = presenza_data.get('students', [])
+        stato = presenza_data.get('stato', 'Completato')
+
+        st.success("✅ Dati pronti per l'assegnazione presenza")
+
+        # Summary table
+        st.markdown("### 📋 Riepilogo")
+        summary_df = pd.DataFrame({
+            'Campo': ['Codice Edizione', 'Stato Completamento', 'Numero Allievi'],
+            'Valore': [edition_code, stato, str(len(students))]
+        })
+        st.dataframe(summary_df, hide_index=True, use_container_width=True)
+
+        # Students list
+        st.markdown("### 👥 Allievi")
+        students_df = pd.DataFrame({
+            '#': range(1, len(students) + 1),
+            'Numero Persona': students
+        })
+        st.dataframe(students_df, hide_index=True, use_container_width=True)
+
+        st.divider()
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            stato_color = {
+                "Completato": "✅",
+                "Esente": "⚪",
+                "Non passato": "❌"
+            }.get(stato, "📋")
+
+            if st.button(
+                    f"{stato_color} Assegna Presenza — {len(students)} allievi come '{stato}'",
+                    type="primary", use_container_width=True,
+                    key="presenza_confirm_btn"
+            ):
+                st.session_state.app_state = "RUNNING_PRESENZA"
+                st.session_state.student_message = ""
+                st.session_state.presenza_show_summary = False
+                st.rerun()
+
+        with col2:
+            if st.button("❌ Annulla", use_container_width=True,
+                         key="presenza_cancel_btn"):
+                st.session_state.presenza_data = None
+                st.session_state.presenza_show_summary = False
+                st.rerun()
+
+    def _clear_presenza_callback(self):
+        """Clear all presenza form state."""
+        st.session_state.presenza_data = None
+        st.session_state.presenza_show_summary = False
+        if "presenza_edition_code" in st.session_state:
+            st.session_state.presenza_edition_code = ""
+        if "presenza_students_text" in st.session_state:
+            st.session_state.presenza_students_text = ""
 
     def _parse_student_nlp_input(self, text: str) -> 'Optional[Dict[str, Any]]':
         """
