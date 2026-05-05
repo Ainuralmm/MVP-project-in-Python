@@ -2527,19 +2527,36 @@ class OracleAutomator:
                 try:
                     salva_btn.click()
                 except:
-                    self.driver.execute_script(
-                        "arguments[0].click();", salva_btn)
+                    self.driver.execute_script("arguments[0].click();", salva_btn)
 
                 print("   ✅ Clicked 'Salva e chiudi'")
-                time.sleep(3)
 
-                # Wait for page to return to Allievi list
+                # ── Wait for the activity panel to fully disappear ──
+                # The activity table is only visible when the popup is open.
+                # Wait for it to become invisible before returning.
+                try:
+                    WebDriverWait(self.driver, 20).until(
+                        EC.invisibility_of_element_located((
+                            By.XPATH,
+                            '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:'
+                            'clDtSp1:UPsp1:r11:1:r6:0:sp1:t1::db"]'
+                        )))
+                    print("   ✅ Activity panel closed")
+                except:
+                    print("   ⚠️ Could not confirm panel closed, waiting extra...")
+                    time.sleep(5)
+
+                # ── Wait for blocking overlay ──
                 try:
                     WebDriverWait(self.driver, 15).until(
                         EC.invisibility_of_element_located(
                             (By.CLASS_NAME, "AFBlockingGlassPane")))
                 except:
                     pass
+
+                # ── Extra stabilization wait ──
+                # Oracle needs time to refresh the Allievi table
+                time.sleep(3)
 
                 print(f"   ✅ Presenza saved for student {person_number}")
                 return True
