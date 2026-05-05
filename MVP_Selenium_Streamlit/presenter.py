@@ -904,3 +904,125 @@ class CoursePresenter:
 
             st.session_state.app_state = "IDLE"
             st.rerun()
+
+    def run_assign_presenza(self):
+        """
+        Execute presence assignment for students in an edition.
+        Reads from st.session_state.presenza_data:
+            - edition_code: str
+            - students: list of person numbers
+            - stato: "Completato", "Esente", or "Non passato"
+        """
+        results = {}
+        progress_placeholder = st.empty()
+        status_placeholder = st.empty()
+
+        def update_progress(message, percentage):
+            with progress_placeholder.container():
+                st.progress(percentage / 100)
+            with status_placeholder.container():
+                st.info(f"⏳ {message}")
+
+        try:
+            oracle_url = st.secrets['ORACLE_URL']
+            oracle_user = st.secrets['ORACLE_USER']
+            oracle_pass = st.secrets['ORACLE_PASS']
+
+            presenza_data = st.session_state.presenza_data
+            if not presenza_data:
+                raise Exception("Nessun dato presenza trovato.")
+
+            edition_code = presenza_data.get('edition_code', '')
+            students = presenza_data.get('students', [])
+            stato = presenza_data.get('stato', 'Completato')
+
+            if not edition_code:
+                raise Exception("Codice edizione mancante.")
+            if not students:
+                raise Exception("Nessun allievo da processare.")
+
+            # === LOGIN ===
+            update_progress("Accesso a Oracle...", 5)
+            if not self.model.login(oracle_url, oracle_user, oracle_pass):
+                raise Exception("Login fallito.")
+
+            # === NAVIGATE TO EDITIONS PAGE ===
+            update_progress("Navigazione alla pagina edizioni...", 10)
+            if not self.model.navigate_to_edition_page():
+                raise Exception("Navigazione fallita.")
+
+            # === SEARCH AND OPEN EDITION ===
+            update_progress(f"Ricerca edizione '{edition_code}'...", 25)
+            edition_result = self.model._search_and_open_edition(edition_code)
+            if not edition_result:
+                raise Exception(f"Edizione '{edition_code}' non trovata.")
+
+            # === ASSIGN PRESENZA ===
+            update_progress(
+                f"Assegnazione presenza per {len(students)} allievi...", 40)
+
+            results = self.model.assign_presenza_batch(
+                edition_code=edition_code,
+                students=students,
+                stato=stato
+            )
+
+            update_progress("Processo completato!", 100)
+
+        except Exception as e:
+            error_message = f"‼️ Errore: {str(e)}"
+            print(f"Presenter Error (Presenza): {error_message}")
+            results = {
+                'success': [],
+                'failed': st.session_state.get(
+                    'presenza_data', {}).get('students', []),
+                'total': 0,
+                'error': error_message
+            }
+
+        finally:
+            print("Presenter (Presenza): Finished. Cleaning up.")
+            self.model.close()
+
+            progress_placeholder.empty()
+            status_placeholder.empty()
+
+            # === BUILD SUMMARY ===
+            total = results.get('total', 0)
+            success_list = results.get('success', [])
+            failed_list = results.get('failed', [])
+
+            summary_parts = [
+                f"## 📊 Riepilogo Assegnazione Presenza\n",
+                f"- **Edizione:** {st.session_state.get('presenza_data', {}).get('edition_code', '')}",
+                f"- **Stato assegnato:** {st.session_state.get('presenza_data', {}).get('stato', 'Completato')}",
+                f"- **Allievi processati:** {len(success_list)}/{total}",
+                f"- **Errori:** {len(failed_list)}\n",
+            ]
+
+            if success_list:
+                summary_parts.append(
+                    f"✅ **Successo ({len(success_list)}):** "
+                    f"{', '.join(success_list[:10])}"
+                    + (f" ... e altri {len(success_list) - 10}"
+                       if len(success_list) > 10 else "")
+                )
+
+            if failed_list:
+                summary_parts.append(
+                    f"\n❌ **Falliti ({len(failed_list)}):** "
+                    f"{', '.join(failed_list[:10])}"
+                    + (f" ... e altri {len(failed_list) - 10}"
+                       if len(failed_list) > 10 else "")
+                )
+
+            if 'error' in results:
+                summary_parts.append(f"\n‼️ **Errore generale:** {results['error']}")
+
+            final_message = "\n".join(summary_parts)
+
+            st.session_state.student_message = final_message
+            st.session_state.presenza_data = None
+
+            st.session_state.app_state = "IDLE"
+            st.rerun()
