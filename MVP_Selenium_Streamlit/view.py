@@ -780,21 +780,24 @@ class CourseView:
                 if st.session_state.student_message:
                     self.show_message("student", st.session_state.student_message, True)
 
-        # --- Tab4:Student Attendance ---
         with tab4:
             st.header("Assegnazione Presenza")
             if st.session_state.app_state == "RUNNING_PRESENZA":
                 self.student_output_placeholder = st.empty()
             else:
                 self._render_presenza_form(is_disabled=is_running)
+
+                # Show result message — standalone, does NOT use show_message()
+                # to avoid duplicate key conflict with tab3's clear_student button
                 if st.session_state.get('presenza_message'):
-                    with st.empty().container():
-                        st.success(st.session_state.presenza_message) \
-                            if "✅" in st.session_state.presenza_message \
-                            else st.error(st.session_state.presenza_message)
-                        if st.button("🧹 Cancella", key="clear_presenza_result"):
-                            st.session_state.presenza_message = ""
-                            st.rerun()
+                    msg = st.session_state.presenza_message
+                    if "✅" in msg or "Successo" in msg:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
+                    if st.button("🧹 Cancella Risultato", key="clear_presenza_message"):
+                        st.session_state.presenza_message = ""
+                        st.rerun()
 
     def _clear_course_form_callback(self):
         st.session_state.course_title_key = ""
