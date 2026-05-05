@@ -2247,6 +2247,446 @@ class OracleAutomator:
                 pass
             return False
 
+    def _assign_presenza_for_student(self, person_number: str,
+                                     stato: str = "Completato") -> bool:
+        """
+        Assign presence (assegnazione presenza) for a single student.
+
+        Assumes already on the edition detail page with the student visible
+        in the Allievi tab.
+
+        Pipeline:
+        1. Find student by person_number in Allievi tab
+        2. Click "Gestisci attività"
+        3. For each activity row:
+           - Read "Data attività" (read-only)
+           - Copy it into "Data completamento"
+           - Select stato (Completato / Esente / Non passato)
+        4. Click "Salva e chiudi"
+
+        Args:
+            person_number: The person number to find
+            stato: "Completato", "Esente", or "Non passato"
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            print(f"\n   Processing presenza for person: {person_number}")
+
+            # ─────────────────────────────────────────────────────────
+            # STEP 1: Find the student row by person number
+            # ─────────────────────────────────────────────────────────
+            print("   Step 1: Finding student in Allievi list...")
+
+            # Wait for page to stabilize
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(1)
+
+            # Find the row containing this person number
+            # Oracle shows person number as text in the row
+            student_row_xpath = (
+                f"//tr[.//td[normalize-space(.)='{person_number}'] or "
+                f".//span[normalize-space(.)='{person_number}']]"
+            )
+
+            try:
+                student_row = WebDriverWait(self.driver, 15).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, student_row_xpath)))
+                print(f"   ✅ Found student row for: {person_number}")
+            except TimeoutException:
+                print(f"   ❌ Student '{person_number}' not found in Allievi list")
+                return False
+
+            # Click the row to select it (Oracle often requires row selection
+            # before action buttons become active)
+            try:
+                student_row.click()
+                time.sleep(1)
+                print("   ✅ Clicked student row to select it")
+            except:
+                self.driver.execute_script(
+                    "arguments[0].click();", student_row)
+                time.sleep(1)
+
+            # ─────────────────────────────────────────────────────────
+            # STEP 2: Click "Gestisci attività" button
+            # ─────────────────────────────────────────────────────────
+            print("   Step 2: Clicking 'Gestisci attività'...")
+
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
+            gestisci_btn = WebDriverWait(self.driver, 15).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, PRESENZA_GESTISCI_BTN)))
+
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});", gestisci_btn)
+            time.sleep(0.5)
+
+            try:
+                gestisci_btn.click()
+            except:
+                self.driver.execute_script("arguments[0].click();", gestisci_btn)
+
+            print("   ✅ Clicked 'Gestisci attività'")
+            time.sleep(3)
+            self._pause_for_visual_check()
+
+            # Wait for activity table to load
+            try:
+                WebDriverWait(self.driver, 15).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)
+
+            # ─────────────────────────────────────────────────────────
+            # STEP 3: Process each activity row
+            # ─────────────────────────────────────────────────────────
+            print("   Step 3: Processing activity rows...")
+
+            # Find all activity rows in the table
+            activity_rows_xpath = (
+                '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:'
+                'clDtSp1:UPsp1:r11:1:r6:0:sp1:t1::db"]/table/tbody/tr'
+            )
+
+            try:
+                activity_rows = WebDriverWait(self.driver, 15).until(
+                    EC.presence_of_all_elements_located(
+                        (By.XPATH, activity_rows_xpath)))
+                print(f"   Found {len(activity_rows)} activity rows")
+            except TimeoutException:
+                print("   ❌ Could not find activity rows table")
+                return False
+
+            # Determine which option index to click based on stato
+            # From screenshots: li[1]=Completato, li[2]=Esente, li[3]=Non passato
+            stato_clean = stato.strip().lower()
+            if stato_clean in ['completato', 'completed', 'c']:
+                stato_option_idx = 1
+                stato_display = "Completato"
+            elif stato_clean in ['esente', 'exempt', 'e']:
+                stato_option_idx = 2
+                stato_display = "Esente"
+            else:  # non passato / failed
+                stato_option_idx = 3
+                stato_display = "Non passato"
+
+            # Process each row
+            for row_idx, row in enumerate(activity_rows):
+                print(f"\n   Processing activity row {row_idx + 1}...")
+
+                try:
+                    # ── Read "Data attività" (column 4, read-only) ──
+                    data_attivita = ""
+                    try:
+                        # The date is inside a span with class x2b inside td[4]
+                        date_span = row.find_element(
+                            By.XPATH,
+                            './/td[4]//span[contains(@class, "x2b")]')
+                        data_attivita = date_span.text.strip()
+                        if not data_attivita:
+                            # Try reading the inner content span
+                            date_span = row.find_element(
+                                By.XPATH,
+                                './/td[4]//*[contains(@id, "::content")]')
+                            data_attivita = date_span.text.strip()
+                        print(f"      Data attività: {data_attivita}")
+                    except Exception as e:
+                        print(f"      ⚠️ Could not read Data attività: {e}")
+                        continue
+
+                    if not data_attivita:
+                        print(f"      ⚠️ Empty date for row {row_idx + 1}, skipping")
+                        continue
+
+                    # ── Fill "Data completamento" (column 5, editable input) ──
+                    try:
+                        data_comp_input = row.find_element(
+                            By.XPATH,
+                            './/td[5]//input[contains(@id, "::content")]')
+
+                        # Clear and fill with the same date as Data attività
+                        data_comp_input.click()
+                        time.sleep(0.3)
+                        data_comp_input.clear()
+
+                        # Use JavaScript to set value (more reliable for Oracle date fields)
+                        self.driver.execute_script(
+                            "arguments[0].value = arguments[1];",
+                            data_comp_input, data_attivita)
+                        data_comp_input.send_keys(Keys.TAB)
+                        time.sleep(1)
+
+                        print(f"      ✅ Data completamento set to: {data_attivita}")
+
+                        # Wait for Oracle to process the date
+                        try:
+                            WebDriverWait(self.driver, 5).until(
+                                EC.invisibility_of_element_located(
+                                    (By.CLASS_NAME, "AFBlockingGlassPane")))
+                        except:
+                            pass
+
+                    except Exception as e:
+                        print(f"      ⚠️ Could not fill Data completamento: {e}")
+                        continue
+
+                    # ── Select Stato completamento dropdown ──
+                    try:
+                        stato_dropdown = row.find_element(
+                            By.XPATH,
+                            './/td[6]//a[contains(@id, "::drop")]')
+
+                        self.driver.execute_script(
+                            "arguments[0].scrollIntoView({block: 'center'});",
+                            stato_dropdown)
+                        time.sleep(0.3)
+
+                        try:
+                            stato_dropdown.click()
+                        except:
+                            self.driver.execute_script(
+                                "arguments[0].click();", stato_dropdown)
+
+                        time.sleep(1)
+                        self._pause_for_visual_check()
+
+                        # Select the option by index
+                        # Build popup XPath dynamically using row index
+                        option_xpath = (
+                            f'//*[contains(@id, ":t1:{row_idx}:soc4::pop")]'
+                            f'/li[{stato_option_idx}]'
+                        )
+
+                        try:
+                            option = WebDriverWait(self.driver, 10).until(
+                                EC.element_to_be_clickable(
+                                    (By.XPATH, option_xpath)))
+                            option.click()
+                            print(f"      ✅ Stato set to: {stato_display}")
+                        except:
+                            # Fallback: click any visible li with matching text
+                            fallback_xpath = (
+                                f'//li[@role="option" and '
+                                f'normalize-space(.)="{stato_display}"]'
+                            )
+                            option = WebDriverWait(self.driver, 5).until(
+                                EC.element_to_be_clickable(
+                                    (By.XPATH, fallback_xpath)))
+                            option.click()
+                            print(f"      ✅ Stato set (fallback): {stato_display}")
+
+                        time.sleep(1)
+
+                        # Wait for overlay
+                        try:
+                            WebDriverWait(self.driver, 5).until(
+                                EC.invisibility_of_element_located(
+                                    (By.CLASS_NAME, "AFBlockingGlassPane")))
+                        except:
+                            pass
+
+                    except Exception as e:
+                        print(f"      ⚠️ Could not set Stato: {e}")
+
+                    self._pause_for_visual_check()
+
+                except Exception as row_err:
+                    print(f"      ❌ Error processing row {row_idx + 1}: {row_err}")
+                    continue
+
+            # ─────────────────────────────────────────────────────────
+            # STEP 4: Click "Salva e chiudi"
+            # ─────────────────────────────────────────────────────────
+            print("\n   Step 4: Clicking 'Salva e chiudi'...")
+
+            try:
+                salva_btn = WebDriverWait(self.driver, 15).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, PRESENZA_SALVA_CHIUDI)))
+
+                self.driver.execute_script(
+                    "arguments[0].scrollIntoView({block: 'center'});", salva_btn)
+                time.sleep(0.5)
+
+                try:
+                    salva_btn.click()
+                except:
+                    self.driver.execute_script(
+                        "arguments[0].click();", salva_btn)
+
+                print("   ✅ Clicked 'Salva e chiudi'")
+                time.sleep(3)
+
+                # Wait for page to return to Allievi list
+                try:
+                    WebDriverWait(self.driver, 15).until(
+                        EC.invisibility_of_element_located(
+                            (By.CLASS_NAME, "AFBlockingGlassPane")))
+                except:
+                    pass
+
+                print(f"   ✅ Presenza saved for student {person_number}")
+                return True
+
+            except Exception as e:
+                print(f"   ❌ Could not click 'Salva e chiudi': {e}")
+                return False
+
+        except Exception as e:
+            print(f"\n❌ ERROR in _assign_presenza_for_student: {e}")
+            import traceback
+            traceback.print_exc()
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self.driver.save_screenshot(f"error_presenza_{timestamp}.png")
+            except:
+                pass
+            return False
+
+    def assign_presenza_batch(self, edition_code: str,
+                              students: list,
+                              stato: str = "Completato") -> dict:
+        """
+        Assign presence for multiple students in one edition.
+
+        Assumes already on the edition page (Allievi tab visible).
+        Called from presenter after navigating to the edition.
+
+        Args:
+            edition_code: Edition code (for logging)
+            students: List of person number strings
+            stato: "Completato", "Esente", or "Non passato"
+
+        Returns:
+            Dict with 'success', 'failed', 'total' counts
+        """
+        results = {
+            'success': [],
+            'failed': [],
+            'total': len(students)
+        }
+
+        print(f"\n{'=' * 60}")
+        print(f"PRESENZA: Processing {len(students)} students for '{edition_code}'")
+        print(f"{'=' * 60}")
+
+        # Navigate to Allievi tab first
+        try:
+            print("Clicking 'Allievi' tab...")
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)
+
+            allievi_tab = self.wait.until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, STUDENT_ALLIEVI_TAB)))
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});", allievi_tab)
+            time.sleep(0.5)
+            try:
+                allievi_tab.click()
+            except:
+                self.driver.execute_script("arguments[0].click();", allievi_tab)
+            print("✅ On Allievi tab")
+            time.sleep(3)
+
+        except Exception as e:
+            print(f"❌ Could not click Allievi tab: {e}")
+            results['failed'] = students
+            return results
+
+        # Process each student
+        for idx, person_number in enumerate(students):
+            print(f"\n[{idx + 1}/{len(students)}] Student: {person_number}")
+
+            # Set filter to show all students (Tutto)
+            try:
+                stato_dropdown_filter = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, STUDENT_STATUS_DROPDOWN)))
+                stato_dropdown_filter.click()
+                tutto = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, STUDENT_STATUS_TUTTO)))
+                tutto.click()
+                time.sleep(1)
+            except:
+                pass
+
+            # Search for the specific student using keyword search
+            try:
+                keyword_input = None
+                for xpath in [STUDENT_KEYWORD_INPUT_1, STUDENT_KEYWORD_INPUT_2]:
+                    try:
+                        keyword_input = WebDriverWait(self.driver, 5).until(
+                            EC.presence_of_element_located((By.XPATH, xpath)))
+                        break
+                    except:
+                        continue
+
+                if keyword_input:
+                    keyword_input.clear()
+                    keyword_input.send_keys(person_number)
+                    cerca_btn = self.driver.find_element(
+                        By.XPATH, STUDENT_CERCA_BUTTON)
+                    cerca_btn.click()
+                    time.sleep(2)
+                    try:
+                        WebDriverWait(self.driver, 10).until(
+                            EC.invisibility_of_element_located(
+                                (By.CLASS_NAME, "AFBlockingGlassPane")))
+                    except:
+                        pass
+                    time.sleep(1)
+            except Exception as search_err:
+                print(f"   ⚠️ Search failed: {search_err}")
+
+            # Now assign presenza
+            success = self._assign_presenza_for_student(person_number, stato)
+
+            if success:
+                results['success'].append(person_number)
+            else:
+                results['failed'].append(person_number)
+
+            # Reset search for next student
+            try:
+                reset_btn = self.driver.find_element(
+                    By.XPATH, STUDENT_RESET_BUTTON)
+                reset_btn.click()
+                time.sleep(1)
+            except:
+                try:
+                    if keyword_input:
+                        keyword_input.clear()
+                except:
+                    pass
+
+        print(f"\n{'=' * 60}")
+        print(f"PRESENZA COMPLETE: {len(results['success'])}/{results['total']} successful")
+        print(f"{'=' * 60}")
+        return results
+
     def _verify_students_in_edition(self, edition_code, expected_matricole):
         """Verify that students exist in an edition's Allievi tab."""
         result = {
