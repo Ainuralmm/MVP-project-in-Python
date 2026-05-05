@@ -1021,7 +1021,7 @@ class CoursePresenter:
 
             final_message = "\n".join(summary_parts)
 
-            st.session_state.student_message = final_message
+            st.session_state.presenza_message = final_message
             st.session_state.presenza_data = None
 
             st.session_state.app_state = "IDLE"
