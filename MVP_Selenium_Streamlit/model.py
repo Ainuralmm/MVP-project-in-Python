@@ -2699,6 +2699,15 @@ class OracleAutomator:
                 except:
                     pass
 
+            # ── ADD THIS: wait for Allievi list to fully reload ──
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)  # Oracle needs time to refresh the student list
+
         print(f"\n{'=' * 60}")
         print(f"PRESENZA COMPLETE: {len(results['success'])}/{results['total']} successful")
         print(f"{'=' * 60}")
