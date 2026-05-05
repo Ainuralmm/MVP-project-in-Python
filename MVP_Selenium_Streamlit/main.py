@@ -51,5 +51,7 @@ if __name__ == "__main__":
              presenter.run_add_students_batch()
         elif st.session_state.app_state == "RUNNING_VERIFY_STUDENTS":
             presenter.run_verify_students()
+        elif st.session_state.app_state == "RUNNING_PRESENZA":
+            presenter.run_assign_presenza()
     else: # 4. Only render UI when NOT running automation
         view.render_ui()
