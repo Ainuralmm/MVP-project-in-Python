@@ -427,6 +427,8 @@ class CourseView:
             st.session_state.presenza_data = None
         if "presenza_show_summary" not in st.session_state:
             st.session_state.presenza_show_summary = False
+        if "presenza_message" not in st.session_state:
+            st.session_state.presenza_message = ""
 
         # --- Initialize Widget States ---
         if "course_date_str_key" not in st.session_state:
