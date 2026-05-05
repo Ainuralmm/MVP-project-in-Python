@@ -785,9 +785,14 @@ class CourseView:
                 self.student_output_placeholder = st.empty()
             else:
                 self._render_presenza_form(is_disabled=is_running)
-                if st.session_state.student_message and \
-                        "Assegnazione Presenza" in st.session_state.student_message:
-                    self.show_message("student", st.session_state.student_message, True)
+                if st.session_state.get('presenza_message'):
+                    with st.empty().container():
+                        st.success(st.session_state.presenza_message) \
+                            if "✅" in st.session_state.presenza_message \
+                            else st.error(st.session_state.presenza_message)
+                        if st.button("🧹 Cancella", key="clear_presenza_result"):
+                            st.session_state.presenza_message = ""
+                            st.rerun()
 
     def _clear_course_form_callback(self):
         st.session_state.course_title_key = ""
