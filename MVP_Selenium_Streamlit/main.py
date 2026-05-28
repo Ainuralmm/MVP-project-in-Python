@@ -4,11 +4,57 @@ from model import OracleAutomator
 from view import CourseView
 from presenter import CoursePresenter
 
-#st.write("PYTHON EXECUTABLE:", sys.executable)
-### HASHTAG: SIMPLIFIED AND CORRECTED LOGIC
-# The main script now initializes the view and lets it handle all rendering.
-# The controller logic only runs when the app is busy, creating the model
-# and presenter only when needed.
+import logging
+import os
+from datetime import datetime
+
+# === BASIC SESSION LOGGING ===
+# Creates a new log file each day in logs/ folder
+# Captures all print() output and errors automatically
+log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+
+log_file = os.path.join(
+    log_dir,
+    f"session_{datetime.now().strftime('%Y%m%d')}.log"
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s | %(levelname)s | %(message)s',
+    handlers=[
+        logging.FileHandler(log_file, encoding='utf-8'),
+        logging.StreamHandler()  # still shows in terminal too
+    ]
+)
+
+# Redirect uncaught exceptions to log file
+import sys
+
+def log_exception(exc_type, exc_value, exc_traceback):
+    logging.error(
+        "UNCAUGHT EXCEPTION",
+        exc_info=(exc_type, exc_value, exc_traceback)
+    )
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+sys.excepthook = log_exception
+
+# Only log app start once per session, not on every Streamlit rerun
+if 'session_logged' not in st.session_state:
+    logging.info(f"=== APP STARTED === User: {os.environ.get('USERNAME', 'unknown')}")
+    st.session_state.session_logged = True
+
+# Redirect all print() statements to the log file too
+import builtins
+_original_print = builtins.print
+
+def _logging_print(*args, **kwargs):
+    message = ' '.join(str(a) for a in args)
+    logging.info(message)
+    _original_print(*args, **kwargs)
+
+builtins.print = _logging_print
 
 if __name__ == "__main__":
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
