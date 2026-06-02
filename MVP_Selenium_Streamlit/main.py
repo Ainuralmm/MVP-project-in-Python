@@ -47,14 +47,18 @@ if 'session_logged' not in st.session_state:
 
 # Redirect all print() statements to the log file too
 import builtins
-_original_print = builtins.print
 
-def _logging_print(*args, **kwargs):
-    message = ' '.join(str(a) for a in args)
-    logging.info(message)
-    _original_print(*args, **kwargs)
+# Only redirect once — guard against multiple Streamlit reruns
+if not hasattr(builtins, '_logging_redirected'):
+    _original_print = builtins.print
 
-builtins.print = _logging_print
+    def _logging_print(*args, **kwargs):
+        message = ' '.join(str(a) for a in args)
+        logging.info(message)
+        _original_print(*args, **kwargs)
+
+    builtins.print = _logging_print
+    builtins._logging_redirected = True
 
 if __name__ == "__main__":
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
