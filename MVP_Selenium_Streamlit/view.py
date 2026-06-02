@@ -4945,26 +4945,22 @@ class CourseView:
                 st.session_state.student_input_method = "txt"
                 st.rerun()
 
-
     def update_progress(self, form_type, message, percentage):
-            placeholder = None
-            if form_type == "course":
-                # Use getattr to safely get the attribute
-                placeholder = getattr(self, 'course_output_placeholder', None)
-            elif form_type == "edition":
-                placeholder = getattr(self, 'edition_output_placeholder', None)
-            elif form_type == "student":
-                placeholder = getattr(self, 'student_output_placeholder', None)
+        placeholder = None
+        if form_type == "course":
+            placeholder = getattr(self, 'course_output_placeholder', None)
+        elif form_type == "edition":
+            placeholder = getattr(self, 'edition_output_placeholder', None)
+        elif form_type == "student":
+            placeholder = getattr(self, 'student_output_placeholder', None)
 
-            # Only try to use placeholder if it exists and is not None
-            if placeholder is not None:
-                with placeholder.container():
-                    st.info(f"⏳ {message}")
-                    st.progress(percentage)
-            else:
-                # Fallback: just show the message directly
+        if placeholder is not None:
+            # ✅ Use placeholder.container() — replaces content each time
+            with placeholder.container():
+                st.progress(percentage / 100)  # normalize 0-100 to 0.0-1.0
                 st.info(f"⏳ {message}")
-                st.progress(percentage)
+        else:
+            st.info(f"⏳ {message}")
 
     def show_message(self, form_type, message, show_clear_button=False):
         placeholder = None
