@@ -137,7 +137,7 @@ class OracleAutomator:
             print("Model: Waiting for Corsi page to load...")
             WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located(
-                    (By.NAME, COURSE_SEARCH_NAME_INPUT)))
+                    (By.XPATH, COURSE_SEARCH_XPATH_INPUT)))
             print("Model: Navigated to 'Corsi' page.")
             return True
         except Exception as e:
@@ -187,7 +187,7 @@ class OracleAutomator:
                 pass
 
             # Fill search name
-            search_box_locator = (By.NAME, COURSE_SEARCH_NAME_INPUT)
+            search_box_locator = (By.XPATH, COURSE_SEARCH_XPATH_INPUT)
             search_box = self.wait.until(EC.element_to_be_clickable(search_box_locator))
             search_box.clear()
             search_box.send_keys(capitalised_course_name)
