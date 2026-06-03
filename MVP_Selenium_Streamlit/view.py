@@ -4955,11 +4955,13 @@ class CourseView:
             placeholder = getattr(self, 'student_output_placeholder', None)
 
         if placeholder is not None:
-            # ✅ Use placeholder.container() — replaces content each time
+            # placeholder.container() REPLACES content every call
+            placeholder.empty()  # clear previous content first
             with placeholder.container():
-                st.progress(percentage / 100)  # normalize 0-100 to 0.0-1.0
+                st.progress(percentage / 100)
                 st.info(f"⏳ {message}")
         else:
+            # Fallback — should not happen normally
             st.info(f"⏳ {message}")
 
     def show_message(self, form_type, message, show_clear_button=False):

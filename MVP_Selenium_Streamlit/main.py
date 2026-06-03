@@ -1,4 +1,4 @@
-#import sys
+import sys
 import streamlit as st
 from model import OracleAutomator
 from view import CourseView
@@ -10,55 +10,29 @@ from datetime import datetime
 
 # === BASIC SESSION LOGGING ===
 # Creates a new log file each day in logs/ folder
-# Captures all print() output and errors automatically
+# Captures all print() output and errors automaticall
+
 log_dir = os.path.join(os.path.dirname(__file__), 'logs')
 os.makedirs(log_dir, exist_ok=True)
 
-log_file = os.path.join(
-    log_dir,
-    f"session_{datetime.now().strftime('%Y%m%d')}.log"
-)
+log_file = os.path.join(log_dir, f"session_{datetime.now().strftime('%Y%m%d')}.log")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s | %(levelname)s | %(message)s',
-    handlers=[
-        logging.FileHandler(log_file, encoding='utf-8'),
-        logging.StreamHandler()  # still shows in terminal too
-    ]
-)
+# Get the root logger
+logger = logging.getLogger()
 
-# Redirect uncaught exceptions to log file
-import sys
+# Only add handlers once — check if already configured
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
 
-def log_exception(exc_type, exc_value, exc_traceback):
-    logging.error(
-        "UNCAUGHT EXCEPTION",
-        exc_info=(exc_type, exc_value, exc_traceback)
-    )
-    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
 
-sys.excepthook = log_exception
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
-# Only log app start once per session, not on every Streamlit rerun
-if 'session_logged' not in st.session_state:
-    logging.info(f"=== APP STARTED === User: {os.environ.get('USERNAME', 'unknown')}")
-    st.session_state.session_logged = True
-
-# Redirect all print() statements to the log file too
-import builtins
-
-# Only redirect once — guard against multiple Streamlit reruns
-if not hasattr(builtins, '_logging_redirected'):
-    _original_print = builtins.print
-
-    def _logging_print(*args, **kwargs):
-        message = ' '.join(str(a) for a in args)
-        logging.info(message)
-        _original_print(*args, **kwargs)
-
-    builtins.print = _logging_print
-    builtins._logging_redirected = True
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
 
 if __name__ == "__main__":
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
@@ -70,10 +44,10 @@ if __name__ == "__main__":
     # 2. Get current state BEFORE rendering UI
     current_state = st.session_state.get('app_state', 'IDLE')
 
-    # 2. Let the View render the entire user interface.
-    #view.render_ui()
+    # 3. Let the View render the entire user interface.
+    view.render_ui()
 
-    # 3. Controller Logic: Only run this block if an automation has been started.
+    # 4. Controller Logic: Only run this block if an automation has been started.
     if current_state != "IDLE":
         model = OracleAutomator(driver_path=DRIVER_PATH,
                                 debug_mode=debug_mode,
@@ -103,5 +77,4 @@ if __name__ == "__main__":
             presenter.run_verify_students()
         elif st.session_state.app_state == "RUNNING_PRESENZA":
             presenter.run_assign_presenza()
-    else: # 4. Only render UI when NOT running automation
-        view.render_ui()
+

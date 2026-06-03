@@ -211,10 +211,7 @@ class CoursePresenter:
 
         def update_batch_progress(message, percentage):
             """Helper to update single progress bar"""
-            with progress_placeholder.container():
-                st.progress(percentage / 100)
-            with status_placeholder.container():
-                st.info(f"⏳ {message}")
+            self.view.update_progress("course", message, percentage)
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
