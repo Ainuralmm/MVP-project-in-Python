@@ -1026,6 +1026,15 @@ class OracleAutomator:
         if not price:
             return
 
+        # ensure no overlay is blocking before clicking
+        try:
+            WebDriverWait(self.driver, 8).until(
+                EC.invisibility_of_element_located(
+                    (By.CLASS_NAME, "AFBlockingGlassPane")))
+        except:
+            pass
+        time.sleep(1)
+
         flag_prezzi = self.wait.until(EC.presence_of_element_located(
             (By.XPATH, EDITION_PRICE_FLAG_LABEL)))
         flag_prezzi.click()
