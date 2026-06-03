@@ -1260,6 +1260,15 @@ class OracleAutomator:
             self._fill_edition_supplier(supplier)
             self._pause_for_visual_check()
 
+            # wait for any dropdown overlay to fully disappear
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)  # extra wait for supplier dropdown to fully close
+
             self._fill_edition_price(price)
             self._pause_for_visual_check()
 
