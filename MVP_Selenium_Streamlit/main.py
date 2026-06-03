@@ -6,33 +6,45 @@ from presenter import CoursePresenter
 
 import logging
 import os
+import builtins
 from datetime import datetime
 
-# === BASIC SESSION LOGGING ===
-# Creates a new log file each day in logs/ folder
-# Captures all print() output and errors automaticall
-
+# === LOG DIRECTORY SETUP ===
 log_dir = os.path.join(os.path.dirname(__file__), 'logs')
 os.makedirs(log_dir, exist_ok=True)
-
 log_file = os.path.join(log_dir, f"session_{datetime.now().strftime('%Y%m%d')}.log")
 
-# Get the root logger
+# === SAVE THE TRUE ORIGINAL PRINT ONCE (survives Streamlit reruns) ===
+if not hasattr(builtins, '_true_original_print'):
+    builtins._true_original_print = builtins.print
+
+# === RESET LOGGER COMPLETELY ON EVERY RERUN ===
 logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
-# Only add handlers once — check if already configured
-if not logger.handlers:
-    logger.setLevel(logging.INFO)
+# Remove ALL existing handlers (prevents duplicates on Streamlit reruns)
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+    handler.close()
 
-    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+# Add fresh handlers
+formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
 
-    file_handler = logging.FileHandler(log_file, encoding='utf-8')
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+file_handler = logging.FileHandler(log_file, encoding='utf-8')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
+# === REDIRECT print() TO LOGGING (always use the TRUE original) ===
+def _logging_print(*args, **kwargs):
+    message = ' '.join(str(a) for a in args)
+    logging.info(message)
+    builtins._true_original_print(*args, **kwargs)
+
+builtins.print = _logging_print
 
 if __name__ == "__main__":
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
