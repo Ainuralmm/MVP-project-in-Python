@@ -480,22 +480,20 @@ class CourseView:
 
     def _apply_theme(self):
         """
-        Inject user's chosen theme as CSS into the Streamlit page.
-        Called at the very start of render_ui() so it applies everywhere.
+        Inject user's chosen theme as CSS.
+        Keeps the Streamlit header untouched so the sidebar
+        toggle (<<) and menu (rerun, clear cache) work normally.
         """
-
         import json
         import os
 
-        # Load available themes
         themes_path = os.path.join(os.path.dirname(__file__), 'themes.json')
         try:
             with open(themes_path, 'r', encoding='utf-8') as f:
                 themes_config = json.load(f)
         except:
-            return  # If file missing, just use default Streamlit theme
+            return
 
-        # Get current user's saved preferences (defaults to 'Scuro')
         current_theme_name = st.session_state.get(
             'user_theme', 'Scuro (default)')
         current_font_name = st.session_state.get(
@@ -510,9 +508,7 @@ class CourseView:
 
         st.markdown(f"""
             <style>
-            @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
-
-            /* Main background */
+            /* Main app background */
             .stApp {{
                 background-color: {theme['bg_color']};
                 color: {theme['text_color']};
@@ -524,7 +520,7 @@ class CourseView:
                 background-color: {theme['secondary_bg']};
             }}
 
-            /* Text elements - only main content, NOT header */
+            /* Text in main content and sidebar */
             [data-testid="stMain"] p,
             [data-testid="stMain"] label,
             [data-testid="stMain"] h1,
@@ -550,53 +546,13 @@ class CourseView:
                 font-family: {font};
             }}
 
-            /* Dataframes */
-            .stDataFrame {{
-                background-color: {theme['secondary_bg']};
-            }}
-
             /* Expanders */
             [data-testid="stExpander"] {{
                 background-color: {theme['secondary_bg']};
-                border-color: {theme['text_color']}22;
             }}
-
-            /* Hide footer and deploy only */
-            footer {{visibility: hidden;}}
-            .stDeployButton {{display: none;}}
-            [data-testid="stAppDeployButton"] {{display: none;}}
-
-            /* Hide keyboard text in header WITHOUT hiding the header itself */
-            header[data-testid="stHeader"] span {{
-                color: transparent !important;
-                font-size: 0px !important;
-            /* Make sidebar toggle button visible */
-            [data-testid="stBaseButton-headerNoPadding"] {{
-                color: {theme['text_color']} !important;
-                opacity: 1 !important;
-            }}
-            
-            /* Show the << >> arrow icons */
-            [data-testid="stBaseButton-headerNoPadding"] svg {{
-                fill: {theme['text_color']} !important;
-                opacity: 1 !important;
-            }}
-            
-            /* Make sure header button spans are visible except keyboard text */
-            header button span {{
-                color: {theme['text_color']} !important;
-                visibility: visible !important;
-                font-size: inherit !important;
-            }}
-            
-            /* But still hide the keyboard_double_arrow text specifically */
-            header [data-testid="collapsedControl"] > div > span:first-child {{
-                display: none !important;
-            }}
-            }}
-
             </style>
         """, unsafe_allow_html=True)
+
 
     def _update_nlp_text(self):
         """
@@ -738,10 +694,10 @@ class CourseView:
 
         # Create 4 tabs
         tab1, tab2, tab3, tab4 = st.tabs([
-            "1. Creazione Corso",
-            "2. Creazione Edizione + Attività",
-            "3. Aggiungi Allievi",
-            "4. Assegnazione Presenza"
+            " 1.Creazione Corso",
+            " 2.Creazione Edizione + Attività",
+            " 3.Aggiungi Allievi",
+            " 4.Assegnazione Presenza"
         ])
 
         # --- Tab1:Course Form Container ---
