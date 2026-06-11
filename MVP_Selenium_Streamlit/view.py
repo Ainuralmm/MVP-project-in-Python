@@ -2208,7 +2208,13 @@ class CourseView:
                 'finanziata': ['finanziata'],
                 'servizio_pagante': ['servizio pagante', 'servizio_pagante'],
                 'sottotipologia': ['sottotipologia'],
-                'societa_pagante': ["società pagante", "societa pagante", 'societa_pagante'],
+                'societa_pagante': [
+                    "società pagante",
+                    "societa pagante",
+                    "societa' pagante",
+                    "societa\u2019 pagante",
+                    'societa_pagante'
+                ],
             }
 
             # Column mappings for activities
