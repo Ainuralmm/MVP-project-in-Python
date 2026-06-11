@@ -514,6 +514,10 @@ class CourseView:
                 color: {theme['text_color']};
                 font-family: {font};
             }}
+            /* Header bar — make it match the app background */
+            [data-testid="stHeader"] {{
+                 background-color: {theme['bg_color']} !important;
+            }}
 
             /* Sidebar background */
             [data-testid="stSidebar"] {{
@@ -549,6 +553,80 @@ class CourseView:
             /* Expanders */
             [data-testid="stExpander"] {{
                 background-color: {theme['secondary_bg']};
+            }}
+            /* Regular buttons + form submit buttons (Pulisci, etc.) */
+            .stButton > button,
+            [data-testid="stFormSubmitButton"] > button,
+            [data-testid="stBaseButton-secondary"],
+            [data-testid="stBaseButton-primary"] {{
+            background-color: {theme['secondary_bg']} !important;
+            color: {theme['text_color']} !important;
+            border: 1px solid {theme['text_color']}33 !important;
+            transition: filter 0.2s ease;
+            }}
+            
+            /* Button hover — brighten slightly */
+            .stButton > button:hover,
+            [data-testid="stFormSubmitButton"] > button:hover,
+            [data-testid="stBaseButton-secondary"]:hover,
+            [data-testid="stBaseButton-primary"]:hover {{
+            filter: brightness(1.15);
+            border-color: {theme['text_color']}66 !important;
+            }}
+            
+            /* Number input field ("Quanti giorni di attività?") */
+            .stNumberInput input {{
+            background-color: {theme['secondary_bg']} !important;
+            color: {theme['text_color']} !important;
+            }}
+            
+            /* Number input +/- buttons */
+            .stNumberInput button {{
+            background-color: {theme['secondary_bg']} !important;
+            color: {theme['text_color']} !important;
+            border-color: {theme['text_color']}33 !important;
+            }}
+            
+            .stNumberInput button:hover {{
+            filter: brightness(1.15);
+            }}
+            /* Info, warning, success, error boxes — match theme */
+            [data-testid="stAlert"],
+            [data-testid="stAlertContainer"],
+            [data-testid="stNotification"] {{
+                background-color: {theme['secondary_bg']} !important;
+                color: {theme['text_color']} !important;
+            }}
+            
+            [data-testid="stAlert"] *,
+            [data-testid="stAlertContainer"] *,
+            [data-testid="stNotification"] * {{
+                color: {theme['text_color']} !important;
+            }}
+            
+            /* File uploader (Drag and drop area) */
+            [data-testid="stFileUploaderDropzone"],
+            [data-testid="stFileUploader"] section {{
+                background-color: {theme['secondary_bg']} !important;
+                color: {theme['text_color']} !important;
+                border-color: {theme['text_color']}33 !important;
+            }}
+            
+            [data-testid="stFileUploaderDropzone"] *,
+            [data-testid="stFileUploader"] section * {{
+                color: {theme['text_color']} !important;
+            }}
+            
+            /* Radio button dots — unselected */
+            [data-baseweb="radio"] div[role="radio"] {{
+                background-color: {theme['bg_color']} !important;
+                border-color: {theme['text_color']}66 !important;
+            }}
+            
+            /* Radio button dots — selected (red) */
+            [data-baseweb="radio"] div[role="radio"][aria-checked="true"] {{
+                background-color: #e63946 !important;
+                border-color: #e63946 !important;
             }}
             </style>
         """, unsafe_allow_html=True)
