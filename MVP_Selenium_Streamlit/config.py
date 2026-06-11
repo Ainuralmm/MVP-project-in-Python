@@ -234,12 +234,12 @@ STUDENT_RESET_BUTTON     = "//button[text()='Reimposta' or text()='Reset']"
 PRESENZA_GESTISCI_BTN        = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:lnrAtbl:_ATp:mnAcBtn"]/a/span'
 PRESENZA_ACTIVITY_TABLE      = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:r6:0:sp1:t1::db"]/table/tbody'
 PRESENZA_DATA_ATTIVITA_COL   = './tr/td[4]'           # relative to table body — read-only date
-PRESENZA_DATA_COMPLETAMENTO  = './/input[contains(@id, ":id8892::content")]'  # relative to row
-PRESENZA_STATO_DROPDOWN      = './/a[contains(@id, ":soc4::drop")]'           # relative to row
-PRESENZA_COMPLETATO_OPTION   = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:r6:0:sp1:t1:0:soc4::pop"]/li[1]'
-PRESENZA_ESENTE_OPTION       = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:r6:0:sp1:t1:0:soc4::pop"]/li[2]'
-PRESENZA_NON_PASSATO_OPTION  = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:r6:0:sp1:t1:0:soc4::pop"]/li[3]'
-PRESENZA_SALVA_CHIUDI        = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:r6:0:sp1:cb2"]'
+PRESENZA_DATA_COMPLETAMENTO  = './/input[contains(@id, ":id8892::content")]'
+PRESENZA_STATO_DROPDOWN      = './/a[contains(@id, ":soc4::drop")]'
+PRESENZA_COMPLETATO_OPTION = '//*[contains(@id,":soc4::pop")]/li[1]'
+PRESENZA_ESENTE_OPTION     = '//*[contains(@id,":UPsp1:r11:1:r6:0:sp1:t1:0:soc4::pop")]/li[2]'
+PRESENZA_NON_PASSATO_OPTION = '//*[contains(@id,":UPsp1:r11:1:r6:0:sp1:t1:0:soc4::pop")]/li[3]'
+PRESENZA_SALVA_CHIUDI        = '//*[contains(@id,":UPsp1:r11:1:r6:0:sp1:cb2")]'
 
 # =============================================================================
 # BACK NAVIGATION
