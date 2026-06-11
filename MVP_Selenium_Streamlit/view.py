@@ -1410,18 +1410,17 @@ class CourseView:
 
     def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
         """
-        ENHANCED VERSION: Parse natural language input with maximum robustness.
+        Parse natural language input by finding keyword positions
+        and extracting text BETWEEN them.
 
-        IMPROVEMENTS:
-        1. Safe text extraction (handles normalization)
-        2. Italian month name support
-        3. Two-digit year handling
-        4. spaCy Matcher for word order flexibility
-        5. Partial extraction (returns what was found + missing fields)
-        6. Centralized date normalization
+        Pipeline:
+        1. Find keyword positions: titolo, descrizione, data, programma
+        2. Sort by position, extract value between consecutive keywords
+        3. Fallback: 'corso X' pattern if 'titolo' keyword not found
+        4. Fallback: search for date anywhere in text if 'data' keyword missing
+        5. Show partial results in UI with per-field status
         """
-        if not st.session_state.nlp_model:
-            st.error("Modello NLP non caricato. Installa spacy con: python -m spacy download it_core_news_sm")
+        if not text or not text.strip():
             return None
 
         try:
@@ -1434,144 +1433,153 @@ class CourseView:
                 'programme': ""
             }
 
-            # STEP 1 - NORMALIZE TEXT SAFELY ###
             original_text = text
-            normalized_text = ' '.join(text.split())  # Remove extra whitespace
-            text_lower = normalized_text.lower()
+            text_lower = text.lower()
 
-            # STEP 2 - TRY SPACY MATCHER FIRST (MOST ROBUST) ###
-            try:
-                spacy_results = extract_with_spacy_matcher(normalized_text, st.session_state.nlp_model)
-                if spacy_results['title']:
-                    parsed_data['title'] = spacy_results['title']
-                if spacy_results['description']:
-                    parsed_data['short_description'] = spacy_results['description']
-                if spacy_results['date']:
-                    # Use centralized date normalizer
-                    normalized_date = normalize_date(spacy_results['date'])
-                    if normalized_date:
-                        parsed_data['start_date'] = normalized_date
-            except Exception as spacy_error:
-                # If spaCy fails, fall back to regex
-                st.warning(f"spaCy Matcher fallback attivo: {spacy_error}")
+            # ═══════════════════════════════════════════════════
+            # STEP 1: Find positions of each keyword
+            # ═══════════════════════════════════════════════════
+            keywords = {
+                'titolo': r'\btitolo\b',
+                'descrizione': r'\bdescrizione(?:\s+breve)?\b',
+                'data': (r'\bdata(?:\s+(?:di\s+)?(?:inizio|pubblicazione))?\b'
+                         r'|\bpubblicazione\b'),
+                'programma': r'\bprogramma\b',
+            }
 
-            # STEP 3 - REGEX FALLBACK WITH SAFE EXTRACTION ###
-            # Only fill in missing fields from Step 2
+            positions = {}
+            for key, pattern in keywords.items():
+                match = re.search(pattern, text_lower)
+                if match:
+                    positions[key] = {
+                        'start': match.start(),
+                        'end': match.end()
+                    }
 
-            if not parsed_data['title']:
-                title_patterns = [
-                    r'titolo\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
-                    r'corso\s+([^,]+?)(?:\s*,|\s*con\s+descrizione|\s*descrizione|\s*$)',
-                ]
+            # ═══════════════════════════════════════════════════
+            # STEP 2: Sort keywords by position and extract values between them
+            # ═══════════════════════════════════════════════════
+            sorted_keys = sorted(positions.keys(),
+                                 key=lambda k: positions[k]['start'])
 
-                for pattern in title_patterns:
-                    match = re.search(pattern, text_lower, re.IGNORECASE)
-                    if match:
-                        # ### HASHTAG: USE SAFE EXTRACTION ###
-                        extracted = safe_extract_text(
-                            original_text,
-                            text_lower,
-                            match.start(1),
-                            match.end(1)
-                        )
-                        if extracted:
-                            parsed_data['title'] = extracted
-                            break
-
-            if not parsed_data['short_description']:
-                desc_patterns = [
-                    r'descrizione\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
-                    r'descrizione\s+breve\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
-                ]
-
-                for pattern in desc_patterns:
-                    match = re.search(pattern, text_lower, re.IGNORECASE)
-                    if match:
-                        extracted = safe_extract_text(
-                            original_text,
-                            text_lower,
-                            match.start(1),
-                            match.end(1)
-                        )
-                        if extracted:
-                            parsed_data['short_description'] = extracted
-                            break
-
-            # ### HASHTAG: STEP 4 - DATE EXTRACTION WITH MULTIPLE STRATEGIES ###
-            if not parsed_data['start_date']:
-                # Strategy 1: Try Italian month names (e.g., "12 gennaio 2024")
-                italian_date = parse_italian_date(normalized_text)
-                if italian_date:
-                    parsed_data['start_date'] = italian_date
+            for i, key in enumerate(sorted_keys):
+                value_start = positions[key]['end']
+                if i + 1 < len(sorted_keys):
+                    value_end = positions[sorted_keys[i + 1]]['start']
                 else:
-                    # Strategy 2: Numeric date patterns
-                    date_patterns = [
-                        r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b',  # DD/MM/YYYY
-                        r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2})\b',  # DD/MM/YY
-                    ]
+                    value_end = len(original_text)
 
-                    for pattern in date_patterns:
-                        match = re.search(pattern, normalized_text)
-                        if match:
-                            raw_date = match.group(1)
-                            # ### HASHTAG: USE CENTRALIZED NORMALIZER ###
-                            normalized_date = normalize_date(raw_date)
-                            if normalized_date:
-                                parsed_data['start_date'] = normalized_date
-                                break
+                value = original_text[value_start:value_end].strip()
+                # Strip trailing connectors and punctuation
+                value = re.sub(r'\s+(con|e|ed)\s*$', '', value,
+                               flags=re.IGNORECASE).strip()
+                value = value.strip(' ,;:-')
 
-            # ### HASHTAG: STEP 5 - PARTIAL EXTRACTION SUPPORT ###
-            # Instead of returning None, we return partial results + missing fields
+                if key == 'titolo':
+                    parsed_data['title'] = value
+                elif key == 'descrizione':
+                    parsed_data['short_description'] = value
+                elif key == 'data':
+                    # Find numeric date inside the slice
+                    date_match = re.search(
+                        r'(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4})', value)
+                    if date_match:
+                        parsed_data['start_date'] = (
+                                normalize_date(date_match.group(1)) or '')
+                    else:
+                        # Try Italian month name (e.g., "12 marzo 2024")
+                        italian = parse_italian_date(value)
+                        if italian:
+                            parsed_data['start_date'] = italian
+                elif key == 'programma':
+                    parsed_data['programme'] = value
+
+            # ═══════════════════════════════════════════════════
+            # STEP 3: FALLBACK — "corso X" pattern if 'titolo' keyword not used
+            # Example: "Crea un corso Excel Base data 01/01/2024"
+            # ═══════════════════════════════════════════════════
+            if not parsed_data['title']:
+                corso_match = re.search(
+                    r'\bcorso\s+(.+?)'
+                    r'(?=\s+descrizione|\s+data\s|\s+pubblicazione'
+                    r'|\s+programma|\s+con\s+descrizione|$)',
+                    text_lower, re.IGNORECASE)
+                if corso_match:
+                    value = original_text[
+                            corso_match.start(1):corso_match.end(1)].strip()
+                    value = re.sub(r'\s+(con|e|ed)\s*$', '', value,
+                                   flags=re.IGNORECASE).strip()
+                    value = value.strip(' ,;:-')
+                    if value:
+                        parsed_data['title'] = value
+
+            # ═══════════════════════════════════════════════════
+            # STEP 4: FALLBACK — find date anywhere in text
+            # if 'data' keyword wasn't found at all
+            # ═══════════════════════════════════════════════════
+            if not parsed_data['start_date']:
+                # Try Italian month names anywhere in text
+                italian = parse_italian_date(text_lower)
+                if italian:
+                    parsed_data['start_date'] = italian
+                else:
+                    # Try numeric date anywhere
+                    date_match = re.search(
+                        r'\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4})\b',
+                        original_text)
+                    if date_match:
+                        parsed_data['start_date'] = (
+                                normalize_date(date_match.group(1)) or '')
+
+            # ═══════════════════════════════════════════════════
+            # STEP 5: Validate and report with detailed UI feedback
+            # ═══════════════════════════════════════════════════
             missing_fields = []
-            if not parsed_data.get('title') or not parsed_data['title'].strip():
+            if not parsed_data['title'].strip():
                 missing_fields.append("Titolo")
-            if not parsed_data.get('short_description') or not parsed_data['short_description'].strip():
+            if not parsed_data['short_description'].strip():
                 missing_fields.append("Descrizione")
-            if not parsed_data.get('start_date') or not parsed_data['start_date'].strip():
+            if not parsed_data['start_date'].strip():
                 missing_fields.append("Data")
 
-            # ### HASHTAG: SHOW PARTIAL RESULTS (BETTER UX) ###
             if missing_fields:
                 st.warning(f"⚠️ Campi mancanti: {', '.join(missing_fields)}")
 
-                # Show what WAS extracted
                 extracted_count = sum([
-                    bool(parsed_data.get('title', '').strip()),
-                    bool(parsed_data.get('short_description', '').strip()),
-                    bool(parsed_data.get('start_date', '').strip())
+                    bool(parsed_data['title'].strip()),
+                    bool(parsed_data['short_description'].strip()),
+                    bool(parsed_data['start_date'].strip())
                 ])
 
                 if extracted_count > 0:
                     st.success(f"✅ Estratti {extracted_count}/3 campi con successo!")
                     st.info("**Dati estratti finora:**")
 
-                    if parsed_data.get('title') and parsed_data['title'].strip():
+                    if parsed_data['title'].strip():
                         st.write(f"- ✅ **Titolo:** `{parsed_data['title']}`")
                     else:
                         st.write(f"- ❌ **Titolo:** non trovato")
 
-                    if parsed_data.get('short_description') and parsed_data['short_description'].strip():
-                        st.write(f"- ✅ **Descrizione:** `{parsed_data['short_description']}`")
+                    if parsed_data['short_description'].strip():
+                        st.write(
+                            f"- ✅ **Descrizione:** `{parsed_data['short_description']}`")
                     else:
                         st.write(f"- ❌ **Descrizione:** non trovata")
 
-                    if parsed_data.get('start_date') and parsed_data['start_date'].strip():
+                    if parsed_data['start_date'].strip():
                         st.write(f"- ✅ **Data:** `{parsed_data['start_date']}`")
                     else:
                         st.write(f"- ❌ **Data:** non trovata")
 
-                    # ### HASHTAG: OFFER TO PROCEED WITH PARTIAL DATA ###
                     st.info(
-                        "💡 **Suggerimento:** Puoi comunque procedere. I campi mancanti potranno essere inseriti manualmente nel riepilogo.")
+                        "💡 **Suggerimento:** Puoi comunque procedere. "
+                        "I campi mancanti potranno essere inseriti "
+                        "manualmente nel riepilogo.")
 
-                    # ### HASHTAG: RETURN PARTIAL DATA INSTEAD OF None ###
-                    # This allows the summary form to pre-fill what was found
-                    return parsed_data  # Return even if incomplete!
+                    return parsed_data
                 else:
-                    # Nothing was extracted at all
                     return None
 
-            # ### HASHTAG: ALL FIELDS SUCCESSFULLY EXTRACTED ###
             return parsed_data
 
         except Exception as e:
