@@ -3,72 +3,22 @@
     "Scuro (default)": {
       "bg_color": "#0e1117",
       "secondary_bg": "#1e2130",
-      "text_color": "#fafafa",
-      "font": "sans-serif"
-    },
-    "Chiaro": {
-      "bg_color": "#ffffff",
-      "secondary_bg": "#f0f2f6",
-      "text_color": "#262730",
-      "font": "sans-serif"
-    },
-    "Blu notte": {
-      "bg_color": "#0d1b2a",
-      "secondary_bg": "#1b2a3b",
-      "text_color": "#e0e0e0",
-      "font": "sans-serif"
-    },
-    "Grigio professionale": {
-      "bg_color": "#f8f9fa",
-      "secondary_bg": "#e9ecef",
-      "text_color": "#212529",
-      "font": "sans-serif"
+      "text_color": "#fafafa"
     },
     "Beige caldo": {
       "bg_color": "#fdf6e3",
       "secondary_bg": "#f5ead0",
-      "text_color": "#3c3c3c",
-      "font": "Georgia, serif"
+      "text_color": "#3c3c3c"
     },
-    "Blu aziendale": {
-      "bg_color": "#1a237e",
-      "secondary_bg": "#283593",
-      "text_color": "#e8eaf6",
-      "font": "sans-serif"
-    },
-    "Viola elegante": {
-      "bg_color": "#1a1a2e",
-      "secondary_bg": "#16213e",
-      "text_color": "#e0aaff",
-      "font": "sans-serif"
-    },
-    "Carta da zucchero": {
-      "bg_color": "#e8f4f8",
-      "secondary_bg": "#d0eaf4",
-      "text_color": "#1a3c4e",
-      "font": "sans-serif"
-    },
-    "Grafite": {
-      "bg_color": "#1c1c1e",
-      "secondary_bg": "#2c2c2e",
-      "text_color": "#f2f2f7",
-      "font": "sans-serif"
-    },
-    "Crema e cioccolato": {
-      "bg_color": "#faf0dc",
-      "secondary_bg": "#f0e0c0",
-      "text_color": "#3e2000",
-      "font": "Georgia, serif"
+    "Blu notte": {
+      "bg_color": "#1a2332",
+      "secondary_bg": "#2a3548",
+      "text_color": "#e8ecf1"
     }
   },
   "fonts": {
-    "Sans-serif (default)": "sans-serif",
-    "Georgia (elegante)": "Georgia, serif",
-    "Times New Roman": "Times New Roman, serif",
-    "Trebuchet MS": "Trebuchet MS, sans-serif",
-    "Palatino (classico)": "Palatino Linotype, serif",
     "Courier New (codice)": "Courier New, monospace",
-    "Verdana (leggibile)": "Verdana, sans-serif",
-    "Garamond (letterario)": "Garamond, serif"
+    "Georgia (elegante)": "Georgia, serif",
+    "Times New Roman": "Times New Roman, serif"
   }
 }
