@@ -2233,76 +2233,84 @@ class OracleAutomator:
 
     def _read_all_visible_matricole(self):
         """
-        Read all numero persona in the Allievi table, handling pagination.
-
-        Strategy:
-        1. Try to maximize page size (if a dropdown exists)
-        2. Scroll the table container incrementally
-        3. After each scroll, read DOM and accumulate matricole in a set
-        4. Stop when 3 consecutive scrolls yield no new matricole
+        Read all numero persona in the Allievi table.
+        Uses small incremental scrolls so ADF has time to virtualize rows.
         """
-        # Step 1: Try to maximize page size (one-time, best effort)
         self._try_maximize_page_size()
         time.sleep(2)
 
         matricole_set = set()
-        matricole_order = []  # preserves order of discovery
-
-        # Step 2: Find the scrollable table container
+        matricole_order = []
         container = self._find_scrollable_table()
 
         no_growth = 0
-        max_iterations = 50  # safety cap — handles up to ~2500 rows
+        max_iterations = 80  # safety cap
+
+        # Get total scroll height once (if we have container)
+        total_scroll_height = 0
+        if container:
+            try:
+                total_scroll_height = self.driver.execute_script(
+                    "return arguments[0].scrollHeight;", container)
+                print(f"   📏 Table scroll height: {total_scroll_height}px")
+            except:
+                pass
 
         for i in range(max_iterations):
-            # Read whatever is currently in the DOM
+            # Read what's currently visible
             visible = self._read_visible_rows_once()
 
-            before_count = len(matricole_set)
+            before = len(matricole_set)
             for m in visible:
                 if m not in matricole_set:
                     matricole_set.add(m)
                     matricole_order.append(m)
-            after_count = len(matricole_set)
+            after = len(matricole_set)
 
-            if after_count > before_count:
+            if after > before:
                 no_growth = 0
+                print(f"   Iter {i + 1}: +{after - before} new "
+                      f"(total: {after})")
             else:
                 no_growth += 1
 
-            # Stop after 3 consecutive "no new rows" iterations
-            if no_growth >= 3:
+            # Stop after 4 consecutive no-growth iterations
+            # (gives ADF more time to settle at the bottom)
+            if no_growth >= 4:
+                print(f"   ✅ Stable count after {i + 1} iterations")
                 break
 
-            # Scroll one container-height down
-            try:
-                if container:
+            # Scroll by 200px (small step → reliable virtualization)
+            scrolled = False
+            if container:
+                try:
                     self.driver.execute_script(
                         "arguments[0].scrollTop = "
-                        "arguments[0].scrollTop + arguments[0].clientHeight;",
+                        "arguments[0].scrollTop + 200;",
                         container)
-                else:
-                    # Fallback: scroll the whole page
-                    self.driver.execute_script("window.scrollBy(0, 400);")
-            except:
-                pass
+                    scrolled = True
+                except:
+                    pass
 
-            # Wait for ADF to load the next batch
+            if not scrolled:
+                self.driver.execute_script("window.scrollBy(0, 200);")
+
+            # Wait for ADF to load the new batch
             try:
                 WebDriverWait(self.driver, 3).until(
                     EC.invisibility_of_element_located(
                         (By.CLASS_NAME, "AFBlockingGlassPane")))
             except:
                 pass
-            time.sleep(1.2)
+            time.sleep(1.5)  # extra time for virtualization to settle
 
-        # Scroll back to top so subsequent operations start clean
-        try:
-            if container:
+        # Scroll back to top
+        if container:
+            try:
                 self.driver.execute_script(
                     "arguments[0].scrollTop = 0;", container)
-        except:
-            pass
+            except:
+                pass
 
         print(f"   📋 Total unique matricole collected: {len(matricole_order)}")
         return matricole_order
@@ -2432,7 +2440,7 @@ class OracleAutomator:
             print(f"\n   Refresh {attempt}/{max_attempts}...")
 
             try:
-                # Wait for overlay
+                # Wait for overlay to clear
                 try:
                     WebDriverWait(self.driver, 10).until(
                         EC.invisibility_of_element_located(
@@ -2440,7 +2448,7 @@ class OracleAutomator:
                 except:
                     pass
 
-                # Click Stato filter → Tutto to force a refresh
+                # Open Stato dropdown → click "Tutto"
                 stato_dropdown = WebDriverWait(self.driver, 10).until(
                     EC.element_to_be_clickable(
                         (By.XPATH, STUDENT_STATUS_DROPDOWN)))
@@ -2450,9 +2458,20 @@ class OracleAutomator:
                 tutto = WebDriverWait(self.driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, STUDENT_STATUS_TUTTO)))
                 tutto.click()
-                print("   ✅ Clicked 'Tutto'")
+                print("   ✅ Selected 'Tutto'")
+                time.sleep(1)
 
-                # Wait for list to reload
+                # ★ CRITICAL: click Cerca to APPLY the filter
+                try:
+                    cerca_btn = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, STUDENT_CERCA_BUTTON)))
+                    cerca_btn.click()
+                    print("   ✅ Clicked Cerca to apply filter")
+                except Exception as e:
+                    print(f"   ⚠️ Cerca click failed (may auto-apply): {e}")
+
+                # Wait for list to reload after Cerca
                 try:
                     WebDriverWait(self.driver, 15).until(
                         EC.invisibility_of_element_located(
@@ -2461,7 +2480,7 @@ class OracleAutomator:
                     pass
                 time.sleep(wait_between)
             except Exception as e:
-                print(f"   ⚠️ Refresh click failed: {e}")
+                print(f"   ⚠️ Filter refresh failed: {e}")
 
             # Read visible matricole and accumulate across attempts
             visible = self._read_all_visible_matricole()
