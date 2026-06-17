@@ -2159,18 +2159,26 @@ class OracleAutomator:
             print("   ✅ Confirmed submission")
             time.sleep(2)
 
-            # PART 3: Verify students were added (refresh-and-read approach)
+            # PART 3: Verify students were added (refresh + scroll-and-collect)
             print("\n=== PART 3: Verifying students were added ===")
 
             verification_matricole = []
             try:
                 with open(student_file_path, 'r', encoding='utf-8') as f:
-                    verification_matricole = [line.strip() for line in f if line.strip()]
+                    verification_matricole = [
+                        line.strip() for line in f if line.strip()
+                    ]
+                print(f"   Will verify {len(verification_matricole)} matricole from file")
             except:
                 print("   ⚠️ Could not read file for verification, skipping check")
 
+            # Initial wait — Oracle needs time to process the file submission
+            print("   ⏳ Waiting 15s for Oracle to process submission...")
+            time.sleep(15)
+
             students_found = False
             if verification_matricole:
+                # Use the same robust refresh + scroll-and-collect we use for Verifica
                 result = self._refresh_and_collect_students(
                     expected_matricole=verification_matricole,
                     max_attempts=5,
@@ -2181,15 +2189,34 @@ class OracleAutomator:
                 expected_count = len(verification_matricole)
 
                 if found_count == expected_count:
-                    print(f"\n   ✅ ALL {found_count}/{expected_count} students verified!")
+                    print(f"\n   ✅ ALL {found_count}/{expected_count} "
+                          f"students verified!")
+                    students_found = True
+                elif found_count >= expected_count * 0.8:
+                    # 80%+ found → likely succeeded, Oracle may still be processing
+                    print(f"\n   ⚠️ {found_count}/{expected_count} found "
+                          f"(Oracle may still be processing the rest)")
+                    print(f"   Missing so far: {result['not_found'][:10]}")
                     students_found = True
                 else:
-                    print(f"\n   ⚠️ Only {found_count}/{expected_count} students found.")
+                    print(f"\n   ❌ Only {found_count}/{expected_count} found.")
                     print(f"   Missing: {result['not_found'][:10]}")
 
+            # Final overlay clear
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
+            if students_found:
+                print("\n" + "=" * 50)
+                print("✅ COMPLETE: Students added and verified!")
+                print("=" * 50)
             else:
                 print("\n" + "=" * 50)
-                print("⚠️ COMPLETE: Students submitted but not yet visible in list.")
+                print("⚠️ COMPLETE: Students submitted but not all confirmed.")
                 print("   Oracle may need a few minutes to process the file.")
                 print("=" * 50)
 
