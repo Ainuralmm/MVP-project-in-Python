@@ -429,6 +429,11 @@ class CourseView:
             st.session_state.presenza_show_summary = False
         if "presenza_message" not in st.session_state:
             st.session_state.presenza_message = ""
+        # Multi-edition presenza batch state
+        if "presenza_batch_data" not in st.session_state:
+            st.session_state.presenza_batch_data = None
+        if "presenza_show_batch_preview" not in st.session_state:
+            st.session_state.presenza_show_batch_preview = False
 
         # --- Initialize Widget States ---
         if "course_date_str_key" not in st.session_state:
@@ -816,7 +821,8 @@ class CourseView:
 
         with tab4:
             st.header("Assegnazione Presenza")
-            if st.session_state.app_state == "RUNNING_PRESENZA":
+            if st.session_state.app_state in ["RUNNING_PRESENZA",
+                                              "RUNNING_BATCH_PRESENZA"]:
                 self.student_output_placeholder = st.empty()
             else:
                 self._render_presenza_form(is_disabled=is_running)
@@ -4204,6 +4210,202 @@ class CourseView:
                 st.code(traceback.format_exc())
             return None
 
+    def _parse_presenza_excel_file(self, uploaded_file,
+                                   default_stato: str = "Completato") -> 'Optional[Dict[str, Any]]':
+        """
+        Parse ASSEGNA sheet from Excel for presenza assignment.
+
+        Expected format (forward-fill supported):
+        | CODICE EDIZIONE | PERSON NUMBER | STATO       |
+        | OLC621263       | 1168          | Completato  |
+        |                 | 1189          |             | ← inherits OLC621263, default stato
+        |                 | 1199          | Esente      |
+        | OLC621270       | 1200          | Non passato |
+
+        Rules:
+        - Empty CODICE EDIZIONE → forward-filled from previous row
+        - Empty/missing STATO → uses default_stato from UI dropdown
+        - STATO normalization: "compl"/"c"/"ok" → Completato, "esent"/"e" → Esente,
+          "non"/"pass"/"fail" → Non passato
+
+        Returns:
+            {
+                'jobs': [{'edition_code', 'students', 'stato'}, ...],
+                'total_jobs': N,
+                'total_editions': M,
+                'total_students': K,
+                'has_stato_column': bool,
+                'file_name': str
+            }
+        Each "job" = unique (edition_code, stato) combination.
+        """
+        try:
+            # === Find ASSEGNA sheet ===
+            target_sheets = ['PRESENZA','Presenza', 'presenza', 'ASSEGNA', 'Assegna', 'assegna']
+
+            try:
+                xls = pd.ExcelFile(uploaded_file, engine='openpyxl')
+                available_sheets = xls.sheet_names
+                st.info(f"📄 Fogli trovati: {', '.join(available_sheets)}")
+            except Exception as e:
+                st.error(f"❌ Errore apertura file: {e}")
+                return None
+
+            df = None
+            sheet_found = None
+            for sheet_name in target_sheets:
+                if sheet_name in available_sheets:
+                    df = pd.read_excel(uploaded_file, sheet_name=sheet_name,
+                                       header=0, engine='openpyxl')
+                    sheet_found = sheet_name
+                    break
+
+            if df is None:
+                st.error(
+                    f"❌ Foglio **PRESENZA** non trovato.\n\n"
+                    f"Fogli disponibili: {', '.join(available_sheets)}\n\n"
+                    f"**Crea un foglio chiamato `PRESENZA` con le colonne:**\n"
+                    f"- CODICE EDIZIONE\n"
+                    f"- PERSON NUMBER\n"
+                    f"- STATO (opzionale)"
+                )
+                return None
+
+            st.info(f"📊 Lettura foglio: **{sheet_found}** — {len(df)} righe")
+
+            # === Normalize column names ===
+            df.columns = df.columns.str.strip().str.lower()
+
+            edition_col_names = ['codice edizione', 'codice_edizione',
+                                 'edition code', 'edizione', 'codice', 'code']
+            person_col_names = ['person number', 'person_number',
+                                'numero persona', 'numero_persona',
+                                'matricola', 'allievo']
+            stato_col_names = ['stato', 'stato completamento',
+                               'stato_completamento',
+                               'completion status', 'status']
+
+            edition_col = next((n for n in edition_col_names
+                                if n in df.columns), None)
+            person_col = next((n for n in person_col_names
+                               if n in df.columns), None)
+            stato_col = next((n for n in stato_col_names
+                              if n in df.columns), None)
+
+            if not edition_col or not person_col:
+                st.error(
+                    f"❌ Colonne obbligatorie mancanti.\n\n"
+                    f"**Servono:** CODICE EDIZIONE, PERSON NUMBER "
+                    f"(STATO è opzionale)\n\n"
+                    f"**Colonne trovate:** {', '.join(df.columns)}"
+                )
+                return None
+
+            # === Forward-fill edition code ===
+            df[edition_col] = df[edition_col].ffill()
+
+            # Drop rows with no person number (truly empty rows)
+            df = df.dropna(subset=[person_col])
+
+            if df.empty:
+                st.error("❌ Nessun dato valido trovato dopo il filtraggio.")
+                return None
+
+            # Clean person numbers (1168.0 → "1168")
+            df[person_col] = df[person_col].apply(
+                lambda x: str(int(x)) if isinstance(x, (int, float))
+                                         and pd.notna(x) and x == int(x)
+                else str(x).strip()
+            )
+
+            # Clean edition codes
+            df[edition_col] = df[edition_col].apply(
+                lambda x: str(int(x)) if isinstance(x, (int, float))
+                                         and pd.notna(x) and x == int(x)
+                else str(x).strip()
+            )
+
+            # === Stato normalization ===
+            def normalize_stato(value, default=default_stato):
+                if pd.isna(value):
+                    return default
+                value_str = str(value).strip().lower()
+                if not value_str or value_str == 'nan':
+                    return default
+                if (value_str.startswith('compl') or
+                        value_str in ['c', 'ok', 'sì', 'si', 'yes', 'y']):
+                    return 'Completato'
+                if (value_str.startswith('esent') or
+                        value_str.startswith('exempt') or value_str == 'e'):
+                    return 'Esente'
+                if (value_str.startswith('non') or 'pass' in value_str or
+                        value_str.startswith('fail') or value_str == 'no'):
+                    return 'Non passato'
+                return default  # Unknown → use default
+
+            # === Group by (edition, stato) ===
+            jobs = []
+            for edition_code, group in df.groupby(edition_col, sort=False):
+                edition_code_str = str(edition_code).strip()
+                if not edition_code_str or edition_code_str.lower() == 'nan':
+                    continue
+
+                if stato_col:
+                    stato_groups = {}
+                    for _, row in group.iterrows():
+                        student = str(row[person_col]).strip()
+                        if not student or student.lower() == 'nan':
+                            continue
+                        student_stato = normalize_stato(row[stato_col])
+                        stato_groups.setdefault(student_stato, []).append(student)
+
+                    for stato_val, students in stato_groups.items():
+                        jobs.append({
+                            'edition_code': edition_code_str,
+                            'students': students,
+                            'stato': stato_val
+                        })
+                else:
+                    students = [
+                        str(s).strip() for s in group[person_col].tolist()
+                        if str(s).strip() and str(s).strip().lower() != 'nan'
+                    ]
+                    if students:
+                        jobs.append({
+                            'edition_code': edition_code_str,
+                            'students': students,
+                            'stato': default_stato
+                        })
+
+            if not jobs:
+                st.error("❌ Nessun dato valido dopo il parsing.")
+                return None
+
+            total_students = sum(len(j['students']) for j in jobs)
+            unique_editions = len(set(j['edition_code'] for j in jobs))
+
+            st.success(
+                f"✅ Foglio '{sheet_found}': "
+                f"{unique_editions} edizioni, {len(jobs)} gruppi (edizione+stato), "
+                f"{total_students} assegnazioni totali"
+            )
+
+            return {
+                'jobs': jobs,
+                'total_jobs': len(jobs),
+                'total_editions': unique_editions,
+                'total_students': total_students,
+                'has_stato_column': stato_col is not None,
+                'file_name': uploaded_file.name
+            }
+
+        except Exception as e:
+            st.error(f"❌ Errore lettura Excel: {str(e)}")
+            import traceback
+            with st.expander("🔍 Dettagli errore"):
+                st.code(traceback.format_exc())
+            return None
+
     def _render_student_form(self, is_disabled):
         """
         Student form with 3 input methods:
@@ -4496,6 +4698,13 @@ class CourseView:
           → click Gestisci attività → fill Data completamento + Stato → Salva
         """
 
+        # === CHECK FOR BATCH PREVIEW MODE (Excel multi-edition) ===
+        if st.session_state.get('presenza_show_batch_preview') and \
+                st.session_state.get('presenza_batch_data'):
+            self._render_presenza_batch_preview(
+                st.session_state.presenza_batch_data)
+            return
+
         # === CHECK FOR PREVIEW MODE ===
         if st.session_state.get('presenza_show_summary') and \
                 st.session_state.get('presenza_data'):
@@ -4591,21 +4800,27 @@ class CourseView:
             st.rerun()
 
     def _render_presenza_excel(self, is_disabled: bool):
-        """Excel upload for presenza — reuses student Excel format."""
+        """Excel upload for presenza — supports multi-edition ASSEGNA sheet."""
         st.info(
-            "Formato Excel richiesto (foglio `ALLIEVI`):\n\n"
-            "| CODICE EDIZIONE | PERSON NUMBER |\n"
-            "|-----------------|---------------|\n"
-            "| OLC466201       | 1168          |\n\n"
-            "Stesso formato usato per Aggiungi Allievi.",
+            "**Formato Excel** (foglio `PRESENZA`):\n\n"
+            "| CODICE EDIZIONE | PERSON NUMBER | STATO       |\n"
+            "|-----------------|---------------|-------------|\n"
+            "| OLC621263       | 1168          | Completato  |\n"
+            "|                 | 1189          |             |\n"
+            "| OLC621270       | 1200          | Non passato |\n\n"
+            "💡 **Suggerimento:** Lascia vuota la cella CODICE EDIZIONE "
+            "per le righe successive — verrà ereditata dall'edizione "
+            "precedente (forward-fill).\n\n"
+            "La colonna **STATO** è opzionale. Se omessa o vuota, "
+            "verrà usato lo stato di default selezionato qui sotto.",
             icon="📊"
         )
 
-        stato = st.selectbox(
-            "Stato Completamento",
+        default_stato = st.selectbox(
+            "Stato di Default (per righe senza STATO)",
             options=["Completato", "Esente", "Non passato"],
             index=0,
-            key="presenza_excel_stato"
+            key="presenza_excel_default_stato"
         )
 
         uploaded_file = st.file_uploader(
@@ -4619,33 +4834,13 @@ class CourseView:
             with col1:
                 if st.button("📊 Analizza File", type="primary",
                              width='stretch', key="presenza_analyze_excel"):
-                    with st.spinner("🔍 Lettura file..."):
-                        parsed = self._parse_student_excel_file(uploaded_file)
+                    with st.spinner("🔍 Lettura foglio PRESENZA..."):
+                        parsed = self._parse_presenza_excel_file(
+                            uploaded_file, default_stato=default_stato)
 
-                    if parsed and parsed.get('editions'):
-                        # Flatten all students into one list per edition
-                        # For presenza we process one edition at a time
-                        editions = parsed['editions']
-                        if len(editions) == 1:
-                            st.session_state.presenza_data = {
-                                'edition_code': editions[0]['edition_code'],
-                                'students': editions[0]['students'],
-                                'stato': stato
-                            }
-                        else:
-                            # Multiple editions — process first one
-                            # (presenza is done per-edition)
-                            st.warning(
-                                f"⚠️ Trovate {len(editions)} edizioni. "
-                                "La presenza viene assegnata per una edizione "
-                                "alla volta. Verrà processata la prima.")
-                            st.session_state.presenza_data = {
-                                'edition_code': editions[0]['edition_code'],
-                                'students': editions[0]['students'],
-                                'stato': stato
-                            }
-
-                        st.session_state.presenza_show_summary = True
+                    if parsed and parsed.get('jobs'):
+                        st.session_state.presenza_batch_data = parsed
+                        st.session_state.presenza_show_batch_preview = True
                         st.rerun()
                     else:
                         st.error("❌ Impossibile leggere il file.")
@@ -4653,7 +4848,91 @@ class CourseView:
             with col2:
                 if st.button("🧹 Cancella", width='stretch',
                              key="presenza_clear_excel"):
+                    st.session_state.presenza_batch_data = None
+                    st.session_state.presenza_show_batch_preview = False
                     st.rerun()
+
+    def _render_presenza_batch_preview(self, batch_data: dict):
+        """Preview screen for multi-edition presenza batch."""
+        jobs = batch_data.get('jobs', [])
+        total_students = batch_data.get('total_students', 0)
+        total_editions = batch_data.get('total_editions', 0)
+
+        st.success(
+            f"✅ **{total_editions} edizioni** • "
+            f"**{len(jobs)} gruppi (edizione+stato)** • "
+            f"**{total_students} allievi totali**"
+        )
+
+        # === Summary by stato ===
+        stato_counts = {}
+        for job in jobs:
+            stato_counts[job['stato']] = \
+                stato_counts.get(job['stato'], 0) + len(job['students'])
+
+        st.markdown("### 📊 Riepilogo per Stato")
+        summary_data = [
+            {'Stato': stato, 'Allievi': count}
+            for stato, count in stato_counts.items()
+        ]
+        st.dataframe(pd.DataFrame(summary_data),
+                     hide_index=True, use_container_width=True)
+
+        # === Each job in expander ===
+        st.markdown("### 📋 Dettaglio per Edizione")
+        for idx, job in enumerate(jobs):
+            students = job['students']
+            stato_icon = {
+                'Completato': '✅',
+                'Esente': '⚪',
+                'Non passato': '❌'
+            }.get(job['stato'], '📋')
+
+            with st.expander(
+                    f"{stato_icon} **{job['edition_code']}** — "
+                    f"{len(students)} allievi → **{job['stato']}**",
+                    expanded=(idx == 0)
+            ):
+                student_data = [{'#': i + 1, 'Numero Persona': s}
+                                for i, s in enumerate(students)]
+                st.dataframe(
+                    pd.DataFrame(student_data),
+                    hide_index=True,
+                    use_container_width=True
+                )
+
+        st.divider()
+
+        # === Time estimate ===
+        avg_seconds_per_student = 12
+        estimated_minutes = max(1, (total_students * avg_seconds_per_student) // 60)
+        st.info(
+            f"⏱️ **Tempo stimato:** ~{estimated_minutes} minuti "
+            f"(~{avg_seconds_per_student}s per allievo). "
+            f"Il tempo reale può variare in base alla velocità di Oracle."
+        )
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            if st.button(
+                    f"✅ Assegna Presenza — {total_students} allievi "
+                    f"in {total_editions} edizioni",
+                    type="primary",
+                    use_container_width=True,
+                    key="presenza_batch_confirm_btn"
+            ):
+                st.session_state.app_state = "RUNNING_BATCH_PRESENZA"
+                st.session_state.presenza_message = ""
+                st.session_state.presenza_show_batch_preview = False
+                st.rerun()
+
+        with col2:
+            if st.button("❌ Annulla", use_container_width=True,
+                         key="presenza_batch_cancel_btn"):
+                st.session_state.presenza_batch_data = None
+                st.session_state.presenza_show_batch_preview = False
+                st.rerun()
 
     def _render_presenza_nlp(self, is_disabled: bool):
         """NLP input for presenza assignment."""
