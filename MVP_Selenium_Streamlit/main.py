@@ -89,4 +89,8 @@ if __name__ == "__main__":
             presenter.run_verify_students()
         elif st.session_state.app_state == "RUNNING_PRESENZA":
             presenter.run_assign_presenza()
+        elif st.session_state.app_state == "RUNNING_PRESENZA":
+            presenter.run_assign_presenza()
+        elif st.session_state.app_state == "RUNNING_BATCH_PRESENZA":  # ← NEW
+            presenter.run_assign_presenza_batch()
 
