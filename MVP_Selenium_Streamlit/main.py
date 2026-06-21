@@ -1,14 +1,50 @@
-#import sys
+import sys
 import streamlit as st
 from model import OracleAutomator
 from view import CourseView
 from presenter import CoursePresenter
 
-#st.write("PYTHON EXECUTABLE:", sys.executable)
-### HASHTAG: SIMPLIFIED AND CORRECTED LOGIC
-# The main script now initializes the view and lets it handle all rendering.
-# The controller logic only runs when the app is busy, creating the model
-# and presenter only when needed.
+import logging
+import os
+import builtins
+from datetime import datetime
+
+# === LOG DIRECTORY SETUP ===
+log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, f"session_{datetime.now().strftime('%Y%m%d')}.log")
+
+# === SAVE THE TRUE ORIGINAL PRINT ONCE (survives Streamlit reruns) ===
+if not hasattr(builtins, '_true_original_print'):
+    builtins._true_original_print = builtins.print
+
+# === RESET LOGGER COMPLETELY ON EVERY RERUN ===
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Remove ALL existing handlers (prevents duplicates on Streamlit reruns)
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+    handler.close()
+
+# Add fresh handlers
+formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+
+file_handler = logging.FileHandler(log_file, encoding='utf-8')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
+# === REDIRECT print() TO LOGGING (always use the TRUE original) ===
+def _logging_print(*args, **kwargs):
+    message = ' '.join(str(a) for a in args)
+    logging.info(message)
+    builtins._true_original_print(*args, **kwargs)
+
+builtins.print = _logging_print
 
 if __name__ == "__main__":
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
@@ -20,10 +56,10 @@ if __name__ == "__main__":
     # 2. Get current state BEFORE rendering UI
     current_state = st.session_state.get('app_state', 'IDLE')
 
-    # 2. Let the View render the entire user interface.
-    #view.render_ui()
+    # 3. Let the View render the entire user interface.
+    view.render_ui()
 
-    # 3. Controller Logic: Only run this block if an automation has been started.
+    # 4. Controller Logic: Only run this block if an automation has been started.
     if current_state != "IDLE":
         model = OracleAutomator(driver_path=DRIVER_PATH,
                                 debug_mode=debug_mode,
@@ -51,5 +87,10 @@ if __name__ == "__main__":
              presenter.run_add_students_batch()
         elif st.session_state.app_state == "RUNNING_VERIFY_STUDENTS":
             presenter.run_verify_students()
-    else: # 4. Only render UI when NOT running automation
-        view.render_ui()
+        elif st.session_state.app_state == "RUNNING_PRESENZA":
+            presenter.run_assign_presenza()
+        elif st.session_state.app_state == "RUNNING_PRESENZA":
+            presenter.run_assign_presenza()
+        elif st.session_state.app_state == "RUNNING_BATCH_PRESENZA":  # ← NEW
+            presenter.run_assign_presenza_batch()
+

@@ -137,7 +137,7 @@ class OracleAutomator:
             print("Model: Waiting for Corsi page to load...")
             WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located(
-                    (By.NAME, COURSE_SEARCH_NAME_INPUT)))
+                    (By.XPATH, COURSE_SEARCH_XPATH_INPUT)))
             print("Model: Navigated to 'Corsi' page.")
             return True
         except Exception as e:
@@ -187,7 +187,7 @@ class OracleAutomator:
                 pass
 
             # Fill search name
-            search_box_locator = (By.NAME, COURSE_SEARCH_NAME_INPUT)
+            search_box_locator = (By.XPATH, COURSE_SEARCH_XPATH_INPUT)
             search_box = self.wait.until(EC.element_to_be_clickable(search_box_locator))
             search_box.clear()
             search_box.send_keys(capitalised_course_name)
@@ -1026,6 +1026,15 @@ class OracleAutomator:
         if not price:
             return
 
+        # ensure no overlay is blocking before clicking
+        try:
+            WebDriverWait(self.driver, 8).until(
+                EC.invisibility_of_element_located(
+                    (By.CLASS_NAME, "AFBlockingGlassPane")))
+        except:
+            pass
+        time.sleep(1)
+
         flag_prezzi = self.wait.until(EC.presence_of_element_located(
             (By.XPATH, EDITION_PRICE_FLAG_LABEL)))
         flag_prezzi.click()
@@ -1252,9 +1261,25 @@ class OracleAutomator:
 
             # Location, Language, Supplier, Price via helpers
             self._fill_edition_location(location)
+            self._pause_for_visual_check()
+
             self._fill_edition_language()
+            self._pause_for_visual_check()
+
             self._fill_edition_supplier(supplier)
+            self._pause_for_visual_check()
+
+            # wait for any dropdown overlay to fully disappear
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)  # extra wait for supplier dropdown to fully close
+
             self._fill_edition_price(price)
+            self._pause_for_visual_check()
 
             # Fill Attributi Aggiuntivi
             self._fill_edition_attributi_aggiuntivi(
@@ -1265,8 +1290,8 @@ class OracleAutomator:
                 sottotipologia=sottotipologia,
                 societa_pagante=societa_pagante,
             )
+            self._pause_for_visual_check()
 
-            time.sleep(1)
             # Save and close edition
             self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, EDITION_SAVE_CLOSE_BUTTON))).click()
@@ -1440,9 +1465,16 @@ class OracleAutomator:
 
             # Location, Language, Supplier, Price via helpers
             self._fill_edition_location(location)
+            self._pause_for_visual_check()
+
             self._fill_edition_language()
+            self._pause_for_visual_check()
+
             self._fill_edition_supplier(supplier)
+            self._pause_for_visual_check()
+
             self._fill_edition_price(price)
+            self._pause_for_visual_check()
 
             # Fill Attributi Aggiuntivi
             self._fill_edition_attributi_aggiuntivi(
@@ -1451,8 +1483,9 @@ class OracleAutomator:
                 finanziata=finanziata,
                 servizio_pagante=servizio_pagante,
                 sottotipologia=sottotipologia,
-                societa_pagante=societa_pagante
+                societa_pagante=societa_pagante,
             )
+            self._pause_for_visual_check()
 
             # Step 6: Save edition
             print(f"\n[6] Saving edition...")
@@ -2126,61 +2159,54 @@ class OracleAutomator:
             print("   ✅ Confirmed submission")
             time.sleep(2)
 
-            # PART 3: Verify students were added
+            # PART 3: Verify students were added (refresh + scroll-and-collect)
             print("\n=== PART 3: Verifying students were added ===")
+
             verification_matricole = []
             try:
                 with open(student_file_path, 'r', encoding='utf-8') as f:
-                    verification_matricole = [line.strip() for line in f if line.strip()]
+                    verification_matricole = [
+                        line.strip() for line in f if line.strip()
+                    ]
                 print(f"   Will verify {len(verification_matricole)} matricole from file")
             except:
                 print("   ⚠️ Could not read file for verification, skipping check")
 
-            # Wait for Oracle to process — longer initial wait
+            # Initial wait — Oracle needs time to process the file submission
+            print("   ⏳ Waiting 15s for Oracle to process submission...")
             time.sleep(15)
 
             students_found = False
-            max_attempts = 4
+            if verification_matricole:
+                # Use the same robust refresh + scroll-and-collect we use for Verifica
+                result = self._refresh_and_collect_students(
+                    expected_matricole=verification_matricole,
+                    max_attempts=5,
+                    wait_between=5
+                )
 
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    print(f"   Attempt {attempt}/{max_attempts}: Checking for students...")
-                    student_row_xpaths = [
-                        "//table[contains(@summary, 'llievi') or "
-                        "contains(@summary, 'learner')]//tbody//tr",
-                        "//table[contains(@id, 'ATt')]//tbody//tr[contains(@class, 'x')]",
-                        "//div[contains(@id, 'learner')]//table//tbody//tr",
-                    ]
-                    rows = []
-                    for xpath in student_row_xpaths:
-                        rows = self.driver.find_elements(By.XPATH, xpath)
-                        if rows:
-                            break
+                found_count = len(result['found'])
+                expected_count = len(verification_matricole)
 
-                    if rows and len(rows) > 0:
-                        print(f"   ✅ Found {len(rows)} student rows in the list")
-                        students_found = True
-                        if verification_matricole:
-                            page_text = self.driver.page_source
-                            found_count = sum(
-                                1 for m in verification_matricole if m in page_text)
-                            print(f"   ✅ Verified {found_count}/"
-                                  f"{len(verification_matricole)} matricole on page")
-                        break
-                    else:
-                        wait_time = 10
-                        print(f"   Attempt {attempt}/{max_attempts}: no rows yet, "
-                              f"waiting {wait_time}s...")
-                        time.sleep(wait_time)
+                if found_count == expected_count:
+                    print(f"\n   ✅ ALL {found_count}/{expected_count} "
+                          f"students verified!")
+                    students_found = True
+                elif found_count >= expected_count * 0.8:
+                    # 80%+ found → likely succeeded, Oracle may still be processing
+                    print(f"\n   ⚠️ {found_count}/{expected_count} found "
+                          f"(Oracle may still be processing the rest)")
+                    print(f"   Missing so far: {result['not_found'][:10]}")
+                    students_found = True
+                else:
+                    print(f"\n   ❌ Only {found_count}/{expected_count} found.")
+                    print(f"   Missing: {result['not_found'][:10]}")
 
-                except Exception as verify_err:
-                    print(f"   Attempt {attempt}/{max_attempts}: "
-                          f"verification error: {verify_err}")
-                    time.sleep(10)
-
+            # Final overlay clear
             try:
                 WebDriverWait(self.driver, 5).until(
-                    EC.invisibility_of_element_located((By.CLASS_NAME, "AFBlockingGlassPane")))
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
             except:
                 pass
 
@@ -2190,7 +2216,7 @@ class OracleAutomator:
                 print("=" * 50)
             else:
                 print("\n" + "=" * 50)
-                print("⚠️ COMPLETE: Students submitted but not yet visible in list.")
+                print("⚠️ COMPLETE: Students submitted but not all confirmed.")
                 print("   Oracle may need a few minutes to process the file.")
                 print("=" * 50)
 
@@ -2232,132 +2258,1026 @@ class OracleAutomator:
                 pass
             return False
 
-    def _verify_students_in_edition(self, edition_code, expected_matricole):
-        """Verify that students exist in an edition's Allievi tab."""
-        result = {
-            'found': [],
-            'not_found': [],
-            'total_in_system': 0,
-            'success': False
+    def _read_all_visible_matricole(self):
+        """
+        Read all numero persona in the Allievi table.
+        Uses small incremental scrolls so ADF has time to virtualize rows.
+        """
+        self._try_maximize_page_size()
+        time.sleep(2)
+
+        matricole_set = set()
+        matricole_order = []
+        container = self._find_scrollable_table()
+
+        no_growth = 0
+        max_iterations = 80  # safety cap
+
+        # Get total scroll height once (if we have container)
+        total_scroll_height = 0
+        if container:
+            try:
+                total_scroll_height = self.driver.execute_script(
+                    "return arguments[0].scrollHeight;", container)
+                print(f"   📏 Table scroll height: {total_scroll_height}px")
+            except:
+                pass
+
+        for i in range(max_iterations):
+            # Read what's currently visible
+            visible = self._read_visible_rows_once()
+
+            before = len(matricole_set)
+            for m in visible:
+                if m not in matricole_set:
+                    matricole_set.add(m)
+                    matricole_order.append(m)
+            after = len(matricole_set)
+
+            if after > before:
+                no_growth = 0
+                print(f"   Iter {i + 1}: +{after - before} new "
+                      f"(total: {after})")
+            else:
+                no_growth += 1
+
+            # Stop after 4 consecutive no-growth iterations
+            # (gives ADF more time to settle at the bottom)
+            if no_growth >= 4:
+                print(f"   ✅ Stable count after {i + 1} iterations")
+                break
+
+            # Scroll by 200px (small step → reliable virtualization)
+            scrolled = False
+            if container:
+                try:
+                    self.driver.execute_script(
+                        "arguments[0].scrollTop = "
+                        "arguments[0].scrollTop + 200;",
+                        container)
+                    scrolled = True
+                except:
+                    pass
+
+            if not scrolled:
+                self.driver.execute_script("window.scrollBy(0, 200);")
+
+            # Wait for ADF to load the new batch
+            try:
+                WebDriverWait(self.driver, 3).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(1.5)  # extra time for virtualization to settle
+
+        # Scroll back to top
+        if container:
+            try:
+                self.driver.execute_script(
+                    "arguments[0].scrollTop = 0;", container)
+            except:
+                pass
+
+        print(f"   📋 Total unique matricole collected: {len(matricole_order)}")
+        return matricole_order
+
+    def _read_visible_rows_once(self):
+        """Read matricole from rows currently in DOM — no scrolling."""
+        import re
+        matricole = []
+
+        row_xpaths = [
+            "//table[contains(@summary, 'llievi')]//tbody//tr",
+            "//table[contains(@summary, 'learner')]//tbody//tr",
+            "//table[contains(@id, 'ATt')]//tbody//tr[contains(@class, 'x')]",
+            "//div[contains(@id, 'learner')]//table//tbody//tr",
+        ]
+
+        rows = []
+        for xpath in row_xpaths:
+            try:
+                found = self.driver.find_elements(By.XPATH, xpath)
+                if found:
+                    rows = found
+                    break
+            except:
+                continue
+
+        for row in rows:
+            try:
+                cells = row.find_elements(By.XPATH, ".//td")
+                for cell in cells:
+                    text = cell.text.strip()
+                    if re.fullmatch(r'\d{3,7}', text):
+                        matricole.append(text)
+                        break  # one matricola per row
+            except:
+                continue
+
+        return matricole
+
+    def _find_scrollable_table(self):
+        """
+        Find the scrollable container that wraps the Allievi table.
+        Returns the WebElement, or None if not found.
+        """
+        container_xpaths = [
+            "//div[contains(@id, 'learner') and contains(@class, 'AFListView')]",
+            "//table[contains(@summary, 'llievi')]/ancestor::div"
+            "[contains(@class, 'AFListView')][1]",
+            "//table[contains(@summary, 'llievi')]/ancestor::div"
+            "[contains(@class, 'af_table_data-region')][1]",
+            # Generic fallback: any scrollable ancestor of the table
+            "//table[contains(@summary, 'llievi')]/ancestor::div"
+            "[contains(@style, 'overflow')][1]",
+        ]
+
+        for xpath in container_xpaths:
+            try:
+                elements = self.driver.find_elements(By.XPATH, xpath)
+                if elements:
+                    return elements[0]
+            except:
+                continue
+
+        return None
+
+    def _try_maximize_page_size(self):
+        """
+        Best-effort attempt to maximize rows shown per page.
+        Looks for common Oracle patterns: 'Visualizza tutto' link or page size
+        dropdown. Silently returns False if neither exists.
+        """
+        # Pattern 1: "Show all" / "Visualizza tutto" link
+        show_all_xpaths = [
+            "//a[normalize-space(.)='Visualizza tutto']",
+            "//a[normalize-space(.)='Mostra tutto']",
+            "//a[normalize-space(.)='Show all']",
+            "//button[normalize-space(.)='Visualizza tutto']",
+        ]
+
+        for xpath in show_all_xpaths:
+            try:
+                elem = WebDriverWait(self.driver, 2).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath)))
+                elem.click()
+                print("   ✅ Clicked 'Visualizza tutto'")
+                time.sleep(2)
+                return True
+            except:
+                continue
+
+        # Pattern 2: Page size dropdown — pick the largest option
+        try:
+            from selenium.webdriver.support.ui import Select
+            select_elem = self.driver.find_element(
+                By.XPATH,
+                "//select[contains(@id, 'pageSize') or contains(@id, 'rowsPerPage')]")
+            select = Select(select_elem)
+            numeric_options = [
+                (int(o.text), o.text) for o in select.options
+                if o.text.strip().isdigit()
+            ]
+            if numeric_options:
+                max_size = max(numeric_options)[1]
+                select.select_by_visible_text(max_size)
+                print(f"   ✅ Set page size to {max_size}")
+                time.sleep(2)
+                return True
+        except:
+            pass
+
+        return False
+
+    def _refresh_and_collect_students(self, expected_matricole,
+                                      max_attempts=5, wait_between=5):
+        """
+        Click 'Tutto' to refresh the Allievi list, read all visible matricole,
+        and check which expected ones are present. Repeats up to max_attempts
+        if not all are found yet (Oracle may need time to process).
+
+        Returns: {'found': [...], 'not_found': [...], 'total_visible': N}
+        """
+        expected_set = set(str(m).strip() for m in expected_matricole)
+        found = set()
+        total_visible = 0
+
+        for attempt in range(1, max_attempts + 1):
+            print(f"\n   Refresh {attempt}/{max_attempts}...")
+
+            try:
+                # Wait for overlay to clear
+                try:
+                    WebDriverWait(self.driver, 10).until(
+                        EC.invisibility_of_element_located(
+                            (By.CLASS_NAME, "AFBlockingGlassPane")))
+                except:
+                    pass
+
+                # Open Stato dropdown → click "Tutto"
+                stato_dropdown = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, STUDENT_STATUS_DROPDOWN)))
+                stato_dropdown.click()
+                time.sleep(1)
+
+                tutto = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, STUDENT_STATUS_TUTTO)))
+                tutto.click()
+                print("   ✅ Selected 'Tutto'")
+                time.sleep(1)
+
+                # ★ CRITICAL: click Cerca to APPLY the filter
+                try:
+                    cerca_btn = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, STUDENT_CERCA_BUTTON)))
+                    cerca_btn.click()
+                    print("   ✅ Clicked Cerca to apply filter")
+                except Exception as e:
+                    print(f"   ⚠️ Cerca click failed (may auto-apply): {e}")
+
+                # Wait for list to reload after Cerca
+                try:
+                    WebDriverWait(self.driver, 15).until(
+                        EC.invisibility_of_element_located(
+                            (By.CLASS_NAME, "AFBlockingGlassPane")))
+                except:
+                    pass
+                time.sleep(wait_between)
+            except Exception as e:
+                print(f"   ⚠️ Filter refresh failed: {e}")
+
+            # Read visible matricole and accumulate across attempts
+            visible = self._read_all_visible_matricole()
+            total_visible = len(visible)
+            found.update(visible)
+
+            matched = len(found & expected_set)
+            print(f"   Visible: {total_visible} | "
+                  f"Matched: {matched}/{len(expected_set)}")
+
+            # All expected found → stop early
+            if expected_set.issubset(found):
+                print(f"   ✅ All {len(expected_set)} students found!")
+                break
+
+        return {
+            'found': sorted(found & expected_set),
+            'not_found': sorted(expected_set - found),
+            'total_visible': total_visible
         }
 
+    def _assign_presenza_for_student(self, person_number: str,
+                                     stato: str = "Completato") -> bool:
+        """
+        Assign presence (assegnazione presenza) for a single student.
+
+        Assumes already on the edition detail page with the student visible
+        in the Allievi tab.
+
+        Pipeline:
+        1. Find student by person_number in Allievi tab
+        2. Click "Gestisci attività"
+        3. For each activity row:
+           - Read "Data attività" (read-only)
+           - Copy it into "Data completamento"
+           - Select stato (Completato / Esente / Non passato)
+        4. Click "Salva e chiudi"
+
+        Args:
+            person_number: The person number to find
+            stato: "Completato", "Esente", or "Non passato"
+
+        Returns:
+            True if successful, False otherwise
+        """
         try:
-            print(f"\n   Verifying students for edition '{edition_code}'...")
+            print(f"\n   Processing presenza for person: {person_number}")
 
-            allievi_tab = WebDriverWait(self.driver, 15).until(
-                EC.element_to_be_clickable((By.XPATH, STUDENT_ALLIEVI_TAB)))
-            allievi_tab.click()
-            print("   ✅ Clicked 'Allievi' tab")
-            time.sleep(3)
+            # ─────────────────────────────────────────────────────────
+            # STEP 1: Find the student row by person number
+            # ─────────────────────────────────────────────────────────
+            print("   Step 1: Finding student in Allievi list...")
 
-            # Set filter to Tutto
-            print("   Setting filter to 'Tutto'...")
+            # Wait for page to stabilize
             try:
-                stato_dropdown = WebDriverWait(self.driver, 15).until(
-                    EC.element_to_be_clickable((By.XPATH, STUDENT_STATUS_DROPDOWN)))
-                stato_dropdown.click()
-                tutto_option = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, STUDENT_STATUS_TUTTO)))
-                tutto_option.click()
-                print("Successfully clicked 'Tutto'.")
-            except Exception as e:
-                print(f"Initial setup (filter) failed. Cannot continue. Error: {e}")
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(1)
+
+            # Find the row containing this person number
+            # Oracle shows person number as text in the row
+            student_row_xpath = (
+                f"//tr[.//td[normalize-space(.)='{person_number}'] or "
+                f".//span[normalize-space(.)='{person_number}']]"
+            )
+
+            try:
+                student_row = WebDriverWait(self.driver, 15).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, student_row_xpath)))
+                print(f"   ✅ Found student row for: {person_number}")
+            except TimeoutException:
+                print(f"   ❌ Student '{person_number}' not found in Allievi list")
                 return False
 
-            # Search each matricola
-            for matricola in expected_matricole:
-                matricola_clean = str(matricola).strip()
+            # Click the row to select it (Oracle often requires row selection
+            # before action buttons become active)
+            try:
+                student_row.click()
+                time.sleep(1)
+                print("   ✅ Clicked student row to select it")
+            except:
+                self.driver.execute_script(
+                    "arguments[0].click();", student_row)
+                time.sleep(1)
+
+            # ─────────────────────────────────────────────────────────
+            # STEP 2: Click "Gestisci attività" button
+            # ─────────────────────────────────────────────────────────
+            print("   Step 2: Clicking 'Gestisci attività'...")
+
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
+            gestisci_btn = WebDriverWait(self.driver, 15).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, PRESENZA_GESTISCI_BTN)))
+
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});", gestisci_btn)
+            time.sleep(0.5)
+
+            try:
+                gestisci_btn.click()
+            except:
+                self.driver.execute_script("arguments[0].click();", gestisci_btn)
+
+            print("   ✅ Clicked 'Gestisci attività'")
+            time.sleep(3)
+            self._pause_for_visual_check()
+
+            # Wait for activity table to load
+            try:
+                WebDriverWait(self.driver, 15).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)
+
+            # ─────────────────────────────────────────────────────────
+            # STEP 3: Process each activity row
+            # ─────────────────────────────────────────────────────────
+            print("   Step 3: Processing activity rows...")
+
+            # Find all activity rows in the table
+            activity_rows_xpath = (
+                '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:'
+                'clDtSp1:UPsp1:r11:1:r6:0:sp1:t1::db"]/table/tbody/tr'
+            )
+
+            try:
+                activity_rows = WebDriverWait(self.driver, 15).until(
+                    EC.presence_of_all_elements_located(
+                        (By.XPATH, activity_rows_xpath)))
+                print(f"   Found {len(activity_rows)} activity rows")
+            except TimeoutException:
+                print("   ❌ Could not find activity rows table")
+                return False
+
+
+            # Determine the display text based on stato
+            stato_clean = stato.strip().lower()
+            if stato_clean in ['completato', 'completed', 'c']:
+                stato_display = "Completato"
+            elif stato_clean in ['esente', 'exempt', 'e']:
+                stato_display = "Esente"
+            else:  # non passato / failed
+                stato_display = "Non passato"
+
+            # Process each row
+            for row_idx, row in enumerate(activity_rows):
+                print(f"\n   Processing activity row {row_idx + 1}...")
 
                 try:
-                    keyword_xpaths = [
-                        STUDENT_KEYWORD_INPUT_1,
-                        STUDENT_KEYWORD_INPUT_2,
-                    ]
-                    keyword_input = None
-                    for xpath in keyword_xpaths:
-                        try:
-                            keyword_input = WebDriverWait(self.driver, 5).until(
-                                EC.presence_of_element_located((By.XPATH, xpath)))
-                            break
-                        except:
-                            continue
-
-                    if not keyword_input:
-                        print(f"   ⚠️ Could not find search input, "
-                              f"skipping {matricola_clean}")
-                        result['not_found'].append(matricola_clean)
+                    # ── Read "Data attività" (column 4, read-only) ──
+                    data_attivita = ""
+                    try:
+                        # The date is inside a span with class x2b inside td[4]
+                        date_span = row.find_element(
+                            By.XPATH,
+                            './/td[4]//span[contains(@class, "x2b")]')
+                        data_attivita = date_span.text.strip()
+                        if not data_attivita:
+                            # Try reading the inner content span
+                            date_span = row.find_element(
+                                By.XPATH,
+                                './/td[4]//*[contains(@id, "::content")]')
+                            data_attivita = date_span.text.strip()
+                        print(f"      Data attività: {data_attivita}")
+                    except Exception as e:
+                        print(f"      ⚠️ Could not read Data attività: {e}")
                         continue
 
-                    keyword_input.clear()
-                    keyword_input.send_keys(matricola_clean)
+                    if not data_attivita:
+                        print(f"      ⚠️ Empty date for row {row_idx + 1}, skipping")
+                        continue
 
-                    cerca_btn = self.driver.find_element(
-                        By.XPATH, STUDENT_CERCA_BUTTON)
-                    cerca_btn.click()
-
-                    try:
-                        WebDriverWait(self.driver, 10).until(
-                            EC.invisibility_of_element_located(
-                                (By.CLASS_NAME, "AFBlockingGlassPane")))
-                    except:
-                        pass
-                    time.sleep(2)
-
-                    try:
-                        WebDriverWait(self.driver, 3).until(
-                            EC.presence_of_element_located((By.XPATH,
-                                "//*[contains(text(),'Nessun dato') or "
-                                "contains(text(),'Nessuna riga') or "
-                                "contains(text(),'No data')]")))
-                        print(f"   ❌ Matricola {matricola_clean}: NOT FOUND")
-                        result['not_found'].append(matricola_clean)
-                    except TimeoutException:
+                    # ── Fill "Data completamento" (column 5, editable input) ──
+                    # Oracle creates input fields lazily — retry until it's there
+                    data_comp_input = None
+                    for input_attempt in range(5):
                         try:
-                            self.driver.find_element(By.XPATH,
-                                f"//td[normalize-space(.)='{matricola_clean}'] | "
-                                f"//span[normalize-space(.)='{matricola_clean}']")
-                            print(f"   ✅ Matricola {matricola_clean}: FOUND")
-                            result['found'].append(matricola_clean)
+                            data_comp_input = row.find_element(
+                                By.XPATH,
+                                './/td[5]//input[contains(@id, "::content")]')
+                            if data_comp_input.is_displayed():
+                                break
+                            data_comp_input = None
                         except:
-                            page_text = self.driver.find_element(
-                                By.TAG_NAME, 'body').text
-                            if matricola_clean in page_text:
-                                print(f"   ✅ Matricola {matricola_clean}: "
-                                      f"FOUND (in page text)")
-                                result['found'].append(matricola_clean)
-                            else:
-                                print(f"   ❌ Matricola {matricola_clean}: NOT FOUND")
-                                result['not_found'].append(matricola_clean)
-
-                    # Reset search for next matricola
-                    try:
-                        reset_btn = self.driver.find_element(
-                            By.XPATH, STUDENT_RESET_BUTTON)
-                        reset_btn.click()
+                            pass
                         time.sleep(1)
-                    except:
+
+                    if not data_comp_input:
+                        print(f"      ⚠️ Data completamento input not found "
+                              f"after 5 attempts, skipping row")
+                        continue
+
+                    try:
+                        data_comp_input.click()
+                        time.sleep(0.3)
+                        data_comp_input.clear()
+
+                        self.driver.execute_script(
+                            "arguments[0].value = arguments[1];",
+                            data_comp_input, data_attivita)
+                        data_comp_input.send_keys(Keys.TAB)
+                        time.sleep(1)
+
+                        print(f"      ✅ Data completamento set to: {data_attivita}")
+
                         try:
-                            keyword_input.clear()
+                            WebDriverWait(self.driver, 5).until(
+                                EC.invisibility_of_element_located(
+                                    (By.CLASS_NAME, "AFBlockingGlassPane")))
                         except:
                             pass
 
-                except Exception as e:
-                    print(f"   ⚠️ Error checking matricola {matricola_clean}: {e}")
-                    result['not_found'].append(matricola_clean)
+                    except Exception as e:
+                        print(f"      ⚠️ Could not fill Data completamento: {e}")
+                        continue
 
-            result['total_in_system'] = len(result['found'])
-            result['success'] = True
-            found_count = len(result['found'])
-            total_expected = len(expected_matricole)
-            print(f"   ✅ Verification complete: {found_count}/{total_expected} found")
-            self._pause_for_visual_check()
-            return result
+                    # ── Select Stato completamento dropdown ──
+                    try:
+                        stato_dropdown = row.find_element(
+                            By.XPATH,
+                            './/td[6]//a[contains(@id, "::drop")]')
+
+                        self.driver.execute_script(
+                            "arguments[0].scrollIntoView({block: 'center'});",
+                            stato_dropdown)
+                        time.sleep(0.3)
+
+                        try:
+                            stato_dropdown.click()
+                        except:
+                            self.driver.execute_script(
+                                "arguments[0].click();", stato_dropdown)
+
+                        time.sleep(1)
+                        self._pause_for_visual_check()
+
+                        # Click the option using the robust JS+keyboard helper
+                        clicked = self._click_stato_option(stato_display)
+                        if not clicked:
+                            print(f"      ❌ Could not set Stato to: {stato_display}")
+
+                        time.sleep(1)
+
+                        # Wait for overlay
+                        try:
+                            WebDriverWait(self.driver, 5).until(
+                                EC.invisibility_of_element_located(
+                                    (By.CLASS_NAME, "AFBlockingGlassPane")))
+                        except:
+                            pass
+
+                    except Exception as e:
+                        print(f"      ⚠️ Could not set Stato: {e}")
+
+
+                    time.sleep(1)
+                    self._pause_for_visual_check()
+
+                except Exception as row_err:
+                    print(f"      ❌ Error processing row {row_idx + 1}: {row_err}")
+                    continue
+
+            # ─────────────────────────────────────────────────────────
+            # STEP 4: Click "Salva e chiudi"
+            # ─────────────────────────────────────────────────────────
+            print("\n   Step 4: Clicking 'Salva e chiudi'...")
+
+            try:
+                salva_btn = WebDriverWait(self.driver, 15).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, PRESENZA_SALVA_CHIUDI)))
+
+                self.driver.execute_script(
+                    "arguments[0].scrollIntoView({block: 'center'});", salva_btn)
+                time.sleep(0.5)
+
+                try:
+                    salva_btn.click()
+                except:
+                    self.driver.execute_script("arguments[0].click();", salva_btn)
+
+                print("   ✅ Clicked 'Salva e chiudi'")
+
+                # ── Wait for the activity panel to fully disappear ──
+                # The activity table is only visible when the popup is open.
+                # Wait for it to become invisible before returning.
+                try:
+                    WebDriverWait(self.driver, 20).until(
+                        EC.invisibility_of_element_located((
+                            By.XPATH,
+                            '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:'
+                            'clDtSp1:UPsp1:r11:1:r6:0:sp1:t1::db"]'
+                        )))
+                    print("   ✅ Activity panel closed")
+                except:
+                    print("   ⚠️ Could not confirm panel closed, waiting extra...")
+                    time.sleep(5)
+
+                # ── Wait for blocking overlay ──
+                try:
+                    WebDriverWait(self.driver, 15).until(
+                        EC.invisibility_of_element_located(
+                            (By.CLASS_NAME, "AFBlockingGlassPane")))
+                except:
+                    pass
+
+                # ── Extra stabilization wait ──
+                # Oracle needs time to refresh the Allievi table
+                time.sleep(3)
+
+                print(f"   ✅ Presenza saved for student {person_number}")
+                return True
+
+            except Exception as e:
+                print(f"   ❌ Could not click 'Salva e chiudi': {e}")
+                return False
 
         except Exception as e:
-            print(f"   ❌ Error verifying students: {e}")
-            result['not_found'] = [m for m in expected_matricole
-                                   if m not in result['found']]
-            return result
+            print(f"\n❌ ERROR in _assign_presenza_for_student: {e}")
+            import traceback
+            traceback.print_exc()
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self.driver.save_screenshot(f"error_presenza_{timestamp}.png")
+            except:
+                pass
+            return False
+
+    def assign_presenza_batch(self, edition_code: str,
+                              students: list,
+                              stato: str = "Completato") -> dict:
+        """
+        Assign presence using keyword search per student.
+        Each student is isolated to its own row before processing,
+        so Oracle never has more than one row to manage.
+        """
+        results = {
+            'success': [],
+            'failed': [],
+            'total': len(students)
+        }
+
+        print(f"\n{'=' * 60}")
+        print(f"PRESENZA: Processing {len(students)} students "
+              f"for '{edition_code}'")
+        print(f"{'=' * 60}")
+
+        # === SETUP: Click Allievi tab ===
+        try:
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)
+
+            allievi_tab = self.wait.until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, STUDENT_ALLIEVI_TAB)))
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});",
+                allievi_tab)
+            time.sleep(0.5)
+            try:
+                allievi_tab.click()
+            except:
+                self.driver.execute_script(
+                    "arguments[0].click();", allievi_tab)
+            print("✅ On Allievi tab")
+            time.sleep(3)
+        except Exception as e:
+            print(f"❌ Could not open Allievi tab: {e}")
+            results['failed'] = list(students)
+            return results
+
+        # === Apply Tutto filter once at start ===
+        self._apply_tutto_filter()
+
+        # === PROCESS EACH STUDENT (with isolation via keyword search) ===
+        for idx, person_number in enumerate(students):
+            print(f"\n[{idx + 1}/{len(students)}] Student: {person_number}")
+
+            try:
+                # Isolate this student by keyword search
+                if not self._isolate_student_by_search(person_number):
+                    print(f"   ❌ Could not isolate student {person_number}")
+                    results['failed'].append(person_number)
+                    continue
+
+                # Process this single isolated student
+                success = self._assign_presenza_for_student(
+                    person_number, stato)
+
+                if success:
+                    results['success'].append(person_number)
+                else:
+                    results['failed'].append(person_number)
+
+                # Reset search for next student
+                self._reset_student_search()
+
+                # Extra wait for Oracle to settle before next iteration
+                time.sleep(3)
+
+            except Exception as e:
+                print(f"   ❌ Error processing {person_number}: {e}")
+                results['failed'].append(person_number)
+
+                # Try to recover for the next iteration
+                try:
+                    self._reset_student_search()
+                    time.sleep(2)
+                except:
+                    pass
+
+        print(f"\n{'=' * 60}")
+        print(f"PRESENZA COMPLETE: "
+              f"{len(results['success'])}/{results['total']} successful")
+        print(f"{'=' * 60}")
+        return results
+
+    def _isolate_student_by_search(self, person_number: str,
+                                   initial_wait: float = 2.0,
+                                   max_retries: int = 6,
+                                   retry_wait: float = 2.0) -> bool:
+        """
+        Use keyword search to filter Allievi list to just one student.
+        Re-applies Tutto stato filter and retries the row check multiple
+        times to handle Oracle's variable response time.
+        """
+        try:
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
+            # Step 1: Re-apply Tutto stato filter
+            try:
+                stato_dropdown = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, STUDENT_STATUS_DROPDOWN)))
+                stato_dropdown.click()
+                time.sleep(0.5)
+                tutto = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, STUDENT_STATUS_TUTTO)))
+                tutto.click()
+                time.sleep(0.5)
+            except Exception as e:
+                print(f"   ⚠️ Could not re-apply Tutto: {e}")
+
+            # Step 2: Enter keyword
+            keyword_input = None
+            for xpath in [STUDENT_KEYWORD_INPUT_1, STUDENT_KEYWORD_INPUT_2]:
+                try:
+                    keyword_input = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, xpath)))
+                    break
+                except:
+                    continue
+
+            if not keyword_input:
+                print(f"   ⚠️ Keyword input not found")
+                return False
+
+            keyword_input.clear()
+            keyword_input.send_keys(person_number)
+
+            # Step 3: Click Cerca
+            cerca_btn = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, STUDENT_CERCA_BUTTON)))
+            cerca_btn.click()
+
+            # Initial wait
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(initial_wait)
+
+            # ★ Step 4: Retry-based row check
+            # Oracle's response time varies — keep checking up to max_retries
+            for attempt in range(1, max_retries + 1):
+                row = self._find_row_for_matricola(person_number)
+                if row:
+                    if attempt > 1:
+                        print(f"   ✅ Isolated student {person_number} "
+                              f"(attempt {attempt})")
+                    else:
+                        print(f"   ✅ Isolated student {person_number}")
+                    return True
+
+                if attempt < max_retries:
+                    # Check if overlay is still showing
+                    try:
+                        overlays = self.driver.find_elements(
+                            By.CLASS_NAME, "AFBlockingGlassPane")
+                        overlay_active = any(
+                            e.is_displayed() for e in overlays)
+                    except:
+                        overlay_active = False
+
+                    if overlay_active:
+                        print(f"   ⏳ Oracle still loading "
+                              f"(attempt {attempt}/{max_retries})...")
+                        try:
+                            WebDriverWait(self.driver, 5).until(
+                                EC.invisibility_of_element_located(
+                                    (By.CLASS_NAME, "AFBlockingGlassPane")))
+                        except:
+                            pass
+                    else:
+                        print(f"   ⏳ Row not visible yet "
+                              f"(attempt {attempt}/{max_retries}), waiting...")
+
+                    time.sleep(retry_wait)
+
+            print(f"   ⚠️ Search didn't return row for {person_number} "
+                  f"after {max_retries} attempts")
+            return False
+
+        except Exception as e:
+            print(f"   ⚠️ Search isolation failed: {e}")
+            return False
+
+    def _reset_student_search(self):
+        """Reset the Allievi search filter (click Reimposta button)."""
+        try:
+            reset_btn = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, STUDENT_RESET_BUTTON)))
+            reset_btn.click()
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)
+        except Exception as e:
+            # Fallback: just clear the search box
+            try:
+                keyword_input = self.driver.find_element(
+                    By.XPATH, STUDENT_KEYWORD_INPUT_1)
+                keyword_input.clear()
+            except:
+                pass
+
+    def _verify_students_in_edition(self, edition_code, expected_matricole):
+        """Verify students exist by reading the whole Allievi table once."""
+        print(f"\n   Verifying {len(expected_matricole)} students "
+              f"for edition '{edition_code}'...")
+
+        # Click Allievi tab
+        try:
+            allievi_tab = WebDriverWait(self.driver, 15).until(
+                EC.element_to_be_clickable((By.XPATH, STUDENT_ALLIEVI_TAB)))
+            allievi_tab.click()
+            time.sleep(3)
+        except Exception as e:
+            print(f"   ❌ Could not click Allievi tab: {e}")
+            return {
+                'found': [],
+                'not_found': list(expected_matricole),
+                'total_in_system': 0,
+                'success': False
+            }
+
+        # Refresh and collect
+        result = self._refresh_and_collect_students(
+            expected_matricole=expected_matricole,
+            max_attempts=5,
+            wait_between=5
+        )
+
+        return {
+            'found': result['found'],
+            'not_found': result['not_found'],
+            'total_in_system': len(result['found']),
+            'success': True
+        }
+
+    def _find_row_for_matricola(self, matricola: str):
+        """Find a visible row containing a specific matricola. Returns row element or None."""
+        xpath_options = [
+            f"//tr[.//td[normalize-space(.)='{matricola}']]",
+            f"//tr[.//span[normalize-space(.)='{matricola}']]",
+        ]
+        for xpath in xpath_options:
+            try:
+                row = self.driver.find_element(By.XPATH, xpath)
+                if row.is_displayed():
+                    return row
+            except:
+                continue
+        return None
+
+    def _scroll_to_find_student_row(self, matricola: str,
+                                    max_iterations: int = 80):
+        """
+        Scroll the Allievi table looking for a specific student's row.
+        Returns the row WebElement (scrolled into view) or None.
+        """
+        # First: maybe it's already in viewport
+        row = self._find_row_for_matricola(matricola)
+        if row:
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});", row)
+            time.sleep(0.5)
+            return row
+
+        container = self._find_scrollable_table()
+
+        # Reset to top, then scroll down looking for the row
+        if container:
+            try:
+                self.driver.execute_script(
+                    "arguments[0].scrollTop = 0;", container)
+                time.sleep(1)
+            except:
+                pass
+
+        for i in range(max_iterations):
+            row = self._find_row_for_matricola(matricola)
+            if row:
+                self.driver.execute_script(
+                    "arguments[0].scrollIntoView({block: 'center'});", row)
+                time.sleep(0.5)
+                print(f"      ✅ Row for {matricola} found after {i + 1} scrolls")
+                return row
+
+            # Scroll down 200px
+            try:
+                if container:
+                    self.driver.execute_script(
+                        "arguments[0].scrollTop += 200;", container)
+                else:
+                    self.driver.execute_script("window.scrollBy(0, 200);")
+            except:
+                pass
+
+            try:
+                WebDriverWait(self.driver, 2).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(1)
+
+        print(f"      ❌ Row for {matricola} NOT found after "
+              f"{max_iterations} scrolls")
+        return None
+
+    def _apply_tutto_filter(self) -> bool:
+        """Apply 'Tutto' stato filter + Cerca to load all students."""
+        try:
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+
+            stato_dropdown = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, STUDENT_STATUS_DROPDOWN)))
+            stato_dropdown.click()
+            time.sleep(1)
+
+            tutto = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, STUDENT_STATUS_TUTTO)))
+            tutto.click()
+            print("   ✅ Selected 'Tutto'")
+            time.sleep(1)
+
+            try:
+                cerca_btn = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, STUDENT_CERCA_BUTTON)))
+                cerca_btn.click()
+                print("   ✅ Applied filter (Cerca)")
+            except:
+                print("   ⚠️ Cerca click skipped (filter may auto-apply)")
+
+            try:
+                WebDriverWait(self.driver, 15).until(
+                    EC.invisibility_of_element_located(
+                        (By.CLASS_NAME, "AFBlockingGlassPane")))
+            except:
+                pass
+            time.sleep(2)
+            return True
+        except Exception as e:
+            print(f"   ⚠️ Tutto filter setup failed: {e}")
+            return False
+
+    def _click_stato_option(self, stato_display: str) -> bool:
+        """
+        Click a Stato dropdown option using two strategies:
+        1. JavaScript: find option by text, dispatch full ADF mouse sequence
+        2. Keyboard: type first letter + Enter (works on most Oracle dropdowns)
+        """
+        # Strategy 1: JavaScript with full mouse event sequence
+        js = """
+        var targetText = arguments[0];
+        var options = document.querySelectorAll('li[role="option"]');
+        for (var i = 0; i < options.length; i++) {
+            var opt = options[i];
+            var text = opt.textContent.trim();
+            if (text === targetText) {
+                var rect = opt.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    opt.scrollIntoView({block: 'center'});
+                    var eventInit = {
+                        bubbles: true, cancelable: true, view: window,
+                        clientX: rect.left + rect.width/2,
+                        clientY: rect.top + rect.height/2
+                    };
+                    // ADF listens for the full sequence — not just click
+                    opt.dispatchEvent(new MouseEvent('mousedown', eventInit));
+                    opt.dispatchEvent(new MouseEvent('mouseup', eventInit));
+                    opt.dispatchEvent(new MouseEvent('click', eventInit));
+                    return true;
+                }
+            }
+        }
+        return false;
+        """
+        try:
+            clicked = self.driver.execute_script(js, stato_display)
+            if clicked:
+                print(f"      ✅ Stato set via JS: {stato_display}")
+                time.sleep(1)
+                return True
+        except Exception as e:
+            print(f"      ⚠️ JS click failed: {e}")
+
+        # Strategy 2: Keyboard fallback
+        try:
+            from selenium.webdriver.common.action_chains import ActionChains
+            first_letter = stato_display[0].lower()
+            actions = ActionChains(self.driver)
+            actions.send_keys(first_letter).pause(0.5)
+            actions.send_keys(Keys.ENTER).perform()
+            time.sleep(1)
+            print(f"      ✅ Stato set via keyboard: {stato_display}")
+            return True
+        except Exception as e:
+            print(f"      ⚠️ Keyboard fallback failed: {e}")
+
+        return False
 
     def close(self):
         """Close the WebDriver and clean up resources."""

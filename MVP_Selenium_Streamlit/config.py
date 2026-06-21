@@ -42,16 +42,14 @@ NAV_LEARN_ADMIN     = 'WLF_FUSE_LEARN_ADMIN'           # used with By.ID
 NAV_CORSI_LINK      = '//a[@title="Corsi" and text()="Corsi"]'
 NAV_EDIZIONI_LINK   = '//a[@title="Edizioni" and text()="Edizioni"]'
 
-
 # =============================================================================
 # COURSES PAGE - SEARCH
 # =============================================================================
-COURSE_SEARCH_NAME_INPUT = '_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value20'  # used with By.NAME
-COURSE_SEARCH_DATE_INPUT = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2:value40::content"]'
-COURSE_SEARCH_BUTTON     = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:crsQry2::search"]'
+COURSE_SEARCH_XPATH_INPUT = '//*[contains(@id,":MgCrUpl:UPsp1:r2:0:crsQry2:value00::content")]'
+COURSE_SEARCH_DATE_INPUT = '//*[contains(@id,":MgCrUpl:UPsp1:r2:0:crsQry2:value10::content")]'
+COURSE_SEARCH_BUTTON     = '//button[text()="Cerca"]'
 COURSE_NO_DATA_MESSAGE   = '//*[contains(text(),"Nessun dato da visualizzare.")]'
-COURSE_TABLE_SUMMARY     = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srSdh"]'                      # used in //table[@summary='Corsi']
-
+COURSE_TABLE_SUMMARY     = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UPsp1:r2:0:srSdh"]'
 
 # =============================================================================
 # COURSES PAGE - CREATE
@@ -59,12 +57,11 @@ COURSE_TABLE_SUMMARY     = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:MgCrUpl:UP
 COURSE_CREATE_BUTTON_EN  = "//a[.//span[text()='Create']]"
 COURSE_CREATE_BUTTON_IT  = "//a[.//span[text()='Crea']]"
 COURSE_CREATE_BUTTON_ID  = "//a[contains(@id, 'crtBtn')]"
-COURSE_TITLE_INPUT       = '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:ttlInp::content"]'
-COURSE_PROGRAMME_INPUT   = '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:slbsRte::_cic"]/div[1]/div[2]/div'
+COURSE_TITLE_INPUT       = '//input[contains(@id,":MAnt2:2:lsVwCrs:ttlInp::content")]'
+COURSE_PROGRAMME_INPUT = '//div[@role="textbox" and contains(@aria-label, "Area di modifica")]'
 COURSE_SHORT_DESC_INPUT  = '//input[contains(@id, ":MAnt2:2:lsVwCrs:shdsInp::content")]'
 COURSE_DATE_INPUT        = '//input[contains(@id, ":MAnt2:2:lsVwCrs:sdDt::content")]'
-COURSE_SAVE_CLOSE_BUTTON = '//*[@id="pt1:_FOr1:1:_FONSr2:0:MAnt2:2:lsVwCrs:svcBtn"]'
-
+COURSE_SAVE_CLOSE_BUTTON = "//button[text()='Salva e chiudi']"
 
 # =============================================================================
 # COURSE DETAIL PAGE
@@ -231,6 +228,18 @@ STUDENT_KEYWORD_INPUT_2  = "//input[contains(@id, ':value10::content')]"
 STUDENT_CERCA_BUTTON     = "//button[text()='Cerca' or text()='Search']"
 STUDENT_RESET_BUTTON     = "//button[text()='Reimposta' or text()='Reset']"
 
+# =============================================================================
+# ASSEGNAZIONE PRESENZA
+# =============================================================================
+PRESENZA_GESTISCI_BTN        = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:lnrAtbl:_ATp:mnAcBtn"]/a/span'
+PRESENZA_ACTIVITY_TABLE      = '//*[@id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:2:clDtSp1:UPsp1:r11:1:r6:0:sp1:t1::db"]/table/tbody'
+PRESENZA_DATA_ATTIVITA_COL   = './tr/td[4]'           # relative to table body — read-only date
+PRESENZA_DATA_COMPLETAMENTO  = './/input[contains(@id, ":id8892::content")]'
+PRESENZA_STATO_DROPDOWN      = './/a[contains(@id, ":soc4::drop")]'
+PRESENZA_COMPLETATO_OPTION = '//*[contains(@id,":soc4::pop")]/li[1]'
+PRESENZA_ESENTE_OPTION     = '//*[contains(@id,":UPsp1:r11:1:r6:0:sp1:t1:0:soc4::pop")]/li[2]'
+PRESENZA_NON_PASSATO_OPTION = '//*[contains(@id,":UPsp1:r11:1:r6:0:sp1:t1:0:soc4::pop")]/li[3]'
+PRESENZA_SALVA_CHIUDI        = '//*[contains(@id,":UPsp1:r11:1:r6:0:sp1:cb2")]'
 
 # =============================================================================
 # BACK NAVIGATION
