@@ -2676,18 +2676,20 @@ class CourseView:
         if attivita_match:
             activities_text = attivita_match.group(1)
             activity_pattern = re.compile(
-                r'([^,]+?)'
-                r'(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})'
-                r'[^0-9]*ore\s*'
-                r'(\d{1,2}[.:]\d{2})'
-                r'\s*[-–]\s*'
-                r'(\d{1,2}[.:]\d{2})',
+                r'([^,]+?)'  # title
+                r'(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})'  # date
+                r'[^0-9]*ore\s*'  # 'ore' keyword
+                r'(\d{1,2}[.:]\d{2})'  # start time
+                r'\s*[-–]\s*'  # separator
+                r'(\d{1,2}[.:]\d{2})'  # end time
+                r'(?:[^,\d]*?(\d+(?:[.,]\d+)?)\s*ore)?',  # ★ optional impegno
                 re.IGNORECASE)
             for match in activity_pattern.finditer(activities_text):
                 title = match.group(1).strip().strip(',').strip()
                 date_str = normalize_date(match.group(2))
                 start_time = match.group(3).replace(':', '.')
                 end_time = match.group(4).replace(':', '.')
+                impegno_val = match.group(5) if match.group(5) else ''  # ★ NEW
                 if title and date_str:
                     activities.append({
                         'title': title,
@@ -2695,9 +2697,8 @@ class CourseView:
                         'date': date_str,
                         'start_time': start_time,
                         'end_time': end_time,
-                        'impegno_ore': ''
+                        'impegno_ore': impegno_val  # ★ was ''
                     })
-
         # =========================================================
         # STEP 10: Clean and build final result
         # =========================================================
