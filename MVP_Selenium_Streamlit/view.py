@@ -2897,23 +2897,29 @@ class CourseView:
 
             # Find individual activities
             activity_patterns = [
-                r'(\w+\s+giorno)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})',
-                r'(giorno\s+\d+|day\s+\d+)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})',
+                # Pattern A: "primo giorno 12/02/2026 ore 09.00-11.00 [impegno N ore]"
+                r'(\w+\s+giorno)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})'
+                r'\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})'
+                r'(?:[^,\d]*?(\d+(?:[.,]\d+)?)\s*ore)?',  # ★
+                # Pattern B: "giorno 1 12/02/2026 ore 09.00-11.00 [impegno N ore]"
+                r'(giorno\s+\d+|day\s+\d+)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})'
+                r'\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})'
+                r'(?:[^,\d]*?(\d+(?:[.,]\d+)?)\s*ore)?',  # ★
             ]
 
             for pattern in activity_patterns:
                 matches = re.findall(pattern, activity_text)
                 for match in matches:
-                    title, date_str, start_time, end_time = match
+                    # ★ Each match now has 5 elements instead of 4
+                    title, date_str, start_time, end_time, impegno_val = match
                     parsed['activities'].append({
                         'title': title.strip().title(),
                         'description': '',
                         'date': normalize_date(date_str) or '',
                         'start_time': start_time.replace(':', '.'),
                         'end_time': end_time.replace(':', '.'),
-                        'impegno_ore': ''
+                        'impegno_ore': impegno_val  # ★ was ''
                     })
-
         # If no activities found, try to detect number of days
         if not parsed['activities']:
             days_match = re.search(r'(\d+)\s+(?:giorni|days|attività)', text_lower)
