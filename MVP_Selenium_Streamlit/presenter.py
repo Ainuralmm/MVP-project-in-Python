@@ -1023,3 +1023,211 @@ class CoursePresenter:
 
             st.session_state.app_state = "IDLE"
             st.rerun()
+
+    def run_assign_presenza_batch(self):
+        """
+        Execute presenza assignment for MULTIPLE editions/stato groups.
+
+        Reads from st.session_state.presenza_batch_data:
+            - jobs: list of {edition_code, students, stato}
+
+        OPTIMIZATION: Consecutive jobs with same edition_code skip the
+        navigate-back step (stay on the Allievi tab between stato groups).
+        """
+        all_results = []
+        progress_placeholder = st.empty()
+        status_placeholder = st.empty()
+
+        def update_progress(message, percentage):
+            with progress_placeholder.container():
+                st.progress(percentage / 100)
+            with status_placeholder.container():
+                st.info(f"⏳ {message}")
+
+        try:
+            oracle_url = st.secrets['ORACLE_URL']
+            oracle_user = st.secrets['ORACLE_USER']
+            oracle_pass = st.secrets['ORACLE_PASS']
+
+            batch_data = st.session_state.presenza_batch_data
+            if not batch_data:
+                raise Exception("Nessun dato batch trovato.")
+
+            jobs = batch_data.get('jobs', [])
+            total_jobs = len(jobs)
+            total_students = batch_data.get('total_students', 0)
+
+            if total_jobs == 0:
+                raise Exception("Nessun job da processare.")
+
+            # === LOGIN once ===
+            update_progress("Accesso a Oracle...", 5)
+            if not self.model.login(oracle_url, oracle_user, oracle_pass):
+                raise Exception("Login fallito.")
+
+            # === NAVIGATE once ===
+            update_progress("Navigazione alla pagina edizioni...", 10)
+            if not self.model.navigate_to_edition_page():
+                raise Exception("Navigazione fallita.")
+
+            # === Process each job ===
+            students_done = 0
+            current_edition_open = None  # track which edition is currently open
+
+            for idx, job in enumerate(jobs):
+                edition_code = job['edition_code']
+                students = job['students']
+                stato = job['stato']
+                num_students = len(students)
+                job_num = idx + 1
+
+                progress_pct = 10 + int((students_done / total_students) * 85)
+                update_progress(
+                    f"Job {job_num}/{total_jobs}: '{edition_code}' "
+                    f"({num_students} allievi → {stato})...",
+                    progress_pct
+                )
+
+                try:
+                    # === Open edition only if different from current one ===
+                    if current_edition_open != edition_code:
+                        edition_result = self.model._search_and_open_edition(
+                            edition_code)
+                        if not edition_result:
+                            all_results.append({
+                                'edition': edition_code,
+                                'stato': stato,
+                                'success': [],
+                                'failed': students,
+                                'total': num_students,
+                                'note': '❌ Edizione non trovata'
+                            })
+                            students_done += num_students
+                            continue
+                        current_edition_open = edition_code
+
+                    # === Assign presenza for this group ===
+                    result = self.model.assign_presenza_batch(
+                        edition_code=edition_code,
+                        students=students,
+                        stato=stato
+                    )
+
+                    all_results.append({
+                        'edition': edition_code,
+                        'stato': stato,
+                        'success': result.get('success', []),
+                        'failed': result.get('failed', []),
+                        'total': num_students,
+                    })
+
+                    students_done += num_students
+
+                    # === Navigate back only if next job is different edition ===
+                    if idx < total_jobs - 1:
+                        next_edition = jobs[idx + 1]['edition_code']
+                        if next_edition != edition_code:
+                            if not self.model._click_back_to_edition_search():
+                                print("   ⚠️ Back failed, full navigation...")
+                                try:
+                                    self.model.navigate_to_edition_page()
+                                    current_edition_open = None
+                                except:
+                                    print("   ❌ Could not return to search")
+                                    current_edition_open = None
+                            else:
+                                current_edition_open = None
+
+                except Exception as e:
+                    error_msg = str(e)[:100]
+                    print(f"   ❌ Error for job {edition_code} → {stato}: {error_msg}")
+                    all_results.append({
+                        'edition': edition_code,
+                        'stato': stato,
+                        'success': [],
+                        'failed': students,
+                        'total': num_students,
+                        'note': f'❌ Errore: {error_msg}'
+                    })
+                    students_done += num_students
+                    # Try to recover by navigating back to edition search
+                    try:
+                        self.model.navigate_to_edition_page()
+                        current_edition_open = None
+                    except:
+                        pass
+
+            update_progress("Processo completato!", 100)
+
+        except Exception as e:
+            error_message = f"‼️ Errore batch presenza: {str(e)}"
+            print(f"Presenter Error: {error_message}")
+            all_results.append({
+                'edition': 'ERRORE GENERALE',
+                'stato': '-',
+                'success': [],
+                'failed': [],
+                'total': 0,
+                'note': error_message
+            })
+
+        finally:
+            print("Presenter (Batch Presenza): Finished. Cleaning up.")
+            self.model.close()
+
+            progress_placeholder.empty()
+            status_placeholder.empty()
+
+            # === BUILD SUMMARY ===
+            total_success = sum(len(r.get('success', [])) for r in all_results)
+            total_failed_students = sum(
+                len(r.get('failed', [])) for r in all_results)
+            total_processed = total_success + total_failed_students
+            jobs_with_errors = sum(
+                1 for r in all_results if r.get('note', '').startswith('❌'))
+
+            summary_parts = [
+                f"## 📊 Riepilogo Assegnazione Presenza Batch\n",
+                f"- **Job totali:** {len(all_results)}",
+                f"- **Job con errore:** {jobs_with_errors}",
+                f"- **Allievi processati con successo:** "
+                f"{total_success}/{total_processed}",
+                f"- **Allievi falliti:** {total_failed_students}\n",
+                "### Dettagli per job:"
+            ]
+
+            for r in all_results:
+                note = r.get('note', '')
+                stato_icon = {
+                    'Completato': '✅',
+                    'Esente': '⚪',
+                    'Non passato': '❌'
+                }.get(r['stato'], '📋')
+                success_count = len(r.get('success', []))
+                total = r.get('total', 0)
+
+                line = (f"- **{r['edition']}** {stato_icon} {r['stato']}: "
+                        f"{success_count}/{total}")
+                if note:
+                    line += f" — {note}"
+                summary_parts.append(line)
+
+                failed = r.get('failed', [])
+                if failed:
+                    if len(failed) <= 10:
+                        summary_parts.append(
+                            f"  - Falliti: `{', '.join(failed)}`")
+                    else:
+                        summary_parts.append(
+                            f"  - Falliti: `{', '.join(failed[:10])}` "
+                            f"... e altri {len(failed) - 10}"
+                        )
+
+            final_message = "\n".join(summary_parts)
+
+            st.session_state.presenza_message = final_message
+            st.session_state.presenza_batch_data = None
+            st.session_state.presenza_show_batch_preview = False
+
+            st.session_state.app_state = "IDLE"
+            st.rerun()
