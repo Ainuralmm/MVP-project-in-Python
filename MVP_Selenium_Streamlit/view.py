@@ -333,6 +333,14 @@ class CourseView:
         if "app_state" not in st.session_state:
             st.session_state.app_state = "IDLE"
 
+        # === AUTH STATE ===
+        if "oracle_logged_in" not in st.session_state:
+            st.session_state.oracle_logged_in = False
+        if "oracle_username" not in st.session_state:
+            st.session_state.oracle_username = None
+        if "oracle_password" not in st.session_state:
+            st.session_state.oracle_password = None
+
         # --- Message States: COURSE ---
         if "course_message" not in st.session_state:
             st.session_state.course_message = ""
@@ -636,6 +644,86 @@ class CourseView:
             </style>
         """, unsafe_allow_html=True)
 
+    def _render_login_screen(self) -> bool:
+        """
+        Show Oracle credentials login form.
+        Returns True if user is authenticated, False otherwise.
+
+        Credentials are stored in st.session_state only — never written to disk.
+        """
+        # Already logged in? Skip
+        if st.session_state.get('oracle_logged_in', False):
+            return True
+
+        # Apply theme even on the login screen
+        self._apply_theme()
+
+        # Show logo + title
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            try:
+                st.image("logo-agsm.jpg", width=200)
+            except:
+                pass
+            st.title("🔐 Oracle Course Automator")
+            st.markdown(
+                "Inserisci le tue credenziali Oracle HCM per accedere."
+            )
+
+            with st.form("oracle_login_form"):
+                username = st.text_input(
+                    "Username Oracle",
+                    placeholder="nome.cognome@gruppomagis.it",
+                    key="login_username_input"
+                )
+                password = st.text_input(
+                    "Password Oracle",
+                    type="password",
+                    key="login_password_input"
+                )
+                submitted = st.form_submit_button(
+                    "Accedi", type="primary", width='stretch'
+                )
+
+            if submitted:
+                if not username.strip():
+                    st.error("❌ Inserisci lo username.")
+                    return False
+                if not password:
+                    st.error("❌ Inserisci la password.")
+                    return False
+
+                # Store in session memory only
+                st.session_state.oracle_username = username.strip()
+                st.session_state.oracle_password = password
+                st.session_state.oracle_logged_in = True
+
+                # Log the login event — username only, NEVER the password
+                import logging
+                logging.info(
+                    f"App login: user={username.strip()}"
+                )
+
+                st.rerun()
+
+        return False
+
+    def render_logout_button(self):
+        """Show logout button in sidebar. Call from render_ui()."""
+        if st.session_state.get('oracle_logged_in'):
+            with st.sidebar:
+                st.markdown(f"👤 **{st.session_state.get('oracle_username', 'Utente')}**")
+                if st.button("🚪 Logout", key="logout_btn", width='stretch'):
+                    # Log the logout event
+                    import logging
+                    logging.info(
+                        f"App logout: user={st.session_state.get('oracle_username', 'unknown')}"
+                    )
+                    # Clear all credentials from memory
+                    for key in ['oracle_username', 'oracle_password', 'oracle_logged_in']:
+                        if key in st.session_state:
+                            del st.session_state[key]
+                    st.rerun()
 
     def _update_nlp_text(self):
         """
@@ -754,6 +842,17 @@ class CourseView:
     def render_ui(self):
         # Apply theme FIRST before rendering anything else
         self._apply_theme()
+
+        def render_ui(self):
+            # Apply theme FIRST before rendering anything else
+            self._apply_theme()
+
+            # Show logout button in sidebar
+            self.render_logout_button()
+
+            # Render settings in sidebar
+            self._render_impostazioni({})
+            # ... rest unchanged
 
         # Render settings in sidebar
         self._render_impostazioni({})
