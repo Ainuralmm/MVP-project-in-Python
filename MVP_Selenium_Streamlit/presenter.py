@@ -16,8 +16,8 @@ class CoursePresenter:
     def run_create_course(self, course_details):
         try:
             oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
+            oracle_user = st.session_state.oracle_username
+            oracle_pass = st.session_state.oracle_password
 
             # === STEP 1: LOGIN ===
             self.view.update_progress("course", "Accesso a Oracle in corso...", 10)
@@ -71,8 +71,8 @@ class CoursePresenter:
         """
         try:
             oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
+            oracle_user = st.session_state.oracle_username
+            oracle_pass = st.session_state.oracle_password
 
             courses = batch_data['courses']
             total_courses = len(courses)
@@ -215,8 +215,8 @@ class CoursePresenter:
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
+            oracle_user = st.session_state.oracle_username
+            oracle_pass = st.session_state.oracle_password
 
             batch_data = st.session_state.batch_edition_data
             if not batch_data:
@@ -356,8 +356,8 @@ class CoursePresenter:
     def run_create_edition_and_activities(self, edition_details):
         try:
             oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
+            oracle_user = st.session_state.oracle_username
+            oracle_pass = st.session_state.oracle_password
             course_name = edition_details['course_name']
 
             num_activities = len(edition_details.get('activities', []))
@@ -413,8 +413,8 @@ class CoursePresenter:
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
+            oracle_user = st.session_state.oracle_username
+            oracle_pass = st.session_state.oracle_password
 
             edition_code = student_details['edition_code']
             student_list = student_details['students']
@@ -525,8 +525,8 @@ class CoursePresenter:
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
+            oracle_user = st.session_state.oracle_username
+            oracle_pass = st.session_state.oracle_password
 
             batch_data = st.session_state.batch_student_data
             if not batch_data:
@@ -737,8 +737,8 @@ class CoursePresenter:
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
+            oracle_user = st.session_state.oracle_username
+            oracle_pass = st.session_state.oracle_password
 
             verify_data = st.session_state.verify_student_data
             if not verify_data:
@@ -922,8 +922,8 @@ class CoursePresenter:
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
+            oracle_user = st.session_state.oracle_username
+            oracle_pass = st.session_state.oracle_password
 
             presenza_data = st.session_state.presenza_data
             if not presenza_data:
@@ -1046,8 +1046,8 @@ class CoursePresenter:
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
-            oracle_user = st.secrets['ORACLE_USER']
-            oracle_pass = st.secrets['ORACLE_PASS']
+            oracle_user = st.session_state.oracle_username
+            oracle_pass = st.session_state.oracle_password
 
             batch_data = st.session_state.presenza_batch_data
             if not batch_data:
