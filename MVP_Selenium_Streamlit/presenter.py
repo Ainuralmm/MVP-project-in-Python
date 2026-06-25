@@ -18,6 +18,9 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
+            # Safety check
+            if not oracle_user or not oracle_pass:
+                raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
             # === STEP 1: LOGIN ===
             self.view.update_progress("course", "Accesso a Oracle in corso...", 10)
@@ -73,6 +76,10 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
+
+            # Safety check
+            if not oracle_user or not oracle_pass:
+                raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
             courses = batch_data['courses']
             total_courses = len(courses)
@@ -217,6 +224,9 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
+            # Safety check
+            if not oracle_user or not oracle_pass:
+                raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
             batch_data = st.session_state.batch_edition_data
             if not batch_data:
@@ -358,6 +368,11 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
+
+            # Safety check
+            if not oracle_user or not oracle_pass:
+                raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
+
             course_name = edition_details['course_name']
 
             num_activities = len(edition_details.get('activities', []))
@@ -415,6 +430,9 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
+            # Safety check
+            if not oracle_user or not oracle_pass:
+                raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
             edition_code = student_details['edition_code']
             student_list = student_details['students']
@@ -527,6 +545,9 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
+            # Safety check
+            if not oracle_user or not oracle_pass:
+                raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
             batch_data = st.session_state.batch_student_data
             if not batch_data:
@@ -739,6 +760,9 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
+            # Safety check
+            if not oracle_user or not oracle_pass:
+                raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
             verify_data = st.session_state.verify_student_data
             if not verify_data:
@@ -924,6 +948,9 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
+            # Safety check
+            if not oracle_user or not oracle_pass:
+                raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
             presenza_data = st.session_state.presenza_data
             if not presenza_data:
@@ -1048,6 +1075,9 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
+            # Safety check
+            if not oracle_user or not oracle_pass:
+                raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
             batch_data = st.session_state.presenza_batch_data
             if not batch_data:
