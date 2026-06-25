@@ -1,0 +1,24 @@
+{
+  "themes": {
+    "Scuro (default)": {
+      "bg_color": "#0e1117",
+      "secondary_bg": "#1e2130",
+      "text_color": "#fafafa"
+    },
+    "Beige caldo": {
+      "bg_color": "#fdf6e3",
+      "secondary_bg": "#f5ead0",
+      "text_color": "#3c3c3c"
+    },
+    "Blu notte": {
+      "bg_color": "#1a2332",
+      "secondary_bg": "#2a3548",
+      "text_color": "#e8ecf1"
+    }
+  },
+  "fonts": {
+    "Courier New (codice)": "Courier New, monospace",
+    "Georgia (elegante)": "Georgia, serif",
+    "Times New Roman": "Times New Roman, serif"
+  }
+}

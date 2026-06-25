@@ -422,6 +422,19 @@ class CourseView:
         if "preserved_student_data" not in st.session_state:
             st.session_state.preserved_student_data = {}
 
+        #presenza
+        if "presenza_data" not in st.session_state:
+            st.session_state.presenza_data = None
+        if "presenza_show_summary" not in st.session_state:
+            st.session_state.presenza_show_summary = False
+        if "presenza_message" not in st.session_state:
+            st.session_state.presenza_message = ""
+        # Multi-edition presenza batch state
+        if "presenza_batch_data" not in st.session_state:
+            st.session_state.presenza_batch_data = None
+        if "presenza_show_batch_preview" not in st.session_state:
+            st.session_state.presenza_show_batch_preview = False
+
         # --- Initialize Widget States ---
         if "course_date_str_key" not in st.session_state:
             st.session_state.course_date_str_key = "01/01/2023"
@@ -453,6 +466,176 @@ class CourseView:
         self.course_output_placeholder = None
         self.edition_output_placeholder = None
         self.student_output_placeholder = None
+
+        # Load saved theme preferences if they exist
+        import json, os
+        prefs_path = os.path.join(os.path.dirname(__file__), 'user_preferences.json')
+        if os.path.exists(prefs_path):
+            try:
+                with open(prefs_path, 'r', encoding='utf-8') as f:
+                    prefs = json.load(f)
+                if 'user_theme' not in st.session_state:
+                    st.session_state.user_theme = prefs.get(
+                        'user_theme', 'Scuro (default)')
+                if 'user_font' not in st.session_state:
+                    st.session_state.user_font = prefs.get(
+                        'user_font', 'Sans-serif (default)')
+            except:
+                pass
+
+    def _apply_theme(self):
+        """
+        Inject user's chosen theme as CSS.
+        Keeps the Streamlit header untouched so the sidebar
+        toggle (<<) and menu (rerun, clear cache) work normally.
+        """
+        import json
+        import os
+
+        themes_path = os.path.join(os.path.dirname(__file__), 'themes.json')
+        try:
+            with open(themes_path, 'r', encoding='utf-8') as f:
+                themes_config = json.load(f)
+        except:
+            return
+
+        current_theme_name = st.session_state.get(
+            'user_theme', 'Scuro (default)')
+        current_font_name = st.session_state.get(
+            'user_font', 'Sans-serif (default)')
+
+        theme = themes_config['themes'].get(
+            current_theme_name,
+            themes_config['themes']['Scuro (default)'])
+        font = themes_config['fonts'].get(
+            current_font_name,
+            'sans-serif')
+
+        st.markdown(f"""
+            <style>
+            /* Main app background */
+            .stApp {{
+                background-color: {theme['bg_color']};
+                color: {theme['text_color']};
+                font-family: {font};
+            }}
+            /* Header bar — make it match the app background */
+            [data-testid="stHeader"] {{
+                 background-color: {theme['bg_color']} !important;
+            }}
+
+            /* Sidebar background */
+            [data-testid="stSidebar"] {{
+                background-color: {theme['secondary_bg']};
+            }}
+
+            /* Text in main content and sidebar */
+            [data-testid="stMain"] p,
+            [data-testid="stMain"] label,
+            [data-testid="stMain"] h1,
+            [data-testid="stMain"] h2,
+            [data-testid="stMain"] h3,
+            [data-testid="stMain"] h4,
+            [data-testid="stSidebar"] p,
+            [data-testid="stSidebar"] label,
+            [data-testid="stSidebar"] h1,
+            [data-testid="stSidebar"] h2,
+            [data-testid="stSidebar"] h3,
+            [data-testid="stSidebar"] h4 {{
+                color: {theme['text_color']} !important;
+                font-family: {font} !important;
+            }}
+
+            /* Input fields */
+            .stTextInput > div > div > input,
+            .stTextArea > div > div > textarea,
+            .stSelectbox > div > div {{
+                background-color: {theme['secondary_bg']};
+                color: {theme['text_color']};
+                font-family: {font};
+            }}
+
+            /* Expanders */
+            [data-testid="stExpander"] {{
+                background-color: {theme['secondary_bg']};
+            }}
+            /* Regular buttons + form submit buttons (Pulisci, etc.) */
+            .stButton > button,
+            [data-testid="stFormSubmitButton"] > button,
+            [data-testid="stBaseButton-secondary"],
+            [data-testid="stBaseButton-primary"] {{
+            background-color: {theme['secondary_bg']} !important;
+            color: {theme['text_color']} !important;
+            border: 1px solid {theme['text_color']}33 !important;
+            transition: filter 0.2s ease;
+            }}
+            
+            /* Button hover — brighten slightly */
+            .stButton > button:hover,
+            [data-testid="stFormSubmitButton"] > button:hover,
+            [data-testid="stBaseButton-secondary"]:hover,
+            [data-testid="stBaseButton-primary"]:hover {{
+            filter: brightness(1.15);
+            border-color: {theme['text_color']}66 !important;
+            }}
+            
+            /* Number input field ("Quanti giorni di attività?") */
+            .stNumberInput input {{
+            background-color: {theme['secondary_bg']} !important;
+            color: {theme['text_color']} !important;
+            }}
+            
+            /* Number input +/- buttons */
+            .stNumberInput button {{
+            background-color: {theme['secondary_bg']} !important;
+            color: {theme['text_color']} !important;
+            border-color: {theme['text_color']}33 !important;
+            }}
+            
+            .stNumberInput button:hover {{
+            filter: brightness(1.15);
+            }}
+            /* Info, warning, success, error boxes — match theme */
+            [data-testid="stAlert"],
+            [data-testid="stAlertContainer"],
+            [data-testid="stNotification"] {{
+                background-color: {theme['secondary_bg']} !important;
+                color: {theme['text_color']} !important;
+            }}
+            
+            [data-testid="stAlert"] *,
+            [data-testid="stAlertContainer"] *,
+            [data-testid="stNotification"] * {{
+                color: {theme['text_color']} !important;
+            }}
+            
+            /* File uploader (Drag and drop area) */
+            [data-testid="stFileUploaderDropzone"],
+            [data-testid="stFileUploader"] section {{
+                background-color: {theme['secondary_bg']} !important;
+                color: {theme['text_color']} !important;
+                border-color: {theme['text_color']}33 !important;
+            }}
+            
+            [data-testid="stFileUploaderDropzone"] *,
+            [data-testid="stFileUploader"] section * {{
+                color: {theme['text_color']} !important;
+            }}
+            
+            /* Radio button dots — unselected */
+            [data-baseweb="radio"] div[role="radio"] {{
+                background-color: {theme['bg_color']} !important;
+                border-color: {theme['text_color']}66 !important;
+            }}
+            
+            /* Radio button dots — selected (red) */
+            [data-baseweb="radio"] div[role="radio"][aria-checked="true"] {{
+                background-color: #e63946 !important;
+                border-color: #e63946 !important;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+
 
     def _update_nlp_text(self):
         """
@@ -486,7 +669,94 @@ class CourseView:
                 debug_pause = st.sidebar.slider("Durata pausa (secondi)", 1, 5, 2)
         return headless, debug_mode, debug_pause
 
+    def _render_impostazioni(self, themes_config):
+        """
+        Renders the Impostazioni colori panel in the sidebar.
+        Users pick their theme and font — saved to session_state.
+        """
+        import json
+        import os
+
+        themes_path = os.path.join(os.path.dirname(__file__), 'themes.json')
+        try:
+            with open(themes_path, 'r', encoding='utf-8') as f:
+                themes_config = json.load(f)
+        except:
+            st.sidebar.warning("⚠️ File temi non trovato.")
+            return
+
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### ⚙️ Impostazioni colori")
+
+        theme_names = list(themes_config['themes'].keys())
+        font_names = list(themes_config['fonts'].keys())
+
+        # Show color preview dots next to theme names
+        theme_labels = []
+        for name, props in themes_config['themes'].items():
+            theme_labels.append(f"{name}")
+
+        current_theme = st.session_state.get('user_theme', 'Scuro (default)')
+        current_font = st.session_state.get('user_font', 'Sans-serif (default)')
+
+        selected_theme = st.sidebar.selectbox(
+            "🎨 Tema colori",
+            options=theme_names,
+            index=theme_names.index(current_theme)
+            if current_theme in theme_names else 0,
+            key="theme_selector"
+        )
+
+        selected_font = st.sidebar.selectbox(
+            "🔤 Tipo di carattere",
+            options=font_names,
+            index=font_names.index(current_font)
+            if current_font in font_names else 0,
+            key="font_selector"
+        )
+
+        # Show a live preview swatch
+        theme_props = themes_config['themes'].get(selected_theme, {})
+        st.sidebar.markdown(
+            f"""<div style="
+                background-color: {theme_props.get('bg_color', '#000')};
+                color: {theme_props.get('text_color', '#fff')};
+                font-family: {themes_config['fonts'].get(selected_font, 'sans-serif')};
+                padding: 10px;
+                border-radius: 8px;
+                margin-top: 8px;
+                font-size: 13px;
+                border: 1px solid #ccc;
+            ">
+            👁️ Anteprima testo<br>
+            <small>Sfondo: {theme_props.get('bg_color', '')}</small>
+            </div>""",
+            unsafe_allow_html=True
+        )
+
+        if st.sidebar.button("Applica tema", key="apply_theme_btn"):
+            st.session_state.user_theme = selected_theme
+            st.session_state.user_font = selected_font
+            st.rerun()
+
+        # Save to file for persistence across sessions
+        prefs_path = os.path.join(
+            os.path.dirname(__file__), 'user_preferences.json')
+        if st.sidebar.button("💾 Salva preferenze", key="save_theme_btn"):
+            prefs = {
+                'user_theme': selected_theme,
+                'user_font': selected_font
+            }
+            with open(prefs_path, 'w', encoding='utf-8') as f:
+                json.dump(prefs, f)
+            st.sidebar.success("✅ Preferenze salvate!")
+
     def render_ui(self):
+        # Apply theme FIRST before rendering anything else
+        self._apply_theme()
+
+        # Render settings in sidebar
+        self._render_impostazioni({})
         is_running = st.session_state.app_state != "IDLE"
 
         # === SHOW BATCH EDITION RESULTS PROMINENTLY (if any) ===
@@ -505,11 +775,12 @@ class CourseView:
                 st.rerun()
             st.markdown("---")
 
-        # Create three tabs
-        tab1, tab2, tab3 = st.tabs([
-            "1. Creazione Corso",
-            "2. Creazione Edizione + Attività",
-            "3. Aggiungi Allievi"
+        # Create 4 tabs
+        tab1, tab2, tab3, tab4 = st.tabs([
+            " 1.Creazione Corso",
+            " 2.Creazione Edizione + Attività",
+            " 3.Aggiungi Allievi",
+            " 4.Assegnazione Presenza"
         ])
 
         # --- Tab1:Course Form Container ---
@@ -547,6 +818,26 @@ class CourseView:
                 self.student_output_placeholder = st.empty()
                 if st.session_state.student_message:
                     self.show_message("student", st.session_state.student_message, True)
+
+        with tab4:
+            st.header("Assegnazione Presenza")
+            if st.session_state.app_state in ["RUNNING_PRESENZA",
+                                              "RUNNING_BATCH_PRESENZA"]:
+                self.student_output_placeholder = st.empty()
+            else:
+                self._render_presenza_form(is_disabled=is_running)
+
+                # Show result message — standalone, does NOT use show_message()
+                # to avoid duplicate key conflict with tab3's clear_student button
+                if st.session_state.get('presenza_message'):
+                    msg = st.session_state.presenza_message
+                    if "✅" in msg or "Successo" in msg:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
+                    if st.button("🧹 Cancella Risultato", key="clear_presenza_message"):
+                        st.session_state.presenza_message = ""
+                        st.rerun()
 
     def _clear_course_form_callback(self):
         st.session_state.course_title_key = ""
@@ -1125,18 +1416,17 @@ class CourseView:
 
     def _parse_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
         """
-        ENHANCED VERSION: Parse natural language input with maximum robustness.
+        Parse natural language input by finding keyword positions
+        and extracting text BETWEEN them.
 
-        IMPROVEMENTS:
-        1. Safe text extraction (handles normalization)
-        2. Italian month name support
-        3. Two-digit year handling
-        4. spaCy Matcher for word order flexibility
-        5. Partial extraction (returns what was found + missing fields)
-        6. Centralized date normalization
+        Pipeline:
+        1. Find keyword positions: titolo, descrizione, data, programma
+        2. Sort by position, extract value between consecutive keywords
+        3. Fallback: 'corso X' pattern if 'titolo' keyword not found
+        4. Fallback: search for date anywhere in text if 'data' keyword missing
+        5. Show partial results in UI with per-field status
         """
-        if not st.session_state.nlp_model:
-            st.error("Modello NLP non caricato. Installa spacy con: python -m spacy download it_core_news_sm")
+        if not text or not text.strip():
             return None
 
         try:
@@ -1149,144 +1439,153 @@ class CourseView:
                 'programme': ""
             }
 
-            # STEP 1 - NORMALIZE TEXT SAFELY ###
             original_text = text
-            normalized_text = ' '.join(text.split())  # Remove extra whitespace
-            text_lower = normalized_text.lower()
+            text_lower = text.lower()
 
-            # STEP 2 - TRY SPACY MATCHER FIRST (MOST ROBUST) ###
-            try:
-                spacy_results = extract_with_spacy_matcher(normalized_text, st.session_state.nlp_model)
-                if spacy_results['title']:
-                    parsed_data['title'] = spacy_results['title']
-                if spacy_results['description']:
-                    parsed_data['short_description'] = spacy_results['description']
-                if spacy_results['date']:
-                    # Use centralized date normalizer
-                    normalized_date = normalize_date(spacy_results['date'])
-                    if normalized_date:
-                        parsed_data['start_date'] = normalized_date
-            except Exception as spacy_error:
-                # If spaCy fails, fall back to regex
-                st.warning(f"spaCy Matcher fallback attivo: {spacy_error}")
+            # ═══════════════════════════════════════════════════
+            # STEP 1: Find positions of each keyword
+            # ═══════════════════════════════════════════════════
+            keywords = {
+                'titolo': r'\btitolo\b',
+                'descrizione': r'\bdescrizione(?:\s+breve)?\b',
+                'data': (r'\bdata(?:\s+(?:di\s+)?(?:inizio|pubblicazione))?\b'
+                         r'|\bpubblicazione\b'),
+                'programma': r'\bprogramma\b',
+            }
 
-            # STEP 3 - REGEX FALLBACK WITH SAFE EXTRACTION ###
-            # Only fill in missing fields from Step 2
+            positions = {}
+            for key, pattern in keywords.items():
+                match = re.search(pattern, text_lower)
+                if match:
+                    positions[key] = {
+                        'start': match.start(),
+                        'end': match.end()
+                    }
 
-            if not parsed_data['title']:
-                title_patterns = [
-                    r'titolo\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
-                    r'corso\s+([^,]+?)(?:\s*,|\s*con\s+descrizione|\s*descrizione|\s*$)',
-                ]
+            # ═══════════════════════════════════════════════════
+            # STEP 2: Sort keywords by position and extract values between them
+            # ═══════════════════════════════════════════════════
+            sorted_keys = sorted(positions.keys(),
+                                 key=lambda k: positions[k]['start'])
 
-                for pattern in title_patterns:
-                    match = re.search(pattern, text_lower, re.IGNORECASE)
-                    if match:
-                        # ### HASHTAG: USE SAFE EXTRACTION ###
-                        extracted = safe_extract_text(
-                            original_text,
-                            text_lower,
-                            match.start(1),
-                            match.end(1)
-                        )
-                        if extracted:
-                            parsed_data['title'] = extracted
-                            break
-
-            if not parsed_data['short_description']:
-                desc_patterns = [
-                    r'descrizione\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
-                    r'descrizione\s+breve\s*:?\s*([^,]+?)(?:\s*,|\s*$)',
-                ]
-
-                for pattern in desc_patterns:
-                    match = re.search(pattern, text_lower, re.IGNORECASE)
-                    if match:
-                        extracted = safe_extract_text(
-                            original_text,
-                            text_lower,
-                            match.start(1),
-                            match.end(1)
-                        )
-                        if extracted:
-                            parsed_data['short_description'] = extracted
-                            break
-
-            # ### HASHTAG: STEP 4 - DATE EXTRACTION WITH MULTIPLE STRATEGIES ###
-            if not parsed_data['start_date']:
-                # Strategy 1: Try Italian month names (e.g., "12 gennaio 2024")
-                italian_date = parse_italian_date(normalized_text)
-                if italian_date:
-                    parsed_data['start_date'] = italian_date
+            for i, key in enumerate(sorted_keys):
+                value_start = positions[key]['end']
+                if i + 1 < len(sorted_keys):
+                    value_end = positions[sorted_keys[i + 1]]['start']
                 else:
-                    # Strategy 2: Numeric date patterns
-                    date_patterns = [
-                        r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b',  # DD/MM/YYYY
-                        r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2})\b',  # DD/MM/YY
-                    ]
+                    value_end = len(original_text)
 
-                    for pattern in date_patterns:
-                        match = re.search(pattern, normalized_text)
-                        if match:
-                            raw_date = match.group(1)
-                            # ### HASHTAG: USE CENTRALIZED NORMALIZER ###
-                            normalized_date = normalize_date(raw_date)
-                            if normalized_date:
-                                parsed_data['start_date'] = normalized_date
-                                break
+                value = original_text[value_start:value_end].strip()
+                # Strip trailing connectors and punctuation
+                value = re.sub(r'\s+(con|e|ed)\s*$', '', value,
+                               flags=re.IGNORECASE).strip()
+                value = value.strip(' ,;:-')
 
-            # ### HASHTAG: STEP 5 - PARTIAL EXTRACTION SUPPORT ###
-            # Instead of returning None, we return partial results + missing fields
+                if key == 'titolo':
+                    parsed_data['title'] = value
+                elif key == 'descrizione':
+                    parsed_data['short_description'] = value
+                elif key == 'data':
+                    # Find numeric date inside the slice
+                    date_match = re.search(
+                        r'(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4})', value)
+                    if date_match:
+                        parsed_data['start_date'] = (
+                                normalize_date(date_match.group(1)) or '')
+                    else:
+                        # Try Italian month name (e.g., "12 marzo 2024")
+                        italian = parse_italian_date(value)
+                        if italian:
+                            parsed_data['start_date'] = italian
+                elif key == 'programma':
+                    parsed_data['programme'] = value
+
+            # ═══════════════════════════════════════════════════
+            # STEP 3: FALLBACK — "corso X" pattern if 'titolo' keyword not used
+            # Example: "Crea un corso Excel Base data 01/01/2024"
+            # ═══════════════════════════════════════════════════
+            if not parsed_data['title']:
+                corso_match = re.search(
+                    r'\bcorso\s+(.+?)'
+                    r'(?=\s+descrizione|\s+data\s|\s+pubblicazione'
+                    r'|\s+programma|\s+con\s+descrizione|$)',
+                    text_lower, re.IGNORECASE)
+                if corso_match:
+                    value = original_text[
+                            corso_match.start(1):corso_match.end(1)].strip()
+                    value = re.sub(r'\s+(con|e|ed)\s*$', '', value,
+                                   flags=re.IGNORECASE).strip()
+                    value = value.strip(' ,;:-')
+                    if value:
+                        parsed_data['title'] = value
+
+            # ═══════════════════════════════════════════════════
+            # STEP 4: FALLBACK — find date anywhere in text
+            # if 'data' keyword wasn't found at all
+            # ═══════════════════════════════════════════════════
+            if not parsed_data['start_date']:
+                # Try Italian month names anywhere in text
+                italian = parse_italian_date(text_lower)
+                if italian:
+                    parsed_data['start_date'] = italian
+                else:
+                    # Try numeric date anywhere
+                    date_match = re.search(
+                        r'\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4})\b',
+                        original_text)
+                    if date_match:
+                        parsed_data['start_date'] = (
+                                normalize_date(date_match.group(1)) or '')
+
+            # ═══════════════════════════════════════════════════
+            # STEP 5: Validate and report with detailed UI feedback
+            # ═══════════════════════════════════════════════════
             missing_fields = []
-            if not parsed_data.get('title') or not parsed_data['title'].strip():
+            if not parsed_data['title'].strip():
                 missing_fields.append("Titolo")
-            if not parsed_data.get('short_description') or not parsed_data['short_description'].strip():
+            if not parsed_data['short_description'].strip():
                 missing_fields.append("Descrizione")
-            if not parsed_data.get('start_date') or not parsed_data['start_date'].strip():
+            if not parsed_data['start_date'].strip():
                 missing_fields.append("Data")
 
-            # ### HASHTAG: SHOW PARTIAL RESULTS (BETTER UX) ###
             if missing_fields:
                 st.warning(f"⚠️ Campi mancanti: {', '.join(missing_fields)}")
 
-                # Show what WAS extracted
                 extracted_count = sum([
-                    bool(parsed_data.get('title', '').strip()),
-                    bool(parsed_data.get('short_description', '').strip()),
-                    bool(parsed_data.get('start_date', '').strip())
+                    bool(parsed_data['title'].strip()),
+                    bool(parsed_data['short_description'].strip()),
+                    bool(parsed_data['start_date'].strip())
                 ])
 
                 if extracted_count > 0:
                     st.success(f"✅ Estratti {extracted_count}/3 campi con successo!")
                     st.info("**Dati estratti finora:**")
 
-                    if parsed_data.get('title') and parsed_data['title'].strip():
+                    if parsed_data['title'].strip():
                         st.write(f"- ✅ **Titolo:** `{parsed_data['title']}`")
                     else:
                         st.write(f"- ❌ **Titolo:** non trovato")
 
-                    if parsed_data.get('short_description') and parsed_data['short_description'].strip():
-                        st.write(f"- ✅ **Descrizione:** `{parsed_data['short_description']}`")
+                    if parsed_data['short_description'].strip():
+                        st.write(
+                            f"- ✅ **Descrizione:** `{parsed_data['short_description']}`")
                     else:
                         st.write(f"- ❌ **Descrizione:** non trovata")
 
-                    if parsed_data.get('start_date') and parsed_data['start_date'].strip():
+                    if parsed_data['start_date'].strip():
                         st.write(f"- ✅ **Data:** `{parsed_data['start_date']}`")
                     else:
                         st.write(f"- ❌ **Data:** non trovata")
 
-                    # ### HASHTAG: OFFER TO PROCEED WITH PARTIAL DATA ###
                     st.info(
-                        "💡 **Suggerimento:** Puoi comunque procedere. I campi mancanti potranno essere inseriti manualmente nel riepilogo.")
+                        "💡 **Suggerimento:** Puoi comunque procedere. "
+                        "I campi mancanti potranno essere inseriti "
+                        "manualmente nel riepilogo.")
 
-                    # ### HASHTAG: RETURN PARTIAL DATA INSTEAD OF None ###
-                    # This allows the summary form to pre-fill what was found
-                    return parsed_data  # Return even if incomplete!
+                    return parsed_data
                 else:
-                    # Nothing was extracted at all
                     return None
 
-            # ### HASHTAG: ALL FIELDS SUCCESSFULLY EXTRACTED ###
             return parsed_data
 
         except Exception as e:
@@ -1915,7 +2214,13 @@ class CourseView:
                 'finanziata': ['finanziata'],
                 'servizio_pagante': ['servizio pagante', 'servizio_pagante'],
                 'sottotipologia': ['sottotipologia'],
-                'societa_pagante': ["società pagante", "societa pagante", 'societa_pagante'],
+                'societa_pagante': [
+                    "società pagante",
+                    "societa pagante",
+                    "societa' pagante",
+                    "societa\u2019 pagante",
+                    'societa_pagante'
+                ],
             }
 
             # Column mappings for activities
@@ -2066,7 +2371,381 @@ class CourseView:
 
     def _parse_edition_nlp_input(self, text: str) -> Optional[Dict[str, Any]]:
         """
-        Parse natural language input to extract edition and activities.
+        Parse free-text NLP input using spaCy + regex.
+
+        HOW IT WORKS (for colleagues):
+
+        1. spaCy tokenizes the text into words and sentences
+        2. We use spaCy's Matcher to find field LABELS (like "centro di costo")
+           regardless of order, capitalization, or surrounding punctuation
+        3. Once we find WHERE a label is, we extract the VALUE after it using
+           simple string slicing + regex cleanup
+        4. This means "costo 1000 aula Roma" and "aula Roma costo 1000" both work
+        """
+        import re
+        try:
+            import spacy
+            from spacy.matcher import Matcher
+        except ImportError:
+            st.warning("⚠️ SpaCy non disponibile. Uso regex di fallback.")
+            return self._parse_edition_nlp_regex_fallback(text)
+
+        # =========================================================
+        # STEP 1: Load the Italian spaCy model
+
+        try:
+            nlp = spacy.load("it_core_news_sm")
+        except OSError:
+            nlp = spacy.blank("it")
+
+        # =========================================================
+        # STEP 2: Process the text
+        doc = nlp(text.lower())  # lowercase for case-insensitive matching
+
+        # =========================================================
+        # STEP 3: Define field patterns using spaCy Matcher
+        matcher = Matcher(nlp.vocab)
+
+        # Define all field label patterns
+        # Each tuple: (field_name, list_of_pattern_variants)
+        field_patterns = {
+            'corso': [
+                [{"LOWER": "corso"}],
+                [{"LOWER": "nome"}, {"LOWER": "corso"}],
+                [{"LOWER": "per"}, {"LOWER": "corso"}],
+            ],
+            'titolo': [
+                [{"LOWER": "titolo"}],
+                [{"LOWER": "titolo"}, {"LOWER": "edizione"}],
+            ],
+            'data_inizio': [
+                [{"LOWER": "data"}, {"LOWER": "inizio"}],
+                [{"LOWER": "inizio"}],
+                [{"LOWER": "dal"}],
+            ],
+            'data_fine': [
+                [{"LOWER": "data"}, {"LOWER": "fine"}],
+                [{"LOWER": "fine"}],
+                [{"LOWER": "al"}],
+            ],
+            'aula': [
+                [{"LOWER": "aula"}],
+                [{"LOWER": "luogo"}],
+                [{"LOWER": "sede"}],
+            ],
+            'fornitore': [
+                [{"LOWER": "fornitore"}],
+                [{"LOWER": "erogato"}, {"LOWER": "da"}],
+            ],
+            'costo': [
+                [{"LOWER": "costo"}],
+                [{"LOWER": "prezzo"}],
+                [{"LOWER": "€"}],
+            ],
+            'descrizione': [
+                [{"LOWER": "descrizione"}],
+                [{"LOWER": "desc"}],
+            ],
+            'centro_costo': [
+                [{"LOWER": "centro"}, {"LOWER": "di"}, {"LOWER": "costo"}],
+                [{"LOWER": "centro"}, {"LOWER": "costo"}],
+                [{"LOWER": "cdc"}],
+            ],
+            'societa_pagante': [
+                [{"LOWER": "società"}, {"LOWER": "pagante"}],
+                [{"LOWER": "societa"}, {"LOWER": "pagante"}],
+                [{"LOWER": "societa'"}, {"LOWER": "pagante"}],  # with apostrophe
+                [{"LOWER": "societa"}, {"IS_PUNCT": True, "OP": "?"}, {"LOWER": "pagante"}],
+                [{"TEXT": {"REGEX": "socie[tà]+"}, "OP": "?"}, {"LOWER": "pagante"}],
+            ],
+            'direzione_pagante': [
+                [{"LOWER": "direzione"}, {"LOWER": "pagante"}],
+            ],
+            'servizio_pagante': [
+                [{"LOWER": "servizio"}, {"LOWER": "pagante"}],
+            ],
+            'sottotipologia': [
+                [{"LOWER": "sottotipologia"}],
+                [{"LOWER": "sotto"}, {"LOWER": "tipologia"}],  # keeps two-word variant
+                [{"LOWER": "sottotipo"}],
+            ],
+            'finanziata': [
+                [{"LOWER": "finanziata"}],
+                [{"LOWER": "finanziato"}],
+            ],
+            'attivita_marker': [
+                [{"LOWER": "attività"}, {"IS_PUNCT": True, "OP": "?"}],
+                [{"LOWER": "attivita"}, {"IS_PUNCT": True, "OP": "?"}],
+                [{"LOWER": "attività"}, {"LOWER": ":"}],
+            ],
+        }
+
+        # Add all patterns to matcher
+        for field_name, patterns in field_patterns.items():
+            matcher.add(field_name, patterns)
+
+        # =========================================================
+        # STEP 4: Run the matcher and collect all matches with positions
+        matches = matcher(doc)
+
+        # =========================================================
+        # STEP 5: Convert matches to character positions
+        field_positions = {}  # {field_name: char_position_after_label}
+
+        for match_id, start, end in matches:
+            field_name = nlp.vocab.strings[match_id]
+            # doc[end-1].idx = start of last token, doc[end-1].__len__ = length
+            last_token = doc[end - 1]
+            char_pos_after_label = last_token.idx + len(last_token.text)
+
+            # Keep only the FIRST occurrence of each field
+            if field_name not in field_positions:
+                field_positions[field_name] = char_pos_after_label
+
+        # =========================================================
+        # STEP 6: Sort fields by position in text
+        original_text = text
+
+        sorted_fields = sorted(field_positions.items(), key=lambda x: x[1])
+
+        def extract_value_between(start_pos, end_pos=None):
+            if end_pos:
+                raw = original_text[start_pos:end_pos]
+            else:
+                raw = original_text[start_pos:]
+            raw = re.sub(r'^[\s:,\-–]+', '', raw)
+            raw = re.sub(r'[\s,]+$', '', raw)
+            if len(raw.strip()) < 2:
+                return ''
+            return raw.strip()
+
+        # ✅ FUNCTION ENDS HERE — next lines are at method level
+
+        # =========================================================
+        # STEP 7: Extract simple fields using spaCy positions
+        # =========================================================
+        extracted = {}
+
+        simple_fields = ['corso', 'titolo', 'data_inizio', 'data_fine',
+                         'aula', 'fornitore', 'costo', 'descrizione']
+
+        simple_positions = [(f, p) for f, p in sorted_fields
+                            if f in simple_fields]
+
+        for i, (field_name, start_pos) in enumerate(simple_positions):
+            end_pos = None
+            if i + 1 < len(simple_positions):
+                next_field_name, _ = simple_positions[i + 1]
+                next_patterns = field_patterns.get(next_field_name, [])
+                for pattern in next_patterns:
+                    candidate = ' '.join(
+                        p.get('LOWER', '') for p in pattern
+                        if p.get('LOWER'))
+                    if not candidate:
+                        continue
+                    idx = original_text.lower().find(
+                        candidate.lower(), start_pos)
+                    if idx != -1:
+                        end_pos = idx
+                        break
+            value = extract_value_between(start_pos, end_pos)
+            extracted[field_name] = value
+
+        # =========================================================
+        # OVERRIDE: Extract all simple fields with regex
+        # =========================================================
+        corso_match = re.search(
+            r'(?:per\s+)?corso\s+(.+?)'
+            r'(?=\s+titolo\s+|\s+data\s+inizio|\s+data\s+fine'
+            r'|\s+aula\s+|\s+fornitore\s+|\s+costo\s+|$)',
+            original_text, re.IGNORECASE)
+        if corso_match:
+            extracted['corso'] = corso_match.group(1).strip()
+
+        titolo_match = re.search(
+            r'\btitolo\s+(.+?)'
+            r'(?=\s+data\s+inizio|\s+data\s+fine'
+            r'|\s+aula\s+|\s+fornitore\s+|\s+costo\s+|$)',
+            original_text, re.IGNORECASE)
+        if titolo_match:
+            extracted['titolo'] = titolo_match.group(1).strip()
+
+        data_inizio_match = re.search(
+            r'data\s+inizio\s+(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})',
+            original_text, re.IGNORECASE)
+        if data_inizio_match:
+            extracted['data_inizio'] = data_inizio_match.group(1)
+
+        data_fine_match = re.search(
+            r'data\s+fine\s+(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})',
+            original_text, re.IGNORECASE)
+        if data_fine_match:
+            extracted['data_fine'] = data_fine_match.group(1)
+
+        aula_match = re.search(
+            r'\baula\s+(.+?)'
+            r'(?=\s+fornitore\s+|\s+costo\s+|\s+con\s+|\s+attività|$)',
+            original_text, re.IGNORECASE)
+        if aula_match:
+            extracted['aula'] = aula_match.group(1).strip()
+
+        fornitore_match = re.search(
+            r'\bfornitore\s+(.+?)'
+            r'(?=\s+costo\s+|\s+con\s+|\s+aula\s+|\s+attività|$)',
+            original_text, re.IGNORECASE)
+        if fornitore_match:
+            extracted['fornitore'] = fornitore_match.group(1).strip()
+
+        costo_match_val = re.search(
+            r'\bcosto\s+(\d+(?:[.,]\d+)?)',
+            original_text, re.IGNORECASE)
+        if costo_match_val:
+            extracted['costo'] = costo_match_val.group(1)
+
+        # =========================================================
+        # STEP 8: Parse attributi aggiuntivi with REGEX
+        # =========================================================
+        aggiuntivi_raw = ''
+
+        aggiuntivi_match = re.search(
+            r'\bcon\b(.+?)(?=attività\s*:|attivita\s*:|$)',
+            original_text, re.IGNORECASE | re.DOTALL)
+
+        if aggiuntivi_match:
+            aggiuntivi_raw = aggiuntivi_match.group(1)
+        else:
+            costo_fallback = re.search(
+                r'costo\s+\d+(.+?)(?=attività\s*:|attivita\s*:|$)',
+                original_text, re.IGNORECASE | re.DOTALL)
+            if costo_fallback:
+                aggiuntivi_raw = costo_fallback.group(1)
+
+        def extract_aggiuntivi_field(pattern, text):
+            m = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if not m:
+                return ''
+            return text[m.start(1):m.end(1)].strip().strip(',').strip()
+
+        centro_costo = extract_aggiuntivi_field(
+            r'centro\s+di\s+costo\s*[-–:]\s*([^,\n]+?)(?=\s*\w+\s*pagante|,|attività|$)',
+            aggiuntivi_raw)
+
+        direzione_pagante = extract_aggiuntivi_field(
+            r'direzione\s+pagante\s*[-–:]\s*([^,\n]+?)(?=,|attività|$)',
+            aggiuntivi_raw)
+
+        finanziata_raw = extract_aggiuntivi_field(
+            r'finanziata\s*[-–:]\s*([^,\n]+?)(?=,|attività|$)',
+            aggiuntivi_raw)
+
+        servizio_pagante = extract_aggiuntivi_field(
+            r'servizio\s+pagante\s*[-–:]\s*([^,\n]+?)(?=,|attività|$)',
+            aggiuntivi_raw)
+
+        sottotipologia = extract_aggiuntivi_field(
+            r'sottotipologia\s*[-–:]\s*([^,\n]+?)(?=,|attività|$)',
+            aggiuntivi_raw)
+
+        societa_pagante = extract_aggiuntivi_field(
+            r"socie(?:t[aà]['\u2019]?)\s*pagante\s*[-–:]\s*([^,\n]+?)(?=\s*attività|\s*attivita|,|$)",
+            aggiuntivi_raw)
+
+        if not societa_pagante:
+            societa_fallback = re.search(
+                r"socie(?:t[aà]['\u2019]?)\s*pagante\s*[-–:]\s*([^,\n]+?)(?=\s*attività|\s*attivita|,|$)",
+                original_text, re.IGNORECASE)
+            if societa_fallback:
+                societa_pagante = original_text[
+                                  societa_fallback.start(1):societa_fallback.end(1)
+                                  ].strip().strip(',').strip()
+        if finanziata_raw.lower() in ['si', 'sì', 'yes', 's']:
+            finanziata_val = 'Sì'
+        elif finanziata_raw.lower() in ['no', 'n']:
+            finanziata_val = 'No'
+        else:
+            finanziata_val = finanziata_raw.strip()
+
+        # =========================================================
+        # STEP 9: Parse activities
+        # =========================================================
+        activities = []
+        attivita_match = re.search(
+            r'attività\s*[:\-]\s*(.+?)$',
+            original_text, re.IGNORECASE | re.DOTALL)
+
+        if attivita_match:
+            activities_text = attivita_match.group(1)
+            activity_pattern = re.compile(
+                r'([^,]+?)'  # title
+                r'(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})'  # date
+                r'[^0-9]*ore\s*'  # 'ore' keyword
+                r'(\d{1,2}[.:]\d{2})'  # start time
+                r'\s*[-–]\s*'  # separator
+                r'(\d{1,2}[.:]\d{2})'  # end time
+                r'(?:[^,\d]*?(\d+(?:[.,]\d+)?)\s*ore)?',  # ★ optional impegno
+                re.IGNORECASE)
+            for match in activity_pattern.finditer(activities_text):
+                title = match.group(1).strip().strip(',').strip()
+                date_str = normalize_date(match.group(2))
+                start_time = match.group(3).replace(':', '.')
+                end_time = match.group(4).replace(':', '.')
+                impegno_val = match.group(5) if match.group(5) else ''  # ★ NEW
+                if title and date_str:
+                    activities.append({
+                        'title': title,
+                        'description': '',
+                        'date': date_str,
+                        'start_time': start_time,
+                        'end_time': end_time,
+                        'impegno_ore': impegno_val  # ★ was ''
+                    })
+        # =========================================================
+        # STEP 10: Clean and build final result
+        # =========================================================
+        def clean(val):
+            if not val:
+                return ''
+            val = re.sub(r'\battività\b.*', '', val,
+                         flags=re.IGNORECASE).strip()
+            return val.strip(' ,;:-–')
+
+        course_name = clean(extracted.get('corso', ''))
+        start_date = clean(extracted.get('data_inizio', ''))
+        end_date = clean(extracted.get('data_fine', ''))
+
+        if not course_name:
+            st.error("❌ Nome corso non trovato. Scrivi 'corso [nome]'.")
+            return None
+
+        start_date_str = normalize_date(start_date) if start_date else ''
+        end_date_str = normalize_date(end_date) if end_date else ''
+
+        if not start_date_str or not end_date_str:
+            st.error("❌ Date non trovate. Usa formato GG/MM/AAAA.")
+            return None
+
+        return {
+            'course_name': course_name,
+            'edition_title': clean(extracted.get('titolo', '')),
+            'start_date': start_date_str,
+            'end_date': end_date_str,
+            'location': clean(extracted.get('aula', '')),
+            'supplier': clean(extracted.get('fornitore', '')),
+            'price': clean(extracted.get('costo', '')),
+            'description': clean(extracted.get('descrizione', '')),
+            'centro_costo': centro_costo,
+            'societa_pagante': societa_pagante,
+            'direzione_pagante': direzione_pagante,
+            'servizio_pagante': servizio_pagante,
+            'sottotipologia': sottotipologia,
+            'finanziata': finanziata_val,
+            'activities': activities,
+        }
+
+
+    def _parse_edition_nlp_input_regex(self, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse natural language input to extract edition and activities with REGEX.
 
         Example input:
         "Crea edizione per corso Analisi dei dati titolo Analisi dei dati - Base
@@ -2218,23 +2897,29 @@ class CourseView:
 
             # Find individual activities
             activity_patterns = [
-                r'(\w+\s+giorno)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})',
-                r'(giorno\s+\d+|day\s+\d+)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})',
+                # Pattern A: "primo giorno 12/02/2026 ore 09.00-11.00 [impegno N ore]"
+                r'(\w+\s+giorno)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})'
+                r'\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})'
+                r'(?:[^,\d]*?(\d+(?:[.,]\d+)?)\s*ore)?',  # ★
+                # Pattern B: "giorno 1 12/02/2026 ore 09.00-11.00 [impegno N ore]"
+                r'(giorno\s+\d+|day\s+\d+)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})'
+                r'\s+(?:ore\s+)?(\d{1,2}[.:]\d{2})\s*[-–]\s*(\d{1,2}[.:]\d{2})'
+                r'(?:[^,\d]*?(\d+(?:[.,]\d+)?)\s*ore)?',  # ★
             ]
 
             for pattern in activity_patterns:
                 matches = re.findall(pattern, activity_text)
                 for match in matches:
-                    title, date_str, start_time, end_time = match
+                    # ★ Each match now has 5 elements instead of 4
+                    title, date_str, start_time, end_time, impegno_val = match
                     parsed['activities'].append({
                         'title': title.strip().title(),
                         'description': '',
                         'date': normalize_date(date_str) or '',
                         'start_time': start_time.replace(':', '.'),
                         'end_time': end_time.replace(':', '.'),
-                        'impegno_ore': ''
+                        'impegno_ore': impegno_val  # ★ was ''
                     })
-
         # If no activities found, try to detect number of days
         if not parsed['activities']:
             days_match = re.search(r'(\d+)\s+(?:giorni|days|attività)', text_lower)
@@ -3532,6 +4217,202 @@ class CourseView:
                 st.code(traceback.format_exc())
             return None
 
+    def _parse_presenza_excel_file(self, uploaded_file,
+                                   default_stato: str = "Completato") -> 'Optional[Dict[str, Any]]':
+        """
+        Parse ASSEGNA sheet from Excel for presenza assignment.
+
+        Expected format (forward-fill supported):
+        | CODICE EDIZIONE | PERSON NUMBER | STATO       |
+        | OLC621263       | 1168          | Completato  |
+        |                 | 1189          |             | ← inherits OLC621263, default stato
+        |                 | 1199          | Esente      |
+        | OLC621270       | 1200          | Non passato |
+
+        Rules:
+        - Empty CODICE EDIZIONE → forward-filled from previous row
+        - Empty/missing STATO → uses default_stato from UI dropdown
+        - STATO normalization: "compl"/"c"/"ok" → Completato, "esent"/"e" → Esente,
+          "non"/"pass"/"fail" → Non passato
+
+        Returns:
+            {
+                'jobs': [{'edition_code', 'students', 'stato'}, ...],
+                'total_jobs': N,
+                'total_editions': M,
+                'total_students': K,
+                'has_stato_column': bool,
+                'file_name': str
+            }
+        Each "job" = unique (edition_code, stato) combination.
+        """
+        try:
+            # === Find ASSEGNA sheet ===
+            target_sheets = ['PRESENZA','Presenza', 'presenza', 'ASSEGNA', 'Assegna', 'assegna']
+
+            try:
+                xls = pd.ExcelFile(uploaded_file, engine='openpyxl')
+                available_sheets = xls.sheet_names
+                st.info(f"📄 Fogli trovati: {', '.join(available_sheets)}")
+            except Exception as e:
+                st.error(f"❌ Errore apertura file: {e}")
+                return None
+
+            df = None
+            sheet_found = None
+            for sheet_name in target_sheets:
+                if sheet_name in available_sheets:
+                    df = pd.read_excel(uploaded_file, sheet_name=sheet_name,
+                                       header=0, engine='openpyxl')
+                    sheet_found = sheet_name
+                    break
+
+            if df is None:
+                st.error(
+                    f"❌ Foglio **PRESENZA** non trovato.\n\n"
+                    f"Fogli disponibili: {', '.join(available_sheets)}\n\n"
+                    f"**Crea un foglio chiamato `PRESENZA` con le colonne:**\n"
+                    f"- CODICE EDIZIONE\n"
+                    f"- PERSON NUMBER\n"
+                    f"- STATO (opzionale)"
+                )
+                return None
+
+            st.info(f"📊 Lettura foglio: **{sheet_found}** — {len(df)} righe")
+
+            # === Normalize column names ===
+            df.columns = df.columns.str.strip().str.lower()
+
+            edition_col_names = ['codice edizione', 'codice_edizione',
+                                 'edition code', 'edizione', 'codice', 'code']
+            person_col_names = ['person number', 'person_number',
+                                'numero persona', 'numero_persona',
+                                'matricola', 'allievo']
+            stato_col_names = ['stato', 'stato completamento',
+                               'stato_completamento',
+                               'completion status', 'status']
+
+            edition_col = next((n for n in edition_col_names
+                                if n in df.columns), None)
+            person_col = next((n for n in person_col_names
+                               if n in df.columns), None)
+            stato_col = next((n for n in stato_col_names
+                              if n in df.columns), None)
+
+            if not edition_col or not person_col:
+                st.error(
+                    f"❌ Colonne obbligatorie mancanti.\n\n"
+                    f"**Servono:** CODICE EDIZIONE, PERSON NUMBER "
+                    f"(STATO è opzionale)\n\n"
+                    f"**Colonne trovate:** {', '.join(df.columns)}"
+                )
+                return None
+
+            # === Forward-fill edition code ===
+            df[edition_col] = df[edition_col].ffill()
+
+            # Drop rows with no person number (truly empty rows)
+            df = df.dropna(subset=[person_col])
+
+            if df.empty:
+                st.error("❌ Nessun dato valido trovato dopo il filtraggio.")
+                return None
+
+            # Clean person numbers (1168.0 → "1168")
+            df[person_col] = df[person_col].apply(
+                lambda x: str(int(x)) if isinstance(x, (int, float))
+                                         and pd.notna(x) and x == int(x)
+                else str(x).strip()
+            )
+
+            # Clean edition codes
+            df[edition_col] = df[edition_col].apply(
+                lambda x: str(int(x)) if isinstance(x, (int, float))
+                                         and pd.notna(x) and x == int(x)
+                else str(x).strip()
+            )
+
+            # === Stato normalization ===
+            def normalize_stato(value, default=default_stato):
+                if pd.isna(value):
+                    return default
+                value_str = str(value).strip().lower()
+                if not value_str or value_str == 'nan':
+                    return default
+                if (value_str.startswith('compl') or
+                        value_str in ['c', 'ok', 'sì', 'si', 'yes', 'y']):
+                    return 'Completato'
+                if (value_str.startswith('esent') or
+                        value_str.startswith('exempt') or value_str == 'e'):
+                    return 'Esente'
+                if (value_str.startswith('non') or 'pass' in value_str or
+                        value_str.startswith('fail') or value_str == 'no'):
+                    return 'Non passato'
+                return default  # Unknown → use default
+
+            # === Group by (edition, stato) ===
+            jobs = []
+            for edition_code, group in df.groupby(edition_col, sort=False):
+                edition_code_str = str(edition_code).strip()
+                if not edition_code_str or edition_code_str.lower() == 'nan':
+                    continue
+
+                if stato_col:
+                    stato_groups = {}
+                    for _, row in group.iterrows():
+                        student = str(row[person_col]).strip()
+                        if not student or student.lower() == 'nan':
+                            continue
+                        student_stato = normalize_stato(row[stato_col])
+                        stato_groups.setdefault(student_stato, []).append(student)
+
+                    for stato_val, students in stato_groups.items():
+                        jobs.append({
+                            'edition_code': edition_code_str,
+                            'students': students,
+                            'stato': stato_val
+                        })
+                else:
+                    students = [
+                        str(s).strip() for s in group[person_col].tolist()
+                        if str(s).strip() and str(s).strip().lower() != 'nan'
+                    ]
+                    if students:
+                        jobs.append({
+                            'edition_code': edition_code_str,
+                            'students': students,
+                            'stato': default_stato
+                        })
+
+            if not jobs:
+                st.error("❌ Nessun dato valido dopo il parsing.")
+                return None
+
+            total_students = sum(len(j['students']) for j in jobs)
+            unique_editions = len(set(j['edition_code'] for j in jobs))
+
+            st.success(
+                f"✅ Foglio '{sheet_found}': "
+                f"{unique_editions} edizioni, {len(jobs)} gruppi (edizione+stato), "
+                f"{total_students} assegnazioni totali"
+            )
+
+            return {
+                'jobs': jobs,
+                'total_jobs': len(jobs),
+                'total_editions': unique_editions,
+                'total_students': total_students,
+                'has_stato_column': stato_col is not None,
+                'file_name': uploaded_file.name
+            }
+
+        except Exception as e:
+            st.error(f"❌ Errore lettura Excel: {str(e)}")
+            import traceback
+            with st.expander("🔍 Dettagli errore"):
+                st.code(traceback.format_exc())
+            return None
+
     def _render_student_form(self, is_disabled):
         """
         Student form with 3 input methods:
@@ -3813,6 +4694,417 @@ class CourseView:
                     st.session_state.student_show_summary = False
                     st.rerun()
 
+    def _render_presenza_form(self, is_disabled: bool = False):
+        """
+        Form for Assegnazione Presenza.
+        Three input methods: Structured, Excel, NLP.
+
+        Pipeline:
+        - User provides: edition_code + list of person numbers + stato
+        - Automation: login → navigate to edition → find each student
+          → click Gestisci attività → fill Data completamento + Stato → Salva
+        """
+
+        # === CHECK FOR BATCH PREVIEW MODE (Excel multi-edition) ===
+        if st.session_state.get('presenza_show_batch_preview') and \
+                st.session_state.get('presenza_batch_data'):
+            self._render_presenza_batch_preview(
+                st.session_state.presenza_batch_data)
+            return
+
+        # === CHECK FOR PREVIEW MODE ===
+        if st.session_state.get('presenza_show_summary') and \
+                st.session_state.get('presenza_data'):
+            self._render_presenza_preview(st.session_state.presenza_data)
+            return
+
+        st.subheader("Scegli il Metodo di Inserimento")
+
+        input_method = st.radio(
+            "Come vuoi inserire i dati?",
+            options=["structured", "excel", "nlp"],
+            format_func=lambda x: {
+                "structured": "📝 Input Strutturato (Form)",
+                "excel": "📊 Caricamento File Excel",
+                "nlp": "💬 Compilazione con AI"
+            }[x],
+            key="presenza_input_method",
+            horizontal=True
+        )
+
+        st.divider()
+
+        if input_method == "structured":
+            self._render_presenza_structured(is_disabled)
+        elif input_method == "excel":
+            self._render_presenza_excel(is_disabled)
+        elif input_method == "nlp":
+            self._render_presenza_nlp(is_disabled)
+
+    def _render_presenza_structured(self, is_disabled: bool):
+        """Structured form for presenza assignment."""
+        st.info(
+            "Inserisci il codice edizione, i numeri persona degli allievi "
+            "e lo stato di completamento.",
+            icon="📝"
+        )
+
+        with st.form(key='presenza_structured_form'):
+            st.subheader("Dati Presenza")
+
+            edition_code = st.text_input(
+                "Codice Edizione *",
+                placeholder="Es: OLC466201",
+                key="presenza_edition_code"
+            )
+
+            stato = st.selectbox(
+                "Stato Completamento *",
+                options=["Completato", "Esente", "Non passato"],
+                index=0,
+                key="presenza_stato"
+            )
+
+            st.markdown("**Numeri Persona Allievi** (uno per riga)")
+            students_text = st.text_area(
+                "Numeri persona",
+                height=150,
+                placeholder="1168\n1189\n1199\n1216",
+                key="presenza_students_text"
+            )
+
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                submitted = st.form_submit_button(
+                    "📋 Anteprima", type="primary",
+                    disabled=is_disabled, width='stretch')
+            with col2:
+                st.form_submit_button(
+                    "Pulisci 🧹", width='stretch',
+                    on_click=self._clear_presenza_callback)
+
+        if submitted:
+            import re
+            if not edition_code.strip():
+                st.error("❌ Codice Edizione obbligatorio.")
+                st.stop()
+
+            students = [
+                s.strip() for s in re.split(r'[\n,;]+', students_text)
+                if s.strip()
+            ]
+
+            if not students:
+                st.error("❌ Inserisci almeno un numero persona.")
+                st.stop()
+
+            st.session_state.presenza_data = {
+                'edition_code': edition_code.strip(),
+                'students': students,
+                'stato': stato
+            }
+            st.session_state.presenza_show_summary = True
+            st.rerun()
+
+    def _render_presenza_excel(self, is_disabled: bool):
+        """Excel upload for presenza — supports multi-edition ASSEGNA sheet."""
+        st.info(
+            "**Formato Excel** (foglio `PRESENZA`):\n\n"
+            "| CODICE EDIZIONE | PERSON NUMBER | STATO       |\n"
+            "|-----------------|---------------|-------------|\n"
+            "| OLC621263       | 1168          | Completato  |\n"
+            "|                 | 1189          |             |\n"
+            "| OLC621270       | 1200          | Non passato |\n\n"
+            "💡 **Suggerimento:** Lascia vuota la cella CODICE EDIZIONE "
+            "per le righe successive — verrà ereditata dall'edizione "
+            "precedente (forward-fill).\n\n"
+            "La colonna **STATO** è opzionale. Se omessa o vuota, "
+            "verrà usato lo stato di default selezionato qui sotto.",
+            icon="📊"
+        )
+
+        default_stato = st.selectbox(
+            "Stato di Default (per righe senza STATO)",
+            options=["Completato", "Esente", "Non passato"],
+            index=0,
+            key="presenza_excel_default_stato"
+        )
+
+        uploaded_file = st.file_uploader(
+            "Carica File Excel (.xlsx)",
+            type=['xlsx', 'xls'],
+            key="presenza_excel_uploader"
+        )
+
+        if uploaded_file:
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                if st.button("📊 Analizza File", type="primary",
+                             width='stretch', key="presenza_analyze_excel"):
+                    with st.spinner("🔍 Lettura foglio PRESENZA..."):
+                        parsed = self._parse_presenza_excel_file(
+                            uploaded_file, default_stato=default_stato)
+
+                    if parsed and parsed.get('jobs'):
+                        st.session_state.presenza_batch_data = parsed
+                        st.session_state.presenza_show_batch_preview = True
+                        st.rerun()
+                    else:
+                        st.error("❌ Impossibile leggere il file.")
+
+            with col2:
+                if st.button("🧹 Cancella", width='stretch',
+                             key="presenza_clear_excel"):
+                    st.session_state.presenza_batch_data = None
+                    st.session_state.presenza_show_batch_preview = False
+                    st.rerun()
+
+    def _render_presenza_batch_preview(self, batch_data: dict):
+        """Preview screen for multi-edition presenza batch."""
+        jobs = batch_data.get('jobs', [])
+        total_students = batch_data.get('total_students', 0)
+        total_editions = batch_data.get('total_editions', 0)
+
+        st.success(
+            f"✅ **{total_editions} edizioni** • "
+            f"**{len(jobs)} gruppi (edizione+stato)** • "
+            f"**{total_students} allievi totali**"
+        )
+
+        # === Summary by stato ===
+        stato_counts = {}
+        for job in jobs:
+            stato_counts[job['stato']] = \
+                stato_counts.get(job['stato'], 0) + len(job['students'])
+
+        st.markdown("### 📊 Riepilogo per Stato")
+        summary_data = [
+            {'Stato': stato, 'Allievi': count}
+            for stato, count in stato_counts.items()
+        ]
+        st.dataframe(pd.DataFrame(summary_data),
+                     hide_index=True, use_container_width=True)
+
+        # === Each job in expander ===
+        st.markdown("### 📋 Dettaglio per Edizione")
+        for idx, job in enumerate(jobs):
+            students = job['students']
+            stato_icon = {
+                'Completato': '✅',
+                'Esente': '⚪',
+                'Non passato': '❌'
+            }.get(job['stato'], '📋')
+
+            with st.expander(
+                    f"{stato_icon} **{job['edition_code']}** — "
+                    f"{len(students)} allievi → **{job['stato']}**",
+                    expanded=(idx == 0)
+            ):
+                student_data = [{'#': i + 1, 'Numero Persona': s}
+                                for i, s in enumerate(students)]
+                st.dataframe(
+                    pd.DataFrame(student_data),
+                    hide_index=True,
+                    use_container_width=True
+                )
+
+        st.divider()
+
+        # === Time estimate ===
+        avg_seconds_per_student = 12
+        estimated_minutes = max(1, (total_students * avg_seconds_per_student) // 60)
+        st.info(
+            f"⏱️ **Tempo stimato:** ~{estimated_minutes} minuti "
+            f"(~{avg_seconds_per_student}s per allievo). "
+            f"Il tempo reale può variare in base alla velocità di Oracle."
+        )
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            if st.button(
+                    f"✅ Assegna Presenza — {total_students} allievi "
+                    f"in {total_editions} edizioni",
+                    type="primary",
+                    use_container_width=True,
+                    key="presenza_batch_confirm_btn"
+            ):
+                st.session_state.app_state = "RUNNING_BATCH_PRESENZA"
+                st.session_state.presenza_message = ""
+                st.session_state.presenza_show_batch_preview = False
+                st.rerun()
+
+        with col2:
+            if st.button("❌ Annulla", use_container_width=True,
+                         key="presenza_batch_cancel_btn"):
+                st.session_state.presenza_batch_data = None
+                st.session_state.presenza_show_batch_preview = False
+                st.rerun()
+
+    def _render_presenza_nlp(self, is_disabled: bool):
+        """NLP input for presenza assignment."""
+        st.info(
+            "**Esempi di frasi accettate:**\n\n"
+            '- "Edizione OLC466201 completato: 1168, 1189, 1199"\n'
+            '- "Per edizione OLC466201 segna come completato i numeri 1168 1189"\n'
+            '- "Assegna presenza edizione OLC466201 stato non passato allievi 1168 1199"',
+            icon="💬"
+        )
+
+        if "presenza_nlp_text" not in st.session_state:
+            st.session_state.presenza_nlp_text = ""
+
+        nlp_text = st.text_area(
+            "Descrivi l'assegnazione presenza:",
+            height=150,
+            key="presenza_nlp_text"
+        )
+
+        text_length = len(nlp_text.strip()) if nlp_text else 0
+        if text_length > 0:
+            st.caption(f"✏️ {text_length} caratteri inseriti")
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            if st.button("🤖 Analizza", type="primary", width='stretch',
+                         key="presenza_nlp_analyze"):
+                if not nlp_text.strip():
+                    st.error("❌ Inserisci del testo.")
+                    st.stop()
+
+                parsed = self._parse_presenza_nlp(nlp_text)
+
+                if parsed and parsed.get('edition_code') and parsed.get('students'):
+                    st.session_state.presenza_data = parsed
+                    st.session_state.presenza_show_summary = True
+                    st.rerun()
+                else:
+                    st.error(
+                        "❌ Non è stato possibile estrarre i dati.\n\n"
+                        "Assicurati di includere:\n"
+                        "- **Codice edizione** (es: OLC466201)\n"
+                        "- **Numeri persona** allievi\n"
+                        "- **Stato** (completato / non passato / esente)"
+                    )
+
+        with col2:
+            if st.button("🧹 Cancella", width='stretch',
+                         key="presenza_nlp_clear"):
+                st.session_state.presenza_nlp_text = ""
+                st.rerun()
+
+    def _parse_presenza_nlp(self, text: str) -> 'Optional[Dict[str, Any]]':
+        """
+        Parse NLP input for presenza assignment.
+        Extracts: edition_code, students list, stato.
+        Uses pure regex — no spaCy needed for this simple structure.
+        """
+        import re
+
+        result = {
+            'edition_code': '',
+            'students': [],
+            'stato': 'Completato'  # default
+        }
+
+        # Extract edition code
+        edition_patterns = [
+            r"edizione\s+([A-Za-z0-9]+)",
+            r'\b([A-Z]{2,5}\d{4,})\b',
+            r'\b(\d{8,})\b',
+        ]
+        for pattern in edition_patterns:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if m:
+                result['edition_code'] = m.group(1).strip()
+                break
+
+        # Extract stato
+        text_lower = text.lower()
+        if 'non passato' in text_lower or 'non_passato' in text_lower:
+            result['stato'] = 'Non passato'
+        elif 'esente' in text_lower:
+            result['stato'] = 'Esente'
+        else:
+            result['stato'] = 'Completato'  # default
+
+        # Extract person numbers (3-7 digit numbers, exclude edition code)
+        text_no_edition = text
+        if result['edition_code']:
+            text_no_edition = text_no_edition.replace(result['edition_code'], '')
+
+        numbers = re.findall(r'\b(\d{3,7})\b', text_no_edition)
+        seen = set()
+        for n in numbers:
+            if n not in seen:
+                seen.add(n)
+                result['students'].append(n)
+
+        return result if result['edition_code'] and result['students'] else None
+
+    def _render_presenza_preview(self, presenza_data: dict):
+        """Preview screen before launching presenza automation."""
+
+        edition_code = presenza_data.get('edition_code', '')
+        students = presenza_data.get('students', [])
+        stato = presenza_data.get('stato', 'Completato')
+
+        st.success("✅ Dati pronti per l'assegnazione presenza")
+
+        # Summary table
+        st.markdown("### 📋 Riepilogo")
+        summary_df = pd.DataFrame({
+            'Campo': ['Codice Edizione', 'Stato Completamento', 'Numero Allievi'],
+            'Valore': [edition_code, stato, str(len(students))]
+        })
+        st.dataframe(summary_df, hide_index=True, use_container_width=True)
+
+        # Students list
+        st.markdown("### 👥 Allievi")
+        students_df = pd.DataFrame({
+            '#': range(1, len(students) + 1),
+            'Numero Persona': students
+        })
+        st.dataframe(students_df, hide_index=True, use_container_width=True)
+
+        st.divider()
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            stato_color = {
+                "Completato": "✅",
+                "Esente": "⚪",
+                "Non passato": "❌"
+            }.get(stato, "📋")
+
+            if st.button(
+                    f"{stato_color} Assegna Presenza — {len(students)} allievi come '{stato}'",
+                    type="primary", use_container_width=True,
+                    key="presenza_confirm_btn"
+            ):
+                st.session_state.app_state = "RUNNING_PRESENZA"
+                st.session_state.student_message = ""
+                st.session_state.presenza_show_summary = False
+                st.rerun()
+
+        with col2:
+            if st.button("❌ Annulla", use_container_width=True,
+                         key="presenza_cancel_btn"):
+                st.session_state.presenza_data = None
+                st.session_state.presenza_show_summary = False
+                st.rerun()
+
+    def _clear_presenza_callback(self):
+        """Clear all presenza form state."""
+        st.session_state.presenza_data = None
+        st.session_state.presenza_show_summary = False
+        if "presenza_edition_code" in st.session_state:
+            st.session_state.presenza_edition_code = ""
+        if "presenza_students_text" in st.session_state:
+            st.session_state.presenza_students_text = ""
+
     def _parse_student_nlp_input(self, text: str) -> 'Optional[Dict[str, Any]]':
         """
         Parse natural language input to extract edition code and student numero persona.
@@ -3987,26 +5279,24 @@ class CourseView:
                 st.session_state.student_input_method = "txt"
                 st.rerun()
 
-
     def update_progress(self, form_type, message, percentage):
-            placeholder = None
-            if form_type == "course":
-                # Use getattr to safely get the attribute
-                placeholder = getattr(self, 'course_output_placeholder', None)
-            elif form_type == "edition":
-                placeholder = getattr(self, 'edition_output_placeholder', None)
-            elif form_type == "student":
-                placeholder = getattr(self, 'student_output_placeholder', None)
+        placeholder = None
+        if form_type == "course":
+            placeholder = getattr(self, 'course_output_placeholder', None)
+        elif form_type == "edition":
+            placeholder = getattr(self, 'edition_output_placeholder', None)
+        elif form_type == "student":
+            placeholder = getattr(self, 'student_output_placeholder', None)
 
-            # Only try to use placeholder if it exists and is not None
-            if placeholder is not None:
-                with placeholder.container():
-                    st.info(f"⏳ {message}")
-                    st.progress(percentage)
-            else:
-                # Fallback: just show the message directly
+        if placeholder is not None:
+            # placeholder.container() REPLACES content every call
+            placeholder.empty()  # clear previous content first
+            with placeholder.container():
+                st.progress(percentage / 100)
                 st.info(f"⏳ {message}")
-                st.progress(percentage)
+        else:
+            # Fallback — should not happen normally
+            st.info(f"⏳ {message}")
 
     def show_message(self, form_type, message, show_clear_button=False):
         placeholder = None
