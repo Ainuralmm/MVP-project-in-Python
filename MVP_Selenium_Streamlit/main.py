@@ -27,15 +27,37 @@ for handler in logger.handlers[:]:
     logger.removeHandler(handler)
     handler.close()
 
-# Add fresh handlers
-formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+# === USER CONTEXT FILTER FOR AUDIT LOGGING ===
+class UserContextFilter(logging.Filter):
+    """
+    Injects the current logged-in Oracle user into every log record.
+    Required by Sistemi Informativi for audit/traceability:
+    each log line must identify the user who initiated the operation.
+    """
+    def filter(self, record):
+        try:
+            import streamlit as st
+            record.user = st.session_state.get('oracle_username', 'NO_USER')
+        except Exception:
+            # Safety: if called outside a Streamlit session context
+            record.user = 'SYSTEM'
+        return True
 
+
+# === LOG FORMATTER WITH USER FIELD ===
+formatter = logging.Formatter(
+    '%(asctime)s | %(levelname)s | user=%(user)s | %(message)s'
+)
+
+# === HANDLERS ===
 file_handler = logging.FileHandler(log_file, encoding='utf-8')
 file_handler.setFormatter(formatter)
+file_handler.addFilter(UserContextFilter())
 logger.addHandler(file_handler)
 
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
+stream_handler.addFilter(UserContextFilter())
 logger.addHandler(stream_handler)
 
 # === REDIRECT print() TO LOGGING (always use the TRUE original) ===
