@@ -51,15 +51,19 @@ if __name__ == "__main__":
 
     # 1. Initialize the View. It handles all state setup.
     view = CourseView()
+
+    # 2. AUTH GATE — show login screen until user is authenticated
+    if not view._render_login_screen():
+        st.stop()  # Don't render anything else
     headless, debug_mode, debug_pause = view.get_user_options()
 
-    # 2. Get current state BEFORE rendering UI
+    # 3. Get current state BEFORE rendering UI
     current_state = st.session_state.get('app_state', 'IDLE')
 
-    # 3. Let the View render the entire user interface.
+    # 4. Let the View render the entire user interface.
     view.render_ui()
 
-    # 4. Controller Logic: Only run this block if an automation has been started.
+    # 5. Controller Logic: Only run this block if an automation has been started.
     if current_state != "IDLE":
         model = OracleAutomator(driver_path=DRIVER_PATH,
                                 debug_mode=debug_mode,
