@@ -843,16 +843,11 @@ class CourseView:
         # Apply theme FIRST before rendering anything else
         self._apply_theme()
 
-        def render_ui(self):
-            # Apply theme FIRST before rendering anything else
-            self._apply_theme()
+        # Show logout button in sidebar
+        self.render_logout_button()
 
-            # Show logout button in sidebar
-            self.render_logout_button()
-
-            # Render settings in sidebar
-            self._render_impostazioni({})
-            # ... rest unchanged
+        # Render settings in sidebar
+        self._render_impostazioni({})
 
         # Render settings in sidebar
         self._render_impostazioni({})
