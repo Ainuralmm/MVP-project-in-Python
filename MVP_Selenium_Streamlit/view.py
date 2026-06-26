@@ -655,7 +655,7 @@ class CourseView:
         if st.session_state.get('oracle_logged_in', False):
             return True
 
-        # Apply theme even on the login screen
+        # Apply theme CSS only (no sidebar panel on login screen)
         self._apply_theme()
 
         # Show logo + title
@@ -845,9 +845,6 @@ class CourseView:
 
         # Show logout button in sidebar
         self.render_logout_button()
-
-        # Render settings in sidebar
-        self._render_impostazioni({})
 
         # Render settings in sidebar
         self._render_impostazioni({})

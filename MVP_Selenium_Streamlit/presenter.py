@@ -1,10 +1,8 @@
-#import pandas as pd
 import streamlit as st
 import time
-#from datetime import datetime
 import os
 import tempfile
-
+from datetime import datetime
 from selenium.webdriver.common.by import By
 
 
@@ -13,12 +11,32 @@ class CoursePresenter:
         self.model = model
         self.view = view
 
+    def _add_timestamp(self, message: str, start_time) -> str:
+        """
+        Wrap a result message with completion timestamp and duration.
+        Used so users always know WHEN an operation finished.
+        """
+        elapsed = datetime.now() - start_time
+        elapsed_min = int(elapsed.total_seconds() // 60)
+        elapsed_sec = int(elapsed.total_seconds() % 60)
+        completion_time = datetime.now().strftime("%d/%m/%Y %H:%M")
+        return (
+            f"🕓 **Operazione completata** il {completion_time} "
+            f"(durata: {elapsed_min} min {elapsed_sec} sec)\n\n"
+            f"{message}"
+        )
+
+    # ──────────────────────────────────────────────────────────────────
+    # COURSE — SINGLE
+    # ──────────────────────────────────────────────────────────────────
     def run_create_course(self, course_details):
+        operation_start_time = datetime.now()
+        result_message = ""
+
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
-            # Safety check
             if not oracle_user or not oracle_pass:
                 raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
@@ -27,19 +45,22 @@ class CoursePresenter:
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito. Controlla le credenziali.")
 
-            # === STEP 2: NAVIGATE TO COURSES PAGE ===  ✅ ADDED THIS!
+            # === STEP 2: NAVIGATE TO COURSES PAGE ===
             self.view.update_progress("course", "Navigazione alla pagina corsi...", 30)
             if not self.model.navigate_to_courses_page():
                 raise Exception("Navigazione alla pagina corsi fallita.")
 
-            # === STEP 3: CHECK IF COURSE ALREADY EXISTS ===  ✅ ADDED THIS!
+            # === STEP 3: CHECK IF COURSE ALREADY EXISTS ===
             course_title = course_details.get('title', '')
             self.view.update_progress("course", f"Verifica se il corso '{course_title}' esiste già...", 50)
 
             if self.model.search_course(course_title):
-                # Course already exists
                 result_message = f"⚠️ Il corso '{course_title}' esiste già nel sistema. Nessuna azione eseguita."
-                self.view.show_message("course", result_message, show_clear_button=True)
+                self.view.show_message(
+                    "course",
+                    self._add_timestamp(result_message, operation_start_time),
+                    show_clear_button=True
+                )
                 return
 
             # === STEP 4: CREATE THE COURSE ===
@@ -49,12 +70,20 @@ class CoursePresenter:
 
             # === STEP 5: SHOW RESULT ===
             self.view.update_progress("course", "Processo completato!", 100)
-            self.view.show_message("course", result_message, show_clear_button=True)
+            self.view.show_message(
+                "course",
+                self._add_timestamp(result_message, operation_start_time),
+                show_clear_button=True
+            )
 
         except Exception as e:
             error_message = f"‼️ Si è verificato un errore: {str(e)}"
             print(f"Presenter Error: {error_message}")
-            self.view.show_message("course", error_message, show_clear_button=True)
+            self.view.show_message(
+                "course",
+                self._add_timestamp(error_message, operation_start_time),
+                show_clear_button=True
+            )
 
         finally:
             print("Presenter: Automation finished. Cleaning up.")
@@ -62,22 +91,19 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
+    # ──────────────────────────────────────────────────────────────────
+    # COURSE — BATCH
+    # ──────────────────────────────────────────────────────────────────
     def run_create_batch_courses(self, batch_data):
         """
         Create multiple courses sequentially from batch data.
-
-        WHY: Process multiple courses from Excel in one operation.
-        Shows progress and handles errors gracefully.
-
-        Args:
-            batch_data: Dictionary with 'courses' list from Excel parser
         """
+        operation_start_time = datetime.now()
+
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
-
-            # Safety check
             if not oracle_user or not oracle_pass:
                 raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
@@ -85,24 +111,16 @@ class CoursePresenter:
             total_courses = len(courses)
             continue_on_error = st.session_state.get('batch_continue_on_error', True)
 
-            # INITIALIZE RESULTS TRACKING ###
-            results = {
-                'successful': [],
-                'failed': [],
-                'skipped': []
-            }
+            results = {'successful': [], 'failed': [], 'skipped': []}
 
-            # LOGIN ONCE FOR ALL COURSES ###
-            self.view.update_progress("course", f"Accesso a Oracle...", 5)
+            self.view.update_progress("course", "Accesso a Oracle...", 5)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito. Controlla le credenziali.")
 
-            # ### NAVIGATE TO COURSES PAGE ONCE ###
             self.view.update_progress("course", "Navigazione alla pagina corsi...", 10)
             if not self.model.navigate_to_courses_page():
                 raise Exception("Navigazione alla pagina corsi fallita")
 
-            # ### PROCESS EACH COURSE ###
             for idx, course in enumerate(courses, 1):
                 course_title = course['title']
                 progress_pct = int((idx / total_courses) * 85) + 10
@@ -114,7 +132,6 @@ class CoursePresenter:
                 )
 
                 try:
-                    # ### CHECK IF COURSE EXISTS (search resets after each search) ###
                     if self.model.search_course(course_title):
                         results['skipped'].append({
                             'course': course_title,
@@ -123,8 +140,6 @@ class CoursePresenter:
                         print(f"⚠️ Corso '{course_title}' già esiste. Saltato.")
                         continue
 
-                    # ### CREATE COURSE
-                    # search_course leaves us on the Corsi page, ready to create
                     course_details = {
                         'title': course['title'],
                         'programme': course.get('programme', ''),
@@ -137,8 +152,6 @@ class CoursePresenter:
                     if "✅" in result_message or "Successo" in result_message:
                         results['successful'].append(course_title)
                         print(f"✅ Corso '{course_title}' creato con successo.")
-
-
                     else:
                         results['failed'].append({
                             'course': course_title,
@@ -153,33 +166,26 @@ class CoursePresenter:
                     error_msg = str(course_error)
                     results['failed'].append({
                         'course': course_title,
-                        'error': str(course_error) #error_msg
+                        'error': str(course_error)
                     })
-
                     print(f"❌ Errore con corso '{course_title}': {error_msg}")
-
                     if not continue_on_error:
-                        # Stop processing if user chose not to continue on error
                         break
 
-            # ### HASHTAG: FINAL PROGRESS UPDATE ###
             self.view.update_progress("course", "Processo completato!", 100)
 
-            # ### HASHTAG: GENERATE SUMMARY MESSAGE ###
+            # Build summary
             summary_parts = []
-
             if results['successful']:
                 summary_parts.append(
                     f"✅ **{len(results['successful'])} corsi creati con successo:**\n" +
                     "\n".join([f"  - {c}" for c in results['successful']])
                 )
-
             if results['skipped']:
                 summary_parts.append(
                     f"\n⚠️ **{len(results['skipped'])} corsi saltati:**\n" +
                     "\n".join([f"  - {r['course']}: {r['reason']}" for r in results['skipped']])
                 )
-
             if results['failed']:
                 summary_parts.append(
                     f"\n❌ **{len(results['failed'])} corsi falliti:**\n" +
@@ -187,13 +193,18 @@ class CoursePresenter:
                 )
 
             final_message = "\n\n".join(summary_parts)
-
-            self.view.show_message("course", final_message)
+            self.view.show_message(
+                "course",
+                self._add_timestamp(final_message, operation_start_time)
+            )
 
         except Exception as e:
             error_message = f"‼️ Errore durante la creazione batch: {str(e)}"
             print(f"Presenter Error: {error_message}")
-            self.view.show_message("course", error_message)
+            self.view.show_message(
+                "course",
+                self._add_timestamp(error_message, operation_start_time)
+            )
 
         finally:
             print("Presenter: Batch automation finished. Cleaning up.")
@@ -201,30 +212,26 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
+    # ──────────────────────────────────────────────────────────────────
+    # EDITION — BATCH
+    # ──────────────────────────────────────────────────────────────────
     def run_batch_edition_creation(self):
         """
         Execute batch creation of multiple editions with their activities.
-
-        FIXED:
-        - Uses single progress placeholder
-        - Shows results with clear button
-        - Automatically returns to IDLE state
         """
+        operation_start_time = datetime.now()
         results = []
 
-        # === CREATE SINGLE PROGRESS PLACEHOLDER AT START ===
         progress_placeholder = st.empty()
         status_placeholder = st.empty()
 
         def update_batch_progress(message, percentage):
-            """Helper to update single progress bar"""
             self.view.update_progress("course", message, percentage)
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
-            # Safety check
             if not oracle_user or not oracle_pass:
                 raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
@@ -238,26 +245,21 @@ class CoursePresenter:
             if total_editions == 0:
                 raise Exception("Nessuna edizione da creare.")
 
-            # === LOGIN ===
             update_batch_progress("Accesso a Oracle...", 5)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito. Controlla le credenziali.")
 
-            # === NAVIGATE TO COURSES PAGE ===
             update_batch_progress("Navigazione alla pagina Corsi...", 10)
             if not self.model.navigate_to_courses_page():
                 raise Exception("Impossibile navigare alla pagina Corsi.")
 
-            # === PROCESS EACH EDITION ===
             for idx, edition in enumerate(editions):
                 edition_num = idx + 1
                 course_name = edition.get('course_name', 'Unknown')
                 edition_title = edition.get('edition_title', '')
                 activities = edition.get('activities', [])
 
-                # Calculate progress percentage (10% to 95%)
                 progress_pct = int((idx / total_editions) * 85) + 10
-
                 display_name = f"{course_name} - {edition_title}" if edition_title else course_name
                 update_batch_progress(
                     f"Creazione edizione {edition_num}/{total_editions}: {display_name}...",
@@ -276,7 +278,6 @@ class CoursePresenter:
                         description=edition.get('description', ''),
                         activities=activities,
                         return_to_courses_page=True,
-                        # NEW:
                         centro_costo=edition.get('centro_costo', ''),
                         direzione_pagante=edition.get('direzione_pagante', ''),
                         finanziata=edition.get('finanziata', ''),
@@ -305,7 +306,6 @@ class CoursePresenter:
                         'activities': 0
                     })
 
-            # === FINAL PROGRESS ===
             update_batch_progress("Processo completato!", 100)
 
         except Exception as e:
@@ -318,20 +318,18 @@ class CoursePresenter:
             })
 
         finally:
-            # === CLEANUP ===
             print("Presenter: Batch edition automation finished. Cleaning up.")
             self.model.close()
 
-            # Clear progress placeholders
             progress_placeholder.empty()
             status_placeholder.empty()
 
-            # === BUILD SUMMARY MESSAGE ===
             success_count = sum(1 for r in results if '✅' in r.get('status', ''))
             fail_count = len(results) - success_count
             total_activities_created = sum(r.get('activities', 0) for r in results)
             total_editions = len(
-                st.session_state.batch_edition_data.get('editions', [])) if st.session_state.batch_edition_data else 0
+                st.session_state.batch_edition_data.get('editions', [])
+            ) if st.session_state.batch_edition_data else 0
 
             summary_parts = [
                 f"## 📊 Riepilogo Creazione Batch Edizioni\n",
@@ -340,7 +338,6 @@ class CoursePresenter:
                 f"- **Errori:** {fail_count}\n",
                 "### Dettagli per edizione:"
             ]
-
             for r in results:
                 summary_parts.append(
                     f"- **{r['edition']}**: {r['status']} ({r['activities']} attività)"
@@ -348,43 +345,38 @@ class CoursePresenter:
 
             final_message = "\n".join(summary_parts)
 
-            # Store message in session state for display
-            st.session_state.edition_message = final_message
+            st.session_state.edition_message = self._add_timestamp(
+                final_message, operation_start_time
+            )
 
-            # Clear batch-specific states
             st.session_state.batch_edition_data = None
             st.session_state.edition_parsed_data = None
             st.session_state.edition_show_summary = False
-
-            # Set flag to show results on Edition tab
             st.session_state.show_edition_results = True
 
-            # Return to IDLE
             st.session_state.app_state = "IDLE"
             st.rerun()
 
+    # ──────────────────────────────────────────────────────────────────
+    # EDITION + ACTIVITIES — SINGLE
+    # ──────────────────────────────────────────────────────────────────
     def run_create_edition_and_activities(self, edition_details):
+        operation_start_time = datetime.now()
+
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
-
-            # Safety check
             if not oracle_user or not oracle_pass:
                 raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
             course_name = edition_details['course_name']
 
-            num_activities = len(edition_details.get('activities', []))
-            # Use "edition" for UI updates, as it's one combined form
             self.view.update_progress("edition", "Accesso a Oracle...", 10)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
 
             self.view.update_progress("edition", "Navigazione alla pagina dei corsi...", 25)
-            ### HASHTAG: CORRECTED MODEL CALLS
-            # The original code called model methods incorrectly. These are now fixed
-            # to match the corrected model.py.
             if not self.model.navigate_to_courses_page():
                 raise Exception("Navigazione fallita.")
 
@@ -401,12 +393,18 @@ class CoursePresenter:
             time.sleep(1)
 
             self.view.update_progress("edition", "Processo completato!", 100)
-            self.view.show_message("edition", result_message)
+            self.view.show_message(
+                "edition",
+                self._add_timestamp(result_message, operation_start_time)
+            )
 
         except Exception as e:
             error_message = f"‼️ Si è verificato un errore: {str(e)}"
             print(f"Presenter Error: {error_message}")
-            self.view.show_message("edition", error_message)
+            self.view.show_message(
+                "edition",
+                self._add_timestamp(error_message, operation_start_time)
+            )
 
         finally:
             print("Presenter (Edition+Activity): Automation finished. Cleaning up.")
@@ -414,23 +412,17 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
-    ### METHOD FOR STUDENT FLOW
+    # ──────────────────────────────────────────────────────────────────
+    # STUDENTS — SINGLE EDITION
+    # ──────────────────────────────────────────────────────────────────
     def run_add_students(self, student_details):
-        """
-        Execute student addition for a SINGLE edition.
-
-        student_details keys:
-            - edition_code (str)
-            - students (list[str])
-
-        """
+        operation_start_time = datetime.now()
         temp_file_path = None
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
-            # Safety check
             if not oracle_user or not oracle_pass:
                 raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
@@ -438,7 +430,6 @@ class CoursePresenter:
             student_list = student_details['students']
             num_students = len(student_list)
 
-            # === CREATE TEMP FILE ===
             self.view.update_progress("student", f"Preparazione elenco {num_students} allievi...", 5)
 
             temp_file = tempfile.NamedTemporaryFile(
@@ -453,28 +444,23 @@ class CoursePresenter:
 
             lista_nome = f"{edition_code}"
 
-            # === LOGIN ===
             self.view.update_progress("student", "Accesso a Oracle...", 10)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
 
-            # === NAVIGATE TO EDITIONS PAGE ===
             self.view.update_progress("student", "Navigazione alla pagina edizioni...", 20)
             if not self.model.navigate_to_edition_page():
                 raise Exception("Navigazione fallita.")
 
-            # === SEARCH EDITION ===
             self.view.update_progress("student", f"Ricerca edizione '{edition_code}'...", 40)
             edition_result = self.model._search_and_open_edition(edition_code)
             if not edition_result:
                 raise Exception(f"Edizione '{edition_code}' non trovata.")
 
-            # Extract dates from edition search
             edition_start_date = edition_result.get('start_date') if isinstance(edition_result, dict) else None
             edition_end_date = edition_result.get('end_date') if isinstance(edition_result, dict) else None
             print(f"Presenter: Edition dates - start: {edition_start_date}, end: {edition_end_date}")
 
-            # === ADD STUDENTS ===
             self.view.update_progress("student", f"Caricamento {num_students} allievi...", 65)
             success = self.model._perform_student_addition_steps(
                 student_file_path=temp_file_path,
@@ -483,7 +469,6 @@ class CoursePresenter:
                 edition_end_date=edition_end_date,
             )
 
-            # Replace the current success message block with:
             self.view.update_progress("student", "Processo completato!", 100)
 
             if success:
@@ -500,12 +485,19 @@ class CoursePresenter:
                     f"ma non è stato possibile confermare l'aggiunta di {num_students} allievi.\n\n"
                     f"Ricontrolla la lista allievi manualmente tra qualche minuto."
                 )
-            self.view.show_message("student", result_message)
+
+            self.view.show_message(
+                "student",
+                self._add_timestamp(result_message, operation_start_time)
+            )
 
         except Exception as e:
             error_message = f"‼️ Si è verificato un errore: {str(e)}"
             print(f"Presenter Error (Student Add): {error_message}")
-            self.view.show_message("student", error_message)
+            self.view.show_message(
+                "student",
+                self._add_timestamp(error_message, operation_start_time)
+            )
 
         finally:
             if temp_file_path and os.path.exists(temp_file_path):
@@ -521,19 +513,16 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
-    # Multiple editions — used by Excel with multiple edition codes
+    # ──────────────────────────────────────────────────────────────────
+    # STUDENTS — BATCH (multiple editions)
+    # ──────────────────────────────────────────────────────────────────
     def run_add_students_batch(self):
-        """
-        Execute student addition for MULTIPLE editions sequentially.
-
-        Reads from st.session_state.batch_student_data:
-            - editions: list of {edition_code, students}
-
-        """
+        operation_start_time = datetime.now()
         results = []
         progress_placeholder = st.empty()
         status_placeholder = st.empty()
-        temp_file_paths = []  # Track all temp files for cleanup
+        temp_file_paths = []
+        total_editions = 0
 
         def update_progress(message, percentage):
             with progress_placeholder.container():
@@ -545,7 +534,6 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
-            # Safety check
             if not oracle_user or not oracle_pass:
                 raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
@@ -559,17 +547,14 @@ class CoursePresenter:
             if total_editions == 0:
                 raise Exception("Nessuna edizione da processare.")
 
-            # === LOGIN (once for all editions) ===
             update_progress("Accesso a Oracle...", 5)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
 
-            # === NAVIGATE (once) ===
             update_progress("Navigazione alla pagina edizioni...", 10)
             if not self.model.navigate_to_edition_page():
                 raise Exception("Navigazione fallita.")
 
-            # === PROCESS EACH EDITION ===
             for idx, edition in enumerate(editions):
                 edition_code = edition['edition_code']
                 student_list = edition['students']
@@ -584,7 +569,6 @@ class CoursePresenter:
                 )
 
                 try:
-                    # Create temp file for this edition
                     temp_file = tempfile.NamedTemporaryFile(
                         mode='w', suffix='.txt', prefix=f'students_{edition_code}_',
                         delete=False, encoding='utf-8'
@@ -596,7 +580,6 @@ class CoursePresenter:
 
                     lista_nome = f"{edition_code}"
 
-                    # Search for edition
                     edition_result = self.model._search_and_open_edition(edition_code)
                     if not edition_result:
                         results.append({
@@ -616,7 +599,6 @@ class CoursePresenter:
                         edition_end_date=edition_end_date,
                     )
 
-
                     if success:
                         results.append({
                             'edition': edition_code,
@@ -627,10 +609,9 @@ class CoursePresenter:
                         results.append({
                             'edition': edition_code,
                             'status': '⚠️ Invio non confermato',
-                            'students': num_students  # still num_students, may have been submitted
+                            'students': num_students
                         })
 
-                    # Navigate back to edition search page for next iteration
                     if idx < total_editions - 1:
                         if not self.model._click_back_to_edition_search():
                             print("   ⚠️ Back button failed, trying full navigation...")
@@ -639,50 +620,33 @@ class CoursePresenter:
                             except:
                                 print("   ❌ Could not return to edition search")
 
-
                 except Exception as e:
-                                error_msg = str(e)[:80]
-                                print(f"   ❌ Error for edition '{edition_code}': {error_msg}")
-                                results.append({
+                    error_msg = str(e)[:80]
+                    print(f"   ❌ Error for edition '{edition_code}': {error_msg}")
+                    results.append({
+                        'edition': edition_code,
+                        'status': f'❌ Errore: {error_msg}',
+                        'students': 0
+                    })
 
-                                    'edition': edition_code,
-                                    'status': f'❌ Errore: {error_msg}',
-                                    'students': 0
+                    try:
+                        cancel_xpaths = [
+                            "//button[contains(@id, ':d3::cancel')]",
+                            "//button[text()='Annulla' or text()='Cancel']",
+                            "//button[contains(@id, '::cancel')]",
+                        ]
+                        for xpath in cancel_xpaths:
+                            try:
+                                cancel_btn = self.model.driver.find_element(By.XPATH, xpath)
+                                cancel_btn.click()
+                                print("   🔄 Closed open dialog")
+                                time.sleep(2)
+                                break
+                            except:
+                                continue
+                    except:
+                        pass
 
-                                })
-
-                                # Try to recover: close any dialogs and go back
-
-                                try:
-                                    # Close any open dialog
-                                    cancel_xpaths = [
-
-                                        "//button[contains(@id, ':d3::cancel')]",
-                                        "//button[text()='Annulla' or text()='Cancel']",
-                                        "//button[contains(@id, '::cancel')]",
-
-                                    ]
-
-                                    for xpath in cancel_xpaths:
-
-                                        try:
-
-                                            cancel_btn = self.model.driver.find_element(By.XPATH, xpath)
-                                            cancel_btn.click()
-                                            print("   🔄 Closed open dialog")
-                                            time.sleep(2)
-                                            break
-
-                                        except:
-                                            continue
-
-                                except:
-
-                                    pass
-
-
-
-            # === FINAL PROGRESS ===
             update_progress("Processo completato!", 100)
 
         except Exception as e:
@@ -695,11 +659,9 @@ class CoursePresenter:
             })
 
         finally:
-            # === CLEANUP ===
             print("Presenter (Batch Students): Finished. Cleaning up.")
             self.model.close()
 
-            # Delete all temp files
             for path in temp_file_paths:
                 if os.path.exists(path):
                     try:
@@ -707,11 +669,9 @@ class CoursePresenter:
                     except:
                         pass
 
-            # Clear progress
             progress_placeholder.empty()
             status_placeholder.empty()
 
-            # === BUILD SUMMARY ===
             success_count = sum(1 for r in results if '✅' in r.get('status', ''))
             fail_count = len(results) - success_count
             total_students_added = sum(r.get('students', 0) for r in results)
@@ -724,7 +684,6 @@ class CoursePresenter:
                 f"Oracle potrebbe impiegare qualche minuto per elaborare i file.\n",
                 "### Dettagli:"
             ]
-
             for r in results:
                 summary_parts.append(
                     f"- **{r['edition']}**: {r['status']} ({r['students']} allievi)"
@@ -732,8 +691,9 @@ class CoursePresenter:
 
             final_message = "\n".join(summary_parts)
 
-            # Store and display
-            st.session_state.student_message = final_message
+            st.session_state.student_message = self._add_timestamp(
+                final_message, operation_start_time
+            )
             st.session_state.batch_student_data = None
             st.session_state.student_parsed_data = None
             st.session_state.student_show_summary = False
@@ -741,11 +701,11 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
+    # ──────────────────────────────────────────────────────────────────
+    # STUDENTS — VERIFY
+    # ──────────────────────────────────────────────────────────────────
     def run_verify_students(self):
-        """
-        Verify that students exist in Oracle editions.
-        Reads from st.session_state.verify_student_data (same format as batch).
-        """
+        operation_start_time = datetime.now()
         results = []
         progress_placeholder = st.empty()
         status_placeholder = st.empty()
@@ -760,7 +720,6 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
-            # Safety check
             if not oracle_user or not oracle_pass:
                 raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
@@ -774,17 +733,14 @@ class CoursePresenter:
             if total_editions == 0:
                 raise Exception("Nessuna edizione da verificare.")
 
-            # === LOGIN ===
             update_progress("Accesso a Oracle...", 5)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
 
-            # === NAVIGATE ===
             update_progress("Navigazione alla pagina edizioni...", 10)
             if not self.model.navigate_to_edition_page():
                 raise Exception("Navigazione fallita.")
 
-            # === VERIFY EACH EDITION ===
             for idx, edition in enumerate(editions):
                 edition_code = edition['edition_code']
                 expected_students = edition['students']
@@ -799,7 +755,6 @@ class CoursePresenter:
                 )
 
                 try:
-                    # Search and open edition
                     edition_result = self.model._search_and_open_edition(edition_code)
                     if not edition_result:
                         results.append({
@@ -812,7 +767,6 @@ class CoursePresenter:
                         })
                         continue
 
-                    # Verify students
                     verify_result = self.model._verify_students_in_edition(
                         edition_code, expected_students)
 
@@ -836,7 +790,6 @@ class CoursePresenter:
                         'status': status
                     })
 
-                    # Navigate back for next edition
                     if idx < total_editions - 1:
                         if not self.model._click_back_to_edition_search():
                             print("   ⚠️ Back button failed, trying full navigation...")
@@ -855,7 +808,6 @@ class CoursePresenter:
                         'status': f'❌ Errore: {str(e)[:50]}'
                     })
 
-            # === FINAL ===
             update_progress("Verifica completata!", 100)
 
         except Exception as e:
@@ -877,7 +829,6 @@ class CoursePresenter:
             progress_placeholder.empty()
             status_placeholder.empty()
 
-            # === BUILD SUMMARY ===
             total_expected = sum(r.get('expected', 0) for r in results)
             total_found = sum(r.get('found', 0) for r in results)
             total_not_found = sum(r.get('not_found', 0) for r in results)
@@ -906,7 +857,6 @@ class CoursePresenter:
                 summary_parts.append(
                     f"- **{r['edition']}**: {r['status']}"
                 )
-                # Show not-found matricole if any
                 not_found_list = r.get('not_found_list', [])
                 if not_found_list and len(not_found_list) <= 10:
                     matricole_str = ', '.join(not_found_list)
@@ -918,7 +868,9 @@ class CoursePresenter:
 
             final_message = "\n".join(summary_parts)
 
-            st.session_state.student_message = final_message
+            st.session_state.student_message = self._add_timestamp(
+                final_message, operation_start_time
+            )
             st.session_state.verify_student_data = None
             st.session_state.student_parsed_data = None
             st.session_state.student_show_summary = False
@@ -926,17 +878,17 @@ class CoursePresenter:
             st.session_state.app_state = "IDLE"
             st.rerun()
 
+    # ──────────────────────────────────────────────────────────────────
+    # PRESENZA — SINGLE EDITION
+    # ──────────────────────────────────────────────────────────────────
     def run_assign_presenza(self):
-        """
-        Execute presence assignment for students in an edition.
-        Reads from st.session_state.presenza_data:
-            - edition_code: str
-            - students: list of person numbers
-            - stato: "Completato", "Esente", or "Non passato"
-        """
+        operation_start_time = datetime.now()
         results = {}
         progress_placeholder = st.empty()
         status_placeholder = st.empty()
+
+        # Snapshot data BEFORE we clear it in finally
+        presenza_snapshot = st.session_state.get('presenza_data', {})
 
         def update_progress(message, percentage):
             with progress_placeholder.container():
@@ -948,40 +900,34 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
-            # Safety check
             if not oracle_user or not oracle_pass:
                 raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
-            presenza_data = st.session_state.presenza_data
-            if not presenza_data:
+            if not presenza_snapshot:
                 raise Exception("Nessun dato presenza trovato.")
 
-            edition_code = presenza_data.get('edition_code', '')
-            students = presenza_data.get('students', [])
-            stato = presenza_data.get('stato', 'Completato')
+            edition_code = presenza_snapshot.get('edition_code', '')
+            students = presenza_snapshot.get('students', [])
+            stato = presenza_snapshot.get('stato', 'Completato')
 
             if not edition_code:
                 raise Exception("Codice edizione mancante.")
             if not students:
                 raise Exception("Nessun allievo da processare.")
 
-            # === LOGIN ===
             update_progress("Accesso a Oracle...", 5)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
 
-            # === NAVIGATE TO EDITIONS PAGE ===
             update_progress("Navigazione alla pagina edizioni...", 10)
             if not self.model.navigate_to_edition_page():
                 raise Exception("Navigazione fallita.")
 
-            # === SEARCH AND OPEN EDITION ===
             update_progress(f"Ricerca edizione '{edition_code}'...", 25)
             edition_result = self.model._search_and_open_edition(edition_code)
             if not edition_result:
                 raise Exception(f"Edizione '{edition_code}' non trovata.")
 
-            # === ASSIGN PRESENZA ===
             update_progress(
                 f"Assegnazione presenza per {len(students)} allievi...", 40)
 
@@ -998,8 +944,7 @@ class CoursePresenter:
             print(f"Presenter Error (Presenza): {error_message}")
             results = {
                 'success': [],
-                'failed': st.session_state.get(
-                    'presenza_data', {}).get('students', []),
+                'failed': presenza_snapshot.get('students', []),
                 'total': 0,
                 'error': error_message
             }
@@ -1011,15 +956,14 @@ class CoursePresenter:
             progress_placeholder.empty()
             status_placeholder.empty()
 
-            # === BUILD SUMMARY ===
             total = results.get('total', 0)
             success_list = results.get('success', [])
             failed_list = results.get('failed', [])
 
             summary_parts = [
                 f"## 📊 Riepilogo Assegnazione Presenza\n",
-                f"- **Edizione:** {st.session_state.get('presenza_data', {}).get('edition_code', '')}",
-                f"- **Stato assegnato:** {st.session_state.get('presenza_data', {}).get('stato', 'Completato')}",
+                f"- **Edizione:** {presenza_snapshot.get('edition_code', '')}",
+                f"- **Stato assegnato:** {presenza_snapshot.get('stato', 'Completato')}",
                 f"- **Allievi processati:** {len(success_list)}/{total}",
                 f"- **Errori:** {len(failed_list)}\n",
             ]
@@ -1045,22 +989,23 @@ class CoursePresenter:
 
             final_message = "\n".join(summary_parts)
 
-            st.session_state.presenza_message = final_message
+            st.session_state.presenza_message = self._add_timestamp(
+                final_message, operation_start_time
+            )
             st.session_state.presenza_data = None
 
             st.session_state.app_state = "IDLE"
             st.rerun()
 
+    # ──────────────────────────────────────────────────────────────────
+    # PRESENZA — BATCH (multiple editions/stato groups)
+    # ──────────────────────────────────────────────────────────────────
     def run_assign_presenza_batch(self):
         """
         Execute presenza assignment for MULTIPLE editions/stato groups.
-
-        Reads from st.session_state.presenza_batch_data:
-            - jobs: list of {edition_code, students, stato}
-
-        OPTIMIZATION: Consecutive jobs with same edition_code skip the
-        navigate-back step (stay on the Allievi tab between stato groups).
+        Consecutive jobs with same edition_code skip the navigate-back step.
         """
+        operation_start_time = datetime.now()
         all_results = []
         progress_placeholder = st.empty()
         status_placeholder = st.empty()
@@ -1075,7 +1020,6 @@ class CoursePresenter:
             oracle_url = st.secrets['ORACLE_URL']
             oracle_user = st.session_state.oracle_username
             oracle_pass = st.session_state.oracle_password
-            # Safety check
             if not oracle_user or not oracle_pass:
                 raise Exception("Credenziali Oracle mancanti. Effettua nuovamente il login.")
 
@@ -1090,19 +1034,16 @@ class CoursePresenter:
             if total_jobs == 0:
                 raise Exception("Nessun job da processare.")
 
-            # === LOGIN once ===
             update_progress("Accesso a Oracle...", 5)
             if not self.model.login(oracle_url, oracle_user, oracle_pass):
                 raise Exception("Login fallito.")
 
-            # === NAVIGATE once ===
             update_progress("Navigazione alla pagina edizioni...", 10)
             if not self.model.navigate_to_edition_page():
                 raise Exception("Navigazione fallita.")
 
-            # === Process each job ===
             students_done = 0
-            current_edition_open = None  # track which edition is currently open
+            current_edition_open = None
 
             for idx, job in enumerate(jobs):
                 edition_code = job['edition_code']
@@ -1119,7 +1060,6 @@ class CoursePresenter:
                 )
 
                 try:
-                    # === Open edition only if different from current one ===
                     if current_edition_open != edition_code:
                         edition_result = self.model._search_and_open_edition(
                             edition_code)
@@ -1136,7 +1076,6 @@ class CoursePresenter:
                             continue
                         current_edition_open = edition_code
 
-                    # === Assign presenza for this group ===
                     result = self.model.assign_presenza_batch(
                         edition_code=edition_code,
                         students=students,
@@ -1153,7 +1092,6 @@ class CoursePresenter:
 
                     students_done += num_students
 
-                    # === Navigate back only if next job is different edition ===
                     if idx < total_jobs - 1:
                         next_edition = jobs[idx + 1]['edition_code']
                         if next_edition != edition_code:
@@ -1180,7 +1118,6 @@ class CoursePresenter:
                         'note': f'❌ Errore: {error_msg}'
                     })
                     students_done += num_students
-                    # Try to recover by navigating back to edition search
                     try:
                         self.model.navigate_to_edition_page()
                         current_edition_open = None
@@ -1208,7 +1145,6 @@ class CoursePresenter:
             progress_placeholder.empty()
             status_placeholder.empty()
 
-            # === BUILD SUMMARY ===
             total_success = sum(len(r.get('success', [])) for r in all_results)
             total_failed_students = sum(
                 len(r.get('failed', [])) for r in all_results)
@@ -1255,7 +1191,9 @@ class CoursePresenter:
 
             final_message = "\n".join(summary_parts)
 
-            st.session_state.presenza_message = final_message
+            st.session_state.presenza_message = self._add_timestamp(
+                final_message, operation_start_time
+            )
             st.session_state.presenza_batch_data = None
             st.session_state.presenza_show_batch_preview = False
 
