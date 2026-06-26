@@ -27,15 +27,37 @@ for handler in logger.handlers[:]:
     logger.removeHandler(handler)
     handler.close()
 
-# Add fresh handlers
-formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+# === USER CONTEXT FILTER FOR AUDIT LOGGING ===
+class UserContextFilter(logging.Filter):
+    """
+    Injects the current logged-in Oracle user into every log record.
+    Required by Sistemi Informativi for audit/traceability:
+    each log line must identify the user who initiated the operation.
+    """
+    def filter(self, record):
+        try:
+            import streamlit as st
+            record.user = st.session_state.get('oracle_username', 'NO_USER')
+        except Exception:
+            # Safety: if called outside a Streamlit session context
+            record.user = 'SYSTEM'
+        return True
 
+
+# === LOG FORMATTER WITH USER FIELD ===
+formatter = logging.Formatter(
+    '%(asctime)s | %(levelname)s | user=%(user)s | %(message)s'
+)
+
+# === HANDLERS ===
 file_handler = logging.FileHandler(log_file, encoding='utf-8')
 file_handler.setFormatter(formatter)
+file_handler.addFilter(UserContextFilter())
 logger.addHandler(file_handler)
 
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
+stream_handler.addFilter(UserContextFilter())
 logger.addHandler(stream_handler)
 
 # === REDIRECT print() TO LOGGING (always use the TRUE original) ===
@@ -51,15 +73,19 @@ if __name__ == "__main__":
 
     # 1. Initialize the View. It handles all state setup.
     view = CourseView()
+
+    # 2. AUTH GATE — show login screen until user is authenticated
+    if not view._render_login_screen():
+        st.stop()  # Don't render anything else
     headless, debug_mode, debug_pause = view.get_user_options()
 
-    # 2. Get current state BEFORE rendering UI
+    # 3. Get current state BEFORE rendering UI
     current_state = st.session_state.get('app_state', 'IDLE')
 
-    # 3. Let the View render the entire user interface.
+    # 4. Let the View render the entire user interface.
     view.render_ui()
 
-    # 4. Controller Logic: Only run this block if an automation has been started.
+    # 5. Controller Logic: Only run this block if an automation has been started.
     if current_state != "IDLE":
         model = OracleAutomator(driver_path=DRIVER_PATH,
                                 debug_mode=debug_mode,
