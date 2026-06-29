@@ -2447,11 +2447,20 @@ class CourseView:
 
             st.success(f"✅ Trovate {len(editions_list)} edizioni con le loro attività!")
 
+            try:
+                file_name = getattr(excel_file, 'io', None)
+                if hasattr(file_name, 'name'):
+                    file_name = file_name.name
+                else:
+                    file_name = 'Excel'
+            except Exception:
+                file_name = 'Excel'
+
             return {
                 'editions': editions_list,
                 'total_editions': len(editions_list),
                 'total_activities': sum(len(e['activities']) for e in editions_list),
-                'file_name': excel_file.io.name if hasattr(excel_file.io, 'name') else 'Excel'
+                'file_name': file_name
             }
 
         except Exception as e:
