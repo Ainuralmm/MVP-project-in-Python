@@ -333,6 +333,10 @@ class CourseView:
         if "app_state" not in st.session_state:
             st.session_state.app_state = "IDLE"
 
+        # === CONFIGURATION GUARD FOR CONTROLLER RUNS ===
+        if "automation_in_progress" not in st.session_state:
+            st.session_state.automation_in_progress = False
+
         # === AUTH STATE ===
         if "oracle_logged_in" not in st.session_state:
             st.session_state.oracle_logged_in = False

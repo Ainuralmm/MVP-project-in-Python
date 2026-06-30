@@ -112,57 +112,67 @@ if __name__ == "__main__":
         # Clear it so it doesn't stay on the screen forever
         st.session_state.CRITICAL_ERROR_MSG = None
 
-    # 5. Controller Logic: Only run this block if an automation has been started.
-    if current_state != "IDLE":
-        model = None
-        try:
-            model = OracleAutomator(driver_path=DRIVER_PATH,
-                                    debug_mode=debug_mode,
-                                    debug_pause=debug_pause,
-                                    headless=headless)
-            presenter = CoursePresenter(model, view)
+        # 5. Controller Logic: Only run this block if an automation has been started.
+        if current_state != "IDLE":
+            # Check if an automation run is already actively spinning up or processing
+            if st.session_state.get("automation_in_progress", False):
+                st.warning("Un'automazione è già in corso. Attendi il completamento senza fare clic sull'interfaccia.")
+                st.stop()
 
-            # Run the correct process based on the state
-            if st.session_state.app_state == "RUNNING_COURSE":
-                presenter.run_create_course(st.session_state.get("course_details"))
-            elif st.session_state.app_state == "RUNNING_BATCH_COURSE":
-                presenter.run_create_batch_courses(st.session_state.get("batch_course_data"))
-            elif st.session_state.app_state == "RUNNING_EDITION":
-                presenter.run_create_edition_and_activities(st.session_state.get("edition_details"))
-            elif st.session_state.app_state == "RUNNING_BATCH_EDITION":
-                presenter.run_batch_edition_creation()
-            elif st.session_state.app_state == "RUNNING_STUDENTS":
-                presenter.run_add_students(st.session_state.get("student_details"))
-            elif st.session_state.app_state == "RUNNING_BATCH_STUDENTS":
-                presenter.run_add_students_batch()
-            elif st.session_state.app_state == "RUNNING_VERIFY_STUDENTS":
-                presenter.run_verify_students()
-            elif st.session_state.app_state == "RUNNING_PRESENZA":
-                presenter.run_assign_presenza()
-            elif st.session_state.app_state == "RUNNING_BATCH_PRESENZA":
-                presenter.run_assign_presenza_batch()
+            model = None
+            try:
+                # Set the guard to true immediately before launching the browser
+                st.session_state.automation_in_progress = True
 
+                model = OracleAutomator(driver_path=DRIVER_PATH,
+                                        debug_mode=debug_mode,
+                                        debug_pause=debug_pause,
+                                        headless=headless)
+                presenter = CoursePresenter(model, view)
 
-        except Exception as global_error:
-            # === EMERGENCY RECOVERY ===
-            import logging
-            logging.error(
-                f"GLOBAL CONTROLLER ERROR: {global_error}",
-                exc_info=True
-            )
+                # Run the correct process based on the state
+                if st.session_state.app_state == "RUNNING_COURSE":
+                    presenter.run_create_course(st.session_state.get("course_details"))
+                elif st.session_state.app_state == "RUNNING_BATCH_COURSE":
+                    presenter.run_create_batch_courses(st.session_state.get("batch_course_data"))
+                elif st.session_state.app_state == "RUNNING_EDITION":
+                    presenter.run_create_edition_and_activities(st.session_state.get("edition_details"))
+                elif st.session_state.app_state == "RUNNING_BATCH_EDITION":
+                    presenter.run_batch_edition_creation()
+                elif st.session_state.app_state == "RUNNING_STUDENTS":
+                    presenter.run_add_students(st.session_state.get("student_details"))
+                elif st.session_state.app_state == "RUNNING_BATCH_STUDENTS":
+                    presenter.run_add_students_batch()
+                elif st.session_state.app_state == "RUNNING_VERIFY_STUDENTS":
+                    presenter.run_verify_students()
+                elif st.session_state.app_state == "RUNNING_PRESENZA":
+                    presenter.run_assign_presenza()
+                elif st.session_state.app_state == "RUNNING_BATCH_PRESENZA":
+                    presenter.run_assign_presenza_batch()
 
-            # 1. Try to close the browser if it was created
-            if model is not None:
-                try:
-                    model.close()
-                except Exception:
-                    pass
+                # Clean up state upon successful completion
+                st.session_state.app_state = "IDLE"
+                st.session_state.automation_in_progress = False
+                st.rerun()
 
-            # 2. Force state back to IDLE immediately
-            st.session_state.app_state = "IDLE"
+            except Exception as global_error:
+                # === EMERGENCY RECOVERY ===
+                import logging
 
-            # 3. Store the error message in session state so it survives the reset
-            st.session_state.CRITICAL_ERROR_MSG = f"❌ Si è verificato un errore imprevisto: {global_error}"
+                logging.error(
+                    f"GLOBAL CONTROLLER ERROR: {global_error}",
+                    exc_info=True
+                )
 
-            # 4. FORCE STREAMLIT TO REBOOT CLEANLY IN 'IDLE' STATE
-            st.rerun()
+                if model is not None:
+                    try:
+                        model.close()
+                    except Exception:
+                        pass
+
+                # Reset both states completely
+                st.session_state.app_state = "IDLE"
+                st.session_state.automation_in_progress = False
+
+                st.session_state.CRITICAL_ERROR_MSG = f"❌ Si è verificato un errore imprevisto: {global_error}"
+                st.rerun()
