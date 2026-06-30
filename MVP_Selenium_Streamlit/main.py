@@ -68,6 +68,27 @@ def _logging_print(*args, **kwargs):
 
 builtins.print = _logging_print
 
+def cleanup_orphan_drivers():
+    """
+    Kill any leftover msedgedriver.exe processes from previous crashed runs.
+    Prevents browser zombie accumulation.
+    """
+    import subprocess
+    import platform
+    try:
+        if platform.system() == "Windows":
+            subprocess.run(
+                ["taskkill", "/F", "/IM", "msedgedriver.exe", "/T"],
+                capture_output=True, timeout=5
+            )
+        else:  # macOS / Linux
+            subprocess.run(
+                ["pkill", "-f", "msedgedriver"],
+                capture_output=True, timeout=5
+            )
+    except Exception:
+        pass  # Best effort, not critical
+
 if __name__ == "__main__":
     DRIVER_PATH = "/Users/ainuralmukambetova/PCDocuments/AGSM/edgedriver_mac64_m1/msedgedriver"
 
@@ -87,36 +108,58 @@ if __name__ == "__main__":
 
     # 5. Controller Logic: Only run this block if an automation has been started.
     if current_state != "IDLE":
-        model = OracleAutomator(driver_path=DRIVER_PATH,
-                                debug_mode=debug_mode,
-                                debug_pause=debug_pause,
-                                headless=headless)
-        presenter = CoursePresenter(model, view)
+        model = None
+        try:
+            model = OracleAutomator(driver_path=DRIVER_PATH,
+                                    debug_mode=debug_mode,
+                                    debug_pause=debug_pause,
+                                    headless=headless)
+            presenter = CoursePresenter(model, view)
 
-        # Run the correct process based on the state
-        if st.session_state.app_state == "RUNNING_COURSE":
-            presenter.run_create_course(st.session_state.get("course_details"))
+            # Run the correct process based on the state
+            if st.session_state.app_state == "RUNNING_COURSE":
+                presenter.run_create_course(st.session_state.get("course_details"))
+            elif st.session_state.app_state == "RUNNING_BATCH_COURSE":
+                presenter.run_create_batch_courses(st.session_state.get("batch_course_data"))
+            elif st.session_state.app_state == "RUNNING_EDITION":
+                presenter.run_create_edition_and_activities(st.session_state.get("edition_details"))
+            elif st.session_state.app_state == "RUNNING_BATCH_EDITION":
+                presenter.run_batch_edition_creation()
+            elif st.session_state.app_state == "RUNNING_STUDENTS":
+                presenter.run_add_students(st.session_state.get("student_details"))
+            elif st.session_state.app_state == "RUNNING_BATCH_STUDENTS":
+                presenter.run_add_students_batch()
+            elif st.session_state.app_state == "RUNNING_VERIFY_STUDENTS":
+                presenter.run_verify_students()
+            elif st.session_state.app_state == "RUNNING_PRESENZA":
+                presenter.run_assign_presenza()
+            elif st.session_state.app_state == "RUNNING_BATCH_PRESENZA":
+                presenter.run_assign_presenza_batch()
 
-        elif st.session_state.app_state == "RUNNING_BATCH_COURSE":
-            presenter.run_create_batch_courses(st.session_state.get("batch_course_data"))
+        except Exception as global_error:
+            # === EMERGENCY RECOVERY ===
+            # If anything in the controller layer crashes, force return to IDLE
+            # and close the browser. Prevents infinite browser-opening loop.
+            import logging
 
-        elif st.session_state.app_state == "RUNNING_EDITION":
-            presenter.run_create_edition_and_activities(st.session_state.get("edition_details"))
+            logging.error(
+                f"GLOBAL CONTROLLER ERROR: {global_error}",
+                exc_info=True
+            )
 
-        # === NEW STATE ===
-        elif st.session_state.app_state == "RUNNING_BATCH_EDITION":
-            presenter.run_batch_edition_creation()
+            # Try to close the browser if it was created
+            if model is not None:
+                try:
+                    model.close()
+                except Exception:
+                    pass
 
-        elif st.session_state.app_state == "RUNNING_STUDENTS":
-            presenter.run_add_students(st.session_state.get("student_details"))
-        elif st.session_state.app_state == "RUNNING_BATCH_STUDENTS":
-             presenter.run_add_students_batch()
-        elif st.session_state.app_state == "RUNNING_VERIFY_STUDENTS":
-            presenter.run_verify_students()
-        elif st.session_state.app_state == "RUNNING_PRESENZA":
-            presenter.run_assign_presenza()
-        elif st.session_state.app_state == "RUNNING_PRESENZA":
-            presenter.run_assign_presenza()
-        elif st.session_state.app_state == "RUNNING_BATCH_PRESENZA":  # ← NEW
-            presenter.run_assign_presenza_batch()
+            # Force state back to IDLE
+            st.session_state.app_state = "IDLE"
 
+            # Show error to user
+            st.error(
+                f"❌ Si è verificato un errore imprevisto: {global_error}\n\n"
+                f"L'app è stata ripristinata. Puoi riprovare l'operazione."
+            )
+            st.stop()
