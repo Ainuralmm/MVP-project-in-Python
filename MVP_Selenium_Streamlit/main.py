@@ -81,7 +81,7 @@ def cleanup_orphan_drivers():
                 ["taskkill", "/F", "/IM", "msedgedriver.exe", "/T"],
                 capture_output=True, timeout=5
             )
-        else:  # macOS / Linux
+        else:
             subprocess.run(
                 ["pkill", "-f", "msedgedriver"],
                 capture_output=True, timeout=5
@@ -105,6 +105,12 @@ if __name__ == "__main__":
 
     # 4. Let the View render the entire user interface.
     view.render_ui()
+
+    # 4.5 Display any error messages from a previous crashed run safely
+    if "CRITICAL_ERROR_MSG" in st.session_state and st.session_state.CRITICAL_ERROR_MSG:
+        st.error(st.session_state.CRITICAL_ERROR_MSG)
+        # Clear it so it doesn't stay on the screen forever
+        st.session_state.CRITICAL_ERROR_MSG = None
 
     # 5. Controller Logic: Only run this block if an automation has been started.
     if current_state != "IDLE":
@@ -136,30 +142,27 @@ if __name__ == "__main__":
             elif st.session_state.app_state == "RUNNING_BATCH_PRESENZA":
                 presenter.run_assign_presenza_batch()
 
+
         except Exception as global_error:
             # === EMERGENCY RECOVERY ===
-            # If anything in the controller layer crashes, force return to IDLE
-            # and close the browser. Prevents infinite browser-opening loop.
             import logging
-
             logging.error(
                 f"GLOBAL CONTROLLER ERROR: {global_error}",
                 exc_info=True
             )
 
-            # Try to close the browser if it was created
+            # 1. Try to close the browser if it was created
             if model is not None:
                 try:
                     model.close()
                 except Exception:
                     pass
 
-            # Force state back to IDLE
+            # 2. Force state back to IDLE immediately
             st.session_state.app_state = "IDLE"
 
-            # Show error to user
-            st.error(
-                f"❌ Si è verificato un errore imprevisto: {global_error}\n\n"
-                f"L'app è stata ripristinata. Puoi riprovare l'operazione."
-            )
-            st.stop()
+            # 3. Store the error message in session state so it survives the reset
+            st.session_state.CRITICAL_ERROR_MSG = f"❌ Si è verificato un errore imprevisto: {global_error}"
+
+            # 4. FORCE STREAMLIT TO REBOOT CLEANLY IN 'IDLE' STATE
+            st.rerun()
