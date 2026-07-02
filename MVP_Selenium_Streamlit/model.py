@@ -172,12 +172,15 @@ class OracleAutomator:
         """
         Search for a course by name.
         Returns True if course exists, False if not.
+
+        Robust detection: looks for the course link ANYWHERE on the page,
+        not just inside a specific container XPath.
         """
         try:
             cleaned_course_name = course_name.strip()
             capitalised_course_name = cleaned_course_name.title()
 
-            # Wait for page to fully stabilize
+            # Wait for page to stabilize
             time.sleep(3)
             try:
                 WebDriverWait(self.driver, 10).until(
@@ -187,13 +190,13 @@ class OracleAutomator:
                 pass
 
             # Fill search name
-            search_box_locator = (By.XPATH, COURSE_SEARCH_XPATH_INPUT)
-            search_box = self.wait.until(EC.element_to_be_clickable(search_box_locator))
+            search_box = self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, COURSE_SEARCH_XPATH_INPUT)))
             search_box.clear()
             search_box.send_keys(capitalised_course_name)
             self._pause_for_visual_check()
 
-            # Fill search date filter
+            # Fill date filter
             date_input = self.wait.until(EC.presence_of_element_located(
                 (By.XPATH, COURSE_SEARCH_DATE_INPUT)))
             date_input.clear()
@@ -201,70 +204,71 @@ class OracleAutomator:
             self._pause_for_visual_check()
             time.sleep(3)
 
-            # Click search button
+            # Click search
             search_button = self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, COURSE_SEARCH_BUTTON)))
             search_button.click()
             print(f"Clicked Search button for course: '{capitalised_course_name}'")
 
-            result_container_xpath = COURSE_TABLE_SUMMARY
-
-            # Wait for Oracle to process the search (blocking overlay)
-            time.sleep(2)
+            # Wait for Oracle to process (blocking overlay disappears)
+            time.sleep(3)
             try:
                 WebDriverWait(self.driver, 15).until(
                     EC.invisibility_of_element_located(
                         (By.CLASS_NAME, "AFBlockingGlassPane")))
             except:
                 pass
-            time.sleep(1)
+            time.sleep(2)
 
+            course_name_lower = cleaned_course_name.lower()
 
+            # ═══════════════════════════════════════════════════════
+            # NEW ROBUST DETECTION — search the ENTIRE page, not a container
+            # Handles Italian accents in translate()
+            # ═══════════════════════════════════════════════════════
+
+            # Strategy 1: exact text match on any <a> link
+            exact_xpath = (
+                f'//a[translate(normalize-space(.), '
+                f'"ABCDEFGHIJKLMNOPQRSTUVWXYZÀÈÉÌÒÙ", '
+                f'"abcdefghijklmnopqrstuvwxyzàèéìòù")="{course_name_lower}"]'
+            )
             try:
-                # Wait for result container to be present
-                WebDriverWait(self.driver, 10).until(
+                WebDriverWait(self.driver, 8).until(
+                    EC.presence_of_element_located((By.XPATH, exact_xpath)))
+                print(f"✅ Search result: Course '{course_name}' FOUND (exact match)")
+                return True
+            except TimeoutException:
+                pass
+
+            # Strategy 2: partial match
+            partial_xpath = (
+                f'//a[contains(translate(normalize-space(.), '
+                f'"ABCDEFGHIJKLMNOPQRSTUVWXYZÀÈÉÌÒÙ", '
+                f'"abcdefghijklmnopqrstuvwxyzàèéìòù"), "{course_name_lower}")]'
+            )
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, partial_xpath)))
+                print(f"✅ Search result: Course '{course_name}' FOUND (partial match)")
+                return True
+            except TimeoutException:
+                pass
+
+            # Strategy 3: check for explicit "no data" message
+            try:
+                WebDriverWait(self.driver, 3).until(
                     EC.presence_of_element_located(
-                        (By.XPATH, COURSE_TABLE_SUMMARY)))
-            except:
-                print("   ⚠️ Could not find result container")
-
-            # Check for "no data" message
-            short_wait = WebDriverWait(self.driver, 5)
-            try:
-                short_wait.until(EC.presence_of_element_located(
-                    (By.XPATH, COURSE_NO_DATA_MESSAGE)))
-                print(f"Search result: Course '{course_name}' NOT found")
+                        (By.XPATH, COURSE_NO_DATA_MESSAGE)))
+                print(f"Search result: Course '{course_name}' NOT found (no data)")
                 return False
             except TimeoutException:
                 pass
 
-            # Look for the course name as a link inside the result container
-            course_name_lower = cleaned_course_name.lower()
-            course_link_xpath = (
-                f'{result_container_xpath}//a'
-                f'[translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
-                f' "abcdefghijklmnopqrstuvwxyz")="{course_name_lower}"]'
-            )
-            try:
-                short_wait.until(EC.presence_of_element_located(
-                    (By.XPATH, course_link_xpath)))
-                print(f"Search result: Course '{course_name}' FOUND")
-                return True
-            except TimeoutException:
-                # Fallback: check if any link in the container contains the name
-                fallback_xpath = (
-                    f'{result_container_xpath}//a'
-                    f'[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ",'
-                    f' "abcdefghijklmnopqrstuvwxyz"), "{course_name_lower}")]'
-                )
-                try:
-                    short_wait.until(EC.presence_of_element_located(
-                        (By.XPATH, fallback_xpath)))
-                    print(f"Search result: Course '{course_name}' FOUND (partial match)")
-                    return True
-                except TimeoutException:
-                    print(f"Search result: Course '{course_name}' NOT found")
-                    return False
+            # No signal at all — assume not found
+            print(f"Search result: Course '{course_name}' NOT found (no match on page)")
+            return False
+
         except Exception as e:
             print(f"Error during course search: {e}")
             return False
@@ -386,6 +390,60 @@ class OracleAutomator:
             salve_chiude.click()
             print(f"Clicked 'Salva e Chiudi' for '{course_name}'")
             self._pause_for_visual_check()
+
+            # ═══════════════════════════════════════════════════════════════
+            # Check for Oracle error dialog (title not unique / already exists)
+            # BEFORE waiting for success confirmation
+            # ═══════════════════════════════════════════════════════════════
+            error_xpath = (
+                "//*[contains(text(), 'non è univoco') "
+                "or contains(text(), 'non è univoca') "
+                "or contains(text(), 'not unique') "
+                "or contains(text(), 'WLF-5145040')]"
+            )
+
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, error_xpath)))
+                print(f"⚠️ Oracle rejected: course '{course_name}' already exists")
+
+                # Close the error dialog by clicking OK
+                try:
+                    ok_btn = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, "//button[normalize-space()='OK']")))
+                    ok_btn.click()
+                    time.sleep(1)
+                except:
+                    pass
+
+                # Close the create form by clicking Annulla
+                try:
+                    annulla_btn = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((
+                            By.XPATH,
+                            "//button[normalize-space()='Annulla' "
+                            "or normalize-space()='Cancel']"
+                        )))
+                    annulla_btn.click()
+                    time.sleep(2)
+                except:
+                    pass
+
+                # Wait for the Corsi list to reappear
+                try:
+                    WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, COURSE_SEARCH_XPATH_INPUT)))
+                except:
+                    pass
+
+                return (f"⚠️ Il corso '{course_name}' esiste già in Oracle. "
+                        f"Nessuna azione eseguita.")
+
+            except TimeoutException:
+                # No error dialog appeared → proceed with success flow
+                pass
 
             # Wait for confirmation (Edizioni tab appears)
             self.wait.until(EC.presence_of_element_located(
@@ -1064,11 +1122,28 @@ class OracleAutomator:
 
     def _fill_edition_language(self):
         """Helper: fill the Language field in edition form."""
+        try:
+            WebDriverWait(self.driver, 15).until(
+                EC.invisibility_of_element_located(
+                    (By.CLASS_NAME, "AFBlockingGlassPane")))
+        except:
+            pass
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.invisibility_of_element_located(
+                    (By.CLASS_NAME, "AFModalGlassPane")))
+        except:
+            pass
+        time.sleep(2)
         self.wait.until(EC.presence_of_element_located(
             (By.XPATH, EDITION_LANGUAGE_DROPDOWN)))
         choose_lingua = self.wait.until(EC.presence_of_element_located(
             (By.XPATH, EDITION_LANGUAGE_DROPDOWN)))
-        choose_lingua.click()
+        try:
+            choose_lingua.click()
+        except Exception as e:
+            print(f"   Normal click failed, using JS click: {e}")
+            self.driver.execute_script("arguments[0].click();", choose_lingua)
         self._pause_for_visual_check()
         find_lingua = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, f'//*[contains(text(), "{EDITION_LANGUAGE_DEFAULT}")]')))
@@ -1679,6 +1754,24 @@ class OracleAutomator:
             except:
                 pass
             time.sleep(2)
+            # ═══════════════════════════════════════════════════════
+            # EARLY EXIT: check for "no results" message
+            # Prevents 40s of wasted retry attempts on invalid codes
+            # ═══════════════════════════════════════════════════════
+            no_data_xpaths = [
+                "//*[contains(text(), 'Nessun dato da visualizzare')]",
+                "//*[contains(text(), 'Nessuna riga')]",
+                "//*[contains(text(), 'No data')]",
+            ]
+            for no_data_xpath in no_data_xpaths:
+                try:
+                    WebDriverWait(self.driver, 3).until(
+                        EC.presence_of_element_located((By.XPATH, no_data_xpath)))
+                    print(f"   ⚠️ No results for edition '{edition_code}' - "
+                          f"code does not exist in Oracle")
+                    return False  # Clean exit, no exception
+                except TimeoutException:
+                    continue  # This message not present, try next
 
             # ═══════════════════════════════════════════════════════
             # STEP 1: EXTRACT DATES FROM SEARCH RESULTS ROW
@@ -1803,6 +1896,47 @@ class OracleAutomator:
                 self.driver.save_screenshot(f"error_search_edition_{timestamp}.png")
             except:
                 pass
+            return False
+
+    def _reset_edition_search(self):
+        """
+        Reset the Edizioni search form to a clean state.
+        Called between editions in batch operations to avoid
+        stale form data (like a stuck 'Contiene' dropdown).
+        """
+        try:
+            # Try to find and click Reimposta button
+            reimposta_xpaths = [
+                "//button[normalize-space()='Reimposta']",
+                "//button[normalize-space()='Reset']",
+                "//a[normalize-space()='Reimposta']",
+            ]
+            for xpath in reimposta_xpaths:
+                try:
+                    btn = WebDriverWait(self.driver, 3).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath)))
+                    btn.click()
+                    print("   ✅ Clicked Reimposta to reset search form")
+
+                    # Wait for overlay to clear
+                    try:
+                        WebDriverWait(self.driver, 10).until(
+                            EC.invisibility_of_element_located(
+                                (By.CLASS_NAME, "AFBlockingGlassPane")))
+                    except:
+                        pass
+                    time.sleep(2)
+                    return True
+                except:
+                    continue
+
+            # Fallback: navigate away and back
+            print("   ⚠️ Reimposta not found, navigating fresh to Edizioni")
+            self.navigate_to_edition_page()
+            return True
+
+        except Exception as e:
+            print(f"   ⚠️ Could not reset search form: {e}")
             return False
 
     def _perform_student_addition_steps(self, student_file_path, lista_nome,
@@ -2692,6 +2826,23 @@ class OracleAutomator:
                     if not data_attivita:
                         print(f"      ⚠️ Empty date for row {row_idx + 1}, skipping")
                         continue
+
+                    # ═══════════════════════════════════════════════════════
+                    # Skip rows where activity date is in the future.
+                    # Oracle rejects Data completamento greater than today
+                    # ("attività non ancora avvenuta")
+                    # ═══════════════════════════════════════════════════════
+                    try:
+                        activity_date_obj = datetime.strptime(
+                            data_attivita, "%d/%m/%Y").date()
+                        today = date.today()
+                        if activity_date_obj > today:
+                            print(f"      ⚠️ Activity date {data_attivita} is in the future, "
+                                  f"skipping row (attività non ancora avvenuta)")
+                            continue
+                    except ValueError:
+                        print(f"      ⚠️ Could not parse date '{data_attivita}', "
+                              f"proceeding anyway")
 
                     # ── Fill "Data completamento" (column 5, editable input) ──
                     # Oracle creates input fields lazily — retry until it's there

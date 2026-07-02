@@ -226,7 +226,7 @@ class CoursePresenter:
         status_placeholder = st.empty()
 
         def update_batch_progress(message, percentage):
-            self.view.update_progress("course", message, percentage)
+            self.view.update_progress("edition", message, percentage)
 
         try:
             oracle_url = st.secrets['ORACLE_URL']
@@ -613,12 +613,7 @@ class CoursePresenter:
                         })
 
                     if idx < total_editions - 1:
-                        if not self.model._click_back_to_edition_search():
-                            print("   ⚠️ Back button failed, trying full navigation...")
-                            try:
-                                self.model.navigate_to_edition_page()
-                            except:
-                                print("   ❌ Could not return to edition search")
+                        self.model._reset_edition_search()
 
                 except Exception as e:
                     error_msg = str(e)[:80]
@@ -646,6 +641,13 @@ class CoursePresenter:
                                 continue
                     except:
                         pass
+                finally:
+                    # Always reset for next iteration — even after `continue` or exception
+                    if idx < total_editions - 1:
+                        try:
+                            self.model._reset_edition_search()
+                        except Exception as reset_err:
+                            print(f"   ⚠️ Reset failed: {reset_err}")
 
             update_progress("Processo completato!", 100)
 
