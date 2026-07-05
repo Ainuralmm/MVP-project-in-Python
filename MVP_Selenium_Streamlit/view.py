@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any, Tuple, List
 
 import presenter
 from presenter import CoursePresenter
+import automation_lock   # <-- NEW: VM-global lock + heartbeat
 
 
 # NEW UTILITY FUNCTIONS FOR ENHANCED NLP PARSING
@@ -697,19 +698,89 @@ class CourseView:
                     st.error("❌ Inserisci la password.")
                     return False
 
-                # Store in session memory only
+                # ── FRONT-DOOR CREDENTIAL CHECK ──────────────────────────
+                # Verify the credentials actually work in Oracle BEFORE
+                # showing the app. Catches a wrong password in ~15-25s with
+                # a clear message, instead of hanging later inside an
+                # automation. Uses its own browser, always closed.
+                import automation_lock
+                from model import OracleAutomator
+
+                # Serialize the check through the same VM-global lock, so a
+                # verification browser can't collide with a running automation.
+                acquired, holder = automation_lock.try_acquire(
+                    username.strip(), "Verifica credenziali"
+                )
+                if not acquired:
+                    st.warning(
+                        "⏳ Il server è occupato da un'altra automazione in "
+                        "questo momento. Attendi qualche istante e riprova ad "
+                        "accedere."
+                    )
+                    return False
+
+                verify_ok = False
+                verify_error = None
+                try:
+                    with st.spinner(
+                            "🔐 Verifica delle credenziali su Oracle in corso… "
+                            "(può richiedere fino a ~25 secondi)"
+                    ):
+                        import streamlit as st_mod  # local alias, safe
+                        driver_path = st.secrets['EDGE_DRIVER_PATH']
+                        checker = OracleAutomator(
+                            driver_path=driver_path,
+                            debug_mode=False,
+                            debug_pause=1,
+                            headless=True,  # invisible; just a credential probe
+                        )
+                        # record driver pid into the lock (self-heal safety)
+                        try:
+                            automation_lock.set_driver_pid(
+                                checker.driver.service.process.pid)
+                        except Exception:
+                            pass
+
+                        oracle_url = st.secrets['ORACLE_URL']
+                        verify_ok = checker.verify_credentials_only(
+                            oracle_url, username.strip(), password
+                        )
+                except Exception as e:
+                    verify_error = str(e)
+                    verify_ok = False
+                finally:
+                    # Always release the lock after the check.
+                    try:
+                        import os
+                        automation_lock.release(expected_holder_pid=os.getpid())
+                    except Exception:
+                        pass
+
+                if not verify_ok:
+                    if verify_error:
+                        st.error(
+                            "❌ Impossibile verificare le credenziali "
+                            f"(errore tecnico: {verify_error}). Riprova."
+                        )
+                    else:
+                        st.error(
+                            "❌ Credenziali errate o accesso a Oracle non "
+                            "riuscito.\n\nControlla username e password e "
+                            "riprova. Se il problema persiste, verifica di "
+                            "poter accedere a Oracle HCM dal browser."
+                        )
+                    # Do NOT mark as logged in; stay on the login screen.
+                    return False
+
+                # ── Credentials confirmed good — proceed ──
                 st.session_state.oracle_username = username.strip()
                 st.session_state.oracle_password = password
                 st.session_state.oracle_logged_in = True
 
-                # Log the login event — username only, NEVER the password
                 import logging
-                logging.info(
-                    f"App login: user={username.strip()}"
-                )
+                logging.info(f"App login (verified): user={username.strip()}")
 
                 st.rerun()
-
         return False
 
     def render_logout_button(self):
@@ -5384,6 +5455,14 @@ class CourseView:
                 st.rerun()
 
     def update_progress(self, form_type, message, percentage):
+        # ── HEARTBEAT: prove this run is alive + record the current step.
+        # Cheap local file write; keeps a long healthy batch from being
+        # reclaimed, and records WHICH step is running for the busy page.
+        try:
+            automation_lock.heartbeat(step=message)
+        except Exception:
+            pass
+
         placeholder = None
         if form_type == "course":
             placeholder = getattr(self, 'course_output_placeholder', None)
@@ -5392,15 +5471,132 @@ class CourseView:
         elif form_type == "student":
             placeholder = getattr(self, 'student_output_placeholder', None)
 
+        stamp = datetime.now().strftime("%H:%M:%S")
+
         if placeholder is not None:
             # placeholder.container() REPLACES content every call
             placeholder.empty()  # clear previous content first
             with placeholder.container():
                 st.progress(percentage / 100)
                 st.info(f"⏳ {message}")
+                st.caption(
+                    f"🫀 In corso (agg. {stamp}). Se un passo resta bloccato "
+                    f"oltre ~8 min, l'automazione viene chiusa automaticamente "
+                    f"e riceverai un messaggio. **Non ricaricare la pagina.**"
+                )
         else:
             # Fallback — should not happen normally
             st.info(f"⏳ {message}")
+            st.caption(f"🫀 In corso (agg. {stamp}). Non ricaricare la pagina.")
+
+    def render_busy_page(self, holder: dict):
+        """
+        Shown while the user waits for the server (app_state ==
+        WAITING_FOR_SERVER, set by main.py). Works with the main.py change
+        that NEVER launches from the waiting state.
+
+          - BUSY (holder is not None): live auto-refreshing status message.
+            app_state stays WAITING_FOR_SERVER, so main.py keeps showing this
+            page and never launches.
+          - FREE (holder is None): reset app_state to IDLE and tell the user
+            to press their button again. The next rerun shows the normal UI
+            with their saved data; their explicit click launches exactly once.
+
+        The user's typed data stays saved in session_state throughout.
+        """
+        try:
+            self._apply_theme()
+        except Exception:
+            pass
+
+        # ── SERVER FREE (or the holder's run is STALE/hung) → hand control
+        #    back to the user. A stale lock is treated as free: when the user
+        #    presses their button, the LAUNCH block's try_acquire will reclaim
+        #    the stale lock and kill the hung driver by PID (self-healing).
+        #    We must NOT keep showing "busy" for a stale lock, or the waiting
+        #    user would be stuck forever (the waiting page never reclaims). ──
+        if holder is None or holder.get("is_stale", False):
+            st.session_state.app_state = "IDLE"
+            st.session_state.automation_in_progress = False
+
+            pending = st.session_state.get("pending_operation", "")
+            nice = {
+                "RUNNING_COURSE": "Crea Corso",
+                "RUNNING_BATCH_COURSE": "Crea Corsi",
+                "RUNNING_EDITION": "Crea Edizione",
+                "RUNNING_BATCH_EDITION": "Crea Edizioni",
+                "RUNNING_STUDENTS": "Aggiungi Allievi",
+                "RUNNING_BATCH_STUDENTS": "Aggiungi Allievi",
+                "RUNNING_VERIFY_STUDENTS": "Verifica Allievi",
+                "RUNNING_PRESENZA": "Assegna Presenza",
+                "RUNNING_BATCH_PRESENZA": "Assegna Presenza",
+            }.get(pending, "l'operazione")
+
+            if holder is not None and holder.get("is_stale", False):
+                st.success(
+                    f"✅ **Il server è di nuovo disponibile.** "
+                    f"(L'automazione precedente si era bloccata ed è stata "
+                    f"liberata.)\n\nI tuoi dati sono salvati — premi di nuovo "
+                    f"il pulsante **{nice}** per avviare la tua automazione."
+                )
+            else:
+                st.success(
+                    f"✅ **Server libero!** I tuoi dati sono salvati.\n\n"
+                    f"Premi di nuovo il pulsante **{nice}** per avviare la tua "
+                    f"automazione."
+                )
+            return
+
+        # ── SERVER BUSY → live, auto-refreshing status ──
+        who = holder.get("username", "un altro utente")
+        op = holder.get("operation", "Automazione")
+        step = holder.get("step", "")
+        running = holder.get("seconds_running", 0)
+        since_hb = holder.get("seconds_since_heartbeat", 0)
+        is_stale = holder.get("is_stale", False)
+
+        def _fmt(sec):
+            m, s = divmod(int(sec), 60)
+            return f"{m} min {s} s" if m else f"{s} s"
+
+        st.markdown("### ⏳ Server occupato")
+        st.info(
+            f"È in corso un'altra automazione.\n\n"
+            f"👤 Utente: **{who}**  ·  operazione: **{op}**"
+            + (f"  ·  passo: *{step}*" if step else "")
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Attiva da", _fmt(running))
+        with col2:
+            st.metric("Ultimo progresso", f"{_fmt(since_hb)} fa")
+
+        if is_stale:
+            st.warning(
+                "⚠️ L'automazione sembra bloccata. Verrà liberata "
+                "automaticamente a breve — attendi ancora un momento."
+            )
+        else:
+            st.success(
+                "Aspetta qui: quando il server "
+                "sarà libero, il messaggio cambierà e potrai premere di nuovo "
+                "il pulsante.\n\n"
+                "**Non serve fare nulla adesso — non cliccare altrove.**"
+            )
+
+        st.caption("🔄 Questa pagina si aggiorna da sola ogni pochi secondi.")
+
+        # AUTO-REFRESH — safe: while WAITING_FOR_SERVER, main.py only reads the
+        # lock and re-shows this page. It NEVER calls try_acquire, so no browser
+        # is ever launched from here.
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            st_autorefresh(interval=4000, key="busy_autorefresh")
+        except Exception:
+            import time as _time
+            _time.sleep(4)
+            st.rerun()
 
     def show_message(self, form_type, message, show_clear_button=False):
         placeholder = None

@@ -128,6 +128,9 @@ EDITION_SUPPLIER_OK_BTN_2      = "//button[text()='OK' and contains(@id, 'suppli
 # =============================================================================
 EDITION_PRICE_FLAG_LABEL    = '//label[text()="Override determinazione prezzi"]'
 EDITION_PRICE_ADD_LINE_BTN  = "//img[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:addBtn::icon')]"
+# Clickable link/anchor that WRAPS the '+' icon (more reliable than the img).
+# Same id but without '::icon' — ADF's actual clickable element.
+EDITION_PRICE_ADD_LINE_LINK = "//a[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:addBtn')]"
 EDITION_PRICE_LINE_DROPDOWN = "//a[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:t1:0:soc2::drop')]"
 EDITION_PRICE_LISTINO_OPTION = '//*[contains(text(),"Prezzo di listino")]'
 EDITION_PRICE_COST_INPUT    = "//input[contains(@id, ':lsVwCls:rPrc:0:srAtbl:_ATp:t1:0:it1::content')]"

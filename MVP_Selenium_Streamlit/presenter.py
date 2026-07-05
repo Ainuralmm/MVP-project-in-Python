@@ -4,6 +4,7 @@ import os
 import tempfile
 from datetime import datetime
 from selenium.webdriver.common.by import By
+import automation_lock
 
 
 class CoursePresenter:
@@ -86,8 +87,13 @@ class CoursePresenter:
             )
 
         finally:
-            print("Presenter: Automation finished. Cleaning up.")
+            print("Presenter (Course): Cleaning up.")
             self.model.close()
+            # ── Release the VM-global lock so the next user can start now. ──
+            try:
+                automation_lock.release(expected_holder_pid=os.getpid())
+            except Exception:
+                pass
             st.session_state.app_state = "IDLE"
             st.rerun()
 
@@ -207,8 +213,13 @@ class CoursePresenter:
             )
 
         finally:
-            print("Presenter: Batch automation finished. Cleaning up.")
+            print("Presenter (Batch Course): Cleaning up.")
             self.model.close()
+            # ── Release the VM-global lock so the next user can start now. ──
+            try:
+                automation_lock.release(expected_holder_pid=os.getpid())
+            except Exception:
+                pass
             st.session_state.app_state = "IDLE"
             st.rerun()
 
@@ -320,6 +331,11 @@ class CoursePresenter:
         finally:
             print("Presenter: Batch edition automation finished. Cleaning up.")
             self.model.close()
+            # ── Release the VM-global lock so the next user can start now. ──
+            try:
+                automation_lock.release(expected_holder_pid=os.getpid())
+            except Exception:
+                pass
 
             progress_placeholder.empty()
             status_placeholder.empty()
@@ -407,8 +423,13 @@ class CoursePresenter:
             )
 
         finally:
-            print("Presenter (Edition+Activity): Automation finished. Cleaning up.")
+            print("Presenter (Edition+Activity): Cleaning up.")
             self.model.close()
+            # ── Release the VM-global lock so the next user can start now. ──
+            try:
+                automation_lock.release(expected_holder_pid=os.getpid())
+            except Exception:
+                pass
             st.session_state.app_state = "IDLE"
             st.rerun()
 
@@ -510,6 +531,11 @@ class CoursePresenter:
             print("Presenter (Student Add): Finished. Cleaning up.")
             if hasattr(self.model, 'driver') and self.model.driver:
                 self.model.close()
+            # ── Release the VM-global lock so the next user can start now. ──
+            try:
+                automation_lock.release(expected_holder_pid=os.getpid())
+            except Exception:
+                pass
             st.session_state.app_state = "IDLE"
             st.rerun()
 
@@ -663,6 +689,11 @@ class CoursePresenter:
         finally:
             print("Presenter (Batch Students): Finished. Cleaning up.")
             self.model.close()
+            # ── Release the VM-global lock so the next user can start now. ──
+            try:
+                automation_lock.release(expected_holder_pid=os.getpid())
+            except Exception:
+                pass
 
             for path in temp_file_paths:
                 if os.path.exists(path):
@@ -827,6 +858,11 @@ class CoursePresenter:
         finally:
             print("Presenter (Verify Students): Finished. Cleaning up.")
             self.model.close()
+            # ── Release the VM-global lock so the next user can start now. ──
+            try:
+                automation_lock.release(expected_holder_pid=os.getpid())
+            except Exception:
+                pass
 
             progress_placeholder.empty()
             status_placeholder.empty()
@@ -954,6 +990,11 @@ class CoursePresenter:
         finally:
             print("Presenter (Presenza): Finished. Cleaning up.")
             self.model.close()
+            # ── Release the VM-global lock so the next user can start now. ──
+            try:
+                automation_lock.release(expected_holder_pid=os.getpid())
+            except Exception:
+                pass
 
             progress_placeholder.empty()
             status_placeholder.empty()
@@ -1143,6 +1184,11 @@ class CoursePresenter:
         finally:
             print("Presenter (Batch Presenza): Finished. Cleaning up.")
             self.model.close()
+            # ── Release the VM-global lock so the next user can start now. ──
+            try:
+                automation_lock.release(expected_holder_pid=os.getpid())
+            except Exception:
+                pass
 
             progress_placeholder.empty()
             status_placeholder.empty()

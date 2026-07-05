@@ -8,6 +8,7 @@ import logging
 import os
 import builtins
 from datetime import datetime
+import automation_lock  # VM-global one-at-a-time lock + heartbeat + reaper
 
 # ══════════════════════════════════════════════════════════════════════
 # LOG DIRECTORY SETUP
@@ -96,6 +97,9 @@ def cleanup_orphan_drivers():
 
 if not hasattr(builtins, '_orphan_cleanup_done'):
     cleanup_orphan_drivers()
+    automation_lock.startup_clean_slate()
+    if automation_lock.current_holder() is None:
+        cleanup_orphan_drivers()
     builtins._orphan_cleanup_done = True
 
 
@@ -146,20 +150,49 @@ if __name__ == "__main__":
     # This runs ONLY when the user has triggered an automation.
     # Wrapped in try/except to guarantee state recovery on any failure.
     # ══════════════════════════════════════════════════════════════════
+    _op_labels = {
+        "RUNNING_COURSE": "Creazione Corso",
+        "RUNNING_BATCH_COURSE": "Creazione Corsi (batch)",
+        "RUNNING_EDITION": "Creazione Edizione + Attività",
+        "RUNNING_BATCH_EDITION": "Creazione Edizioni (batch)",
+        "RUNNING_STUDENTS": "Aggiunta Allievi",
+        "RUNNING_BATCH_STUDENTS": "Aggiunta Allievi (batch)",
+        "RUNNING_VERIFY_STUDENTS": "Verifica Allievi",
+        "RUNNING_PRESENZA": "Assegnazione Presenza",
+        "RUNNING_BATCH_PRESENZA": "Assegnazione Presenza (batch)",
+    }
+
+    # ── WAITING STATE: user is parked on the busy page. Show the live,
+    #    auto-refreshing message. NEVER try to acquire/launch here — this is
+    #    the key that prevents auto-launch when the server frees. ──
+    if current_state == "WAITING_FOR_SERVER":
+        holder = automation_lock.current_holder()  # None if server free
+        view.render_busy_page(holder)
+        st.stop()
+
+    # ── LAUNCH STATE: user explicitly clicked an operation button. ──
     if current_state != "IDLE":
-        # Guard: if we're ALREADY in the middle of an automation from a
-        # prior rerun cycle, don't create another browser. This is critical
-        # protection against Streamlit's rerun cascade.
-        if st.session_state.get("automation_in_progress", False):
-            st.warning(
-                "⏳ Un'automazione è già in corso. "
-                "Attendi il completamento senza cliccare l'interfaccia."
-            )
+        username = st.session_state.get("oracle_username", "sconosciuto")
+        operation_label = _op_labels.get(st.session_state.app_state, "Automazione")
+
+        # ── Try to acquire the VM-GLOBAL lock (across ALL sessions) ──
+        acquired, holder = automation_lock.try_acquire(username, operation_label)
+
+        if not acquired:
+            # Server busy. Park the user in WAITING state (remember what they
+            # wanted so the busy page can show a nice label), then show the
+            # live busy page. We do NOT launch a browser.
+            st.session_state.pending_operation = st.session_state.app_state
+            st.session_state.app_state = "WAITING_FOR_SERVER"
+            st.session_state.automation_in_progress = False
+            view.render_busy_page(holder)
             st.stop()
+        # We hold the lock. Record our holder PID so a late finally from an
+        # OLD run cannot delete OUR lock.
+        my_holder_pid = holder["holder_pid"]
 
         model = None
         try:
-            # Set the guard BEFORE opening the browser
             st.session_state.automation_in_progress = True
 
             model = OracleAutomator(
@@ -168,23 +201,28 @@ if __name__ == "__main__":
                 debug_pause=debug_pause,
                 headless=headless
             )
+
+            # Record the driver PID into the lock so, if THIS run later hangs,
+            # the next user can kill exactly this driver (targeted, not blanket).
+            try:
+                driver_pid = model.driver.service.process.pid
+                automation_lock.set_driver_pid(driver_pid)
+            except Exception:
+                pass  # non-fatal; heartbeat/holder-death still protect us
+
             presenter = CoursePresenter(model, view)
 
-            # Dispatch to the correct presenter method based on state
+            # ─────────── DISPATCH (unchanged from your code) ───────────
             if st.session_state.app_state == "RUNNING_COURSE":
-                presenter.run_create_course(
-                    st.session_state.get("course_details"))
+                presenter.run_create_course(st.session_state.get("course_details"))
             elif st.session_state.app_state == "RUNNING_BATCH_COURSE":
-                presenter.run_create_batch_courses(
-                    st.session_state.get("batch_course_data"))
+                presenter.run_create_batch_courses(st.session_state.get("batch_course_data"))
             elif st.session_state.app_state == "RUNNING_EDITION":
-                presenter.run_create_edition_and_activities(
-                    st.session_state.get("edition_details"))
+                presenter.run_create_edition_and_activities(st.session_state.get("edition_details"))
             elif st.session_state.app_state == "RUNNING_BATCH_EDITION":
                 presenter.run_batch_edition_creation()
             elif st.session_state.app_state == "RUNNING_STUDENTS":
-                presenter.run_add_students(
-                    st.session_state.get("student_details"))
+                presenter.run_add_students(st.session_state.get("student_details"))
             elif st.session_state.app_state == "RUNNING_BATCH_STUDENTS":
                 presenter.run_add_students_batch()
             elif st.session_state.app_state == "RUNNING_VERIFY_STUDENTS":
@@ -193,37 +231,37 @@ if __name__ == "__main__":
                 presenter.run_assign_presenza()
             elif st.session_state.app_state == "RUNNING_BATCH_PRESENZA":
                 presenter.run_assign_presenza_batch()
+            # ───────────────────────────────────────────────────────────
 
-            # If we reach here, presenter completed normally.
-            # (Presenters call st.rerun() in their finally block, so this
-            # line may not be reached — but it's a safety net.)
             st.session_state.automation_in_progress = False
 
         except Exception as global_error:
-            # ══════════════════════════════════════════════════════════
-            # EMERGENCY RECOVERY
-            # If ANYTHING crashes in the controller layer (driver init,
-            # presenter code, etc.), we MUST:
-            # 1. Close the browser to prevent zombies
-            # 2. Reset state to IDLE so no new browser opens
-            # 3. Reset the guard so user can retry
-            # 4. Show error to user
-            # ══════════════════════════════════════════════════════════
-            logging.error(
-                f"GLOBAL CONTROLLER ERROR: {global_error}",
-                exc_info=True
-            )
-
+            logging.error(f"GLOBAL CONTROLLER ERROR: {global_error}", exc_info=True)
             if model is not None:
                 try:
                     model.close()
                 except Exception:
                     pass
-
             st.session_state.app_state = "IDLE"
             st.session_state.automation_in_progress = False
             st.session_state.CRITICAL_ERROR_MSG = (
                 f"❌ Si è verificato un errore imprevisto: {global_error}\n\n"
                 f"L'app è stata ripristinata. Puoi riprovare l'operazione."
             )
+            # release the lock we hold, then rerun
+            try:
+                automation_lock.release(expected_holder_pid=my_holder_pid)
+            except Exception:
+                pass
             st.rerun()
+
+        finally:
+            # SAFETY NET: normally the presenter releases the lock in ITS
+            # finally (see presenter edits). But if the presenter somehow
+            # returns without releasing, or dispatch matched nothing, we
+            # release here too. release() is holder-checked, so this cannot
+            # delete a lock that a newer run already took.
+            try:
+                automation_lock.release(expected_holder_pid=my_holder_pid)
+            except Exception:
+                pass

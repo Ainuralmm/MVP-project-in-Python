@@ -13,6 +13,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.options import Options
 from selenium.common.exceptions import (TimeoutException,
     ElementClickInterceptedException, StaleElementReferenceException)
+import automation_lock
 
 # === IMPORT ALL XPATHS FROM CONFIG ===
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -35,19 +36,55 @@ class OracleAutomator:
         self.wait = WebDriverWait(self.driver, 40)
         self.debug_mode = debug_mode
         self.debug_pause_duration = debug_pause
+
+        # Verify students in-flow after adding? Default OFF for speed.
+        # The dedicated "Verifica Allievi" function can check on demand, and
+        # the success message already tells users to re-check later.
+        # Set to True to re-enable the in-flow check (adds ~5-6 min).
+        self.verify_students_after_add = False
+
+        # Record this driver's OS process id, so the global lock can later
+        # kill EXACTLY this driver by PID if the run hangs (never a blanket kill).
+        try:
+            self.driver_pid = self.driver.service.process.pid
+        except Exception:
+            self.driver_pid = None
+
         mode = "Headless" if headless else "Visible"
-        print(f"Model: WebDriver initialized in {mode} mode.")
+        print(f"Model: WebDriver initialized in {mode} mode. (pid={self.driver_pid})")
 
     def _pause_for_visual_check(self):
         if self.debug_mode:
             time.sleep(self.debug_pause_duration)
 
     def login(self, url, username, password):
+        """
+        Log in to Oracle. Returns True ONLY if login actually succeeded.
+
+        Fix: the old version returned True immediately after clicking the
+        button, before Oracle responded — so a wrong password was reported
+        as success, and the automation then hung on the next navigation.
+
+        Now: after clicking, we wait for a definitive outcome —
+          SUCCESS  → the browser leaves the login/IDCS page (URL changes
+                     away from the login host), OR the Oracle homepage
+                     search/menu element appears.
+          FAILURE  → we are still on the login page after the timeout
+                     (wrong password / MFA prompt / blocked), OR an error
+                     is shown.
+        This detection is URL-based and does NOT depend on matching Oracle's
+        error text (which varies by language/version), so it is robust.
+        """
         try:
             self.driver.get(url)
+            time.sleep(3)  # let redirect to IDCS login page settle
 
-            # Wait for redirect to IDCS login page to complete
-            time.sleep(3)
+            login_url_fragment = None
+            try:
+                # Remember the login host so we can detect leaving it.
+                login_url_fragment = self.driver.current_url.split("/")[2]
+            except Exception:
+                login_url_fragment = None
 
             # USERNAME - multiple fallbacks
             username_xpaths = [
@@ -62,10 +99,11 @@ class OracleAutomator:
                         EC.presence_of_element_located((By.XPATH, xpath)))
                     print(f"Found username field with: {xpath}")
                     break
-                except:
+                except Exception:
                     continue
             if not username_field:
                 raise Exception("Could not find username field")
+            username_field.clear()
             username_field.send_keys(username)
 
             # PASSWORD - multiple fallbacks
@@ -81,13 +119,14 @@ class OracleAutomator:
                         EC.presence_of_element_located((By.XPATH, xpath)))
                     print(f"Found password field with: {xpath}")
                     break
-                except:
+                except Exception:
                     continue
             if not password_field:
                 raise Exception("Could not find password field")
+            password_field.clear()
             password_field.send_keys(password)
 
-            # NEXT BUTTON - multiple fallbacks
+            # NEXT / SIGN IN BUTTON - multiple fallbacks
             button_xpaths = [
                 LOGIN_SUBMIT_BUTTON,
                 LOGIN_SUBMIT_FALLBACK_1,
@@ -101,18 +140,91 @@ class OracleAutomator:
                         EC.element_to_be_clickable((By.XPATH, xpath)))
                     print(f"Found sign in button with: {xpath}")
                     break
-                except:
+                except Exception:
                     continue
             if not sign_in_button:
                 raise Exception("Could not find Next/Sign In button")
             sign_in_button.click()
+            print("Model: Clicked sign-in. Verifying login outcome...")
 
-            print("Model: Logged in successfully.")
-            return True
+            # ── VERIFY OUTCOME (bounded ~25s) ──────────────────────────────
+            # Poll for success signals. If none appear in time, treat as
+            # failure (wrong credentials / MFA / block) and return False.
+            max_wait = 25          # seconds — bounded, never hangs forever
+            poll_every = 1
+            waited = 0
+            still_on_password = 0
+
+            while waited < max_wait:
+                time.sleep(poll_every)
+                waited += poll_every
+
+                # 1) URL moved away from the login host → strong success signal
+                try:
+                    current_host = self.driver.current_url.split("/")[2]
+                except Exception:
+                    current_host = login_url_fragment
+
+                if login_url_fragment and current_host and \
+                        current_host != login_url_fragment:
+                    print("Model: Login success (left login host).")
+                    return True
+
+                # 2) A password field is STILL present on the page → we are
+                #    still stuck on login (wrong password / re-prompt).
+                password_still_there = False
+                for xpath in password_xpaths:
+                    try:
+                        if self.driver.find_elements(By.XPATH, xpath):
+                            password_still_there = True
+                            break
+                    except Exception:
+                        pass
+
+                if password_still_there:
+                    still_on_password += 1
+                    # Require a few consecutive confirmations so a brief
+                    # transition frame isn't mistaken for failure.
+                    if still_on_password >= 5:
+                        print("Model: Login FAILED — still on login page "
+                              "(likely wrong credentials).")
+                        return False
+                else:
+                    # Password field gone but URL not yet changed — likely
+                    # mid-redirect. Reset the counter and keep polling.
+                    still_on_password = 0
+
+            # Timed out with no clear success → treat as failure (safe).
+            print("Model: Login outcome unclear after timeout — treating as "
+                  "FAILED to avoid a hung automation.")
+            return False
 
         except Exception as e:
             print(f"Model: Error during login: {e}")
             return False
+
+    def verify_credentials_only(self, url, username, password):
+        """
+        Lightweight credential check used by the LOGIN SCREEN (front door).
+        Reuses login() (which now verifies its outcome) and always closes
+        the browser afterward. Returns True/False.
+
+        This runs BEFORE the main UI is shown, so a wrong password is caught
+        in ~15-25s with a clear message, instead of hanging later inside an
+        automation. It opens its own browser and guarantees cleanup.
+        """
+        try:
+            result = self.login(url, username, password)
+            return bool(result)
+        except Exception as e:
+            print(f"Model: verify_credentials_only error: {e}")
+            return False
+        finally:
+            # Always close the verification browser — never leak it.
+            try:
+                self.close()
+            except Exception:
+                pass
 
     def navigate_to_courses_page(self):
         try:
@@ -865,9 +977,26 @@ class OracleAutomator:
             return False
 
     def _fill_edition_location(self, location):
-        """Helper: fill the Aula/Location field in edition form."""
+        """
+        Helper: fill the Aula/Location field in edition form.
+
+        Hardening (fixes the 'si blocca dopo aver cercato l'aula' hang):
+          - Wait for the ADF glass pane to clear AFTER clicking search, BEFORE
+            checking the results table (the old code checked table presence
+            while the pane was still up, so rows weren't ready → row click hung).
+          - JS-click fallback on the OK button.
+          - Fail fast with a clear message naming this step.
+        """
         if not location:
             return
+
+        def _wait_glass_clear(timeout=12):
+            for cls in ("AFBlockingGlassPane", "AFModalGlassPane"):
+                try:
+                    WebDriverWait(self.driver, timeout).until(
+                        EC.invisibility_of_element_located((By.CLASS_NAME, cls)))
+                except Exception:
+                    pass
 
         select_aula = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, EDITION_AULA_LOV_ICON)))
@@ -886,11 +1015,11 @@ class OracleAutomator:
                     EC.element_to_be_clickable((By.XPATH, xpath)))
                 print(f"   Found 'Cerca/Search' button with: {xpath}")
                 break
-            except:
+            except Exception:
                 continue
 
         if not cerca_aula_button:
-            print(f"   ⚠️ Could not find 'Cerca/Search' button, skipping location")
+            print("   ⚠️ Could not find 'Cerca/Search' button, skipping location")
             return
 
         cerca_aula_button.click()
@@ -898,6 +1027,7 @@ class OracleAutomator:
 
         box_cerca_aula = self.wait.until(EC.presence_of_element_located(
             (By.XPATH, EDITION_AULA_KEYWORD_INPUT)))
+        box_cerca_aula.clear()
         box_cerca_aula.send_keys(location)
         self._pause_for_visual_check()
 
@@ -913,26 +1043,32 @@ class OracleAutomator:
                     EC.element_to_be_clickable((By.XPATH, xpath)))
                 print(f"   Found Aula search button with: {xpath}")
                 break
-            except:
+            except Exception:
                 continue
 
         if not search_button:
-            raise Exception("Could not find Search/Cerca button in Aula popup")
+            raise Exception(
+                "Bloccato alla ricerca aula: pulsante 'Cerca' non trovato nel "
+                "popup aula.")
 
         search_button.click()
         print("   Clicked Aula search button")
 
-        self.wait.until(EC.presence_of_element_located(
-            (By.XPATH, EDITION_AULA_RESULTS_TABLE)))
-
-        # Wait for results to load
+        # ── KEY FIX: wait for the search glass pane to CLEAR before reading
+        #    the results table, so the rows are actually populated. ──
+        _wait_glass_clear(timeout=15)
         time.sleep(2)
+
         try:
-            WebDriverWait(self.driver, 5).until(
-                EC.invisibility_of_element_located(
-                    (By.CLASS_NAME, "AFBlockingGlassPane")))
-        except:
-            pass
+            self.wait.until(EC.presence_of_element_located(
+                (By.XPATH, EDITION_AULA_RESULTS_TABLE)))
+        except Exception as e:
+            raise Exception(
+                f"Bloccato alla ricerca aula: la tabella dei risultati non si "
+                f"è caricata per '{location}'. Dettaglio: {e}")
+
+        # extra settle for row rendering
+        _wait_glass_clear(timeout=5)
 
         location_lower = location.lower()
 
@@ -943,12 +1079,11 @@ class OracleAutomator:
                                                 '//*[contains(text(), "Nessuna riga") or '
                                                 'contains(text(), "Nessun dato")]')))
             print(f"⚠️ Location '{location}' not found in popup.")
-            # Click Annulla to close popup gracefully
             try:
                 annulla = self.driver.find_element(
                     By.XPATH, "//button[text()='Annulla' or text()='Cancel']")
                 annulla.click()
-            except:
+            except Exception:
                 pass
             return
         except TimeoutException:
@@ -956,26 +1091,25 @@ class OracleAutomator:
 
         # Try multiple strategies to click the matching row
         found = False
-
-        # Strategy 1: exact match on td text (direct text, no span required)
         for xpath in [
-            # Exact match anywhere in the row's text
             f'{EDITION_AULA_RESULTS_TABLE}//tr[.//td['
             f'translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", '
             f'"abcdefghijklmnopqrstuvwxyz")="{location_lower}"]]',
-            # Contains match (more lenient)
             f'{EDITION_AULA_RESULTS_TABLE}//tr[.//td['
             f'contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", '
             f'"abcdefghijklmnopqrstuvwxyz"), "{location_lower}")]]',
         ]:
             try:
-                row = WebDriverWait(self.driver, 5).until(
+                row = WebDriverWait(self.driver, 8).until(
                     EC.element_to_be_clickable((By.XPATH, xpath)))
-                row.click()
+                try:
+                    row.click()
+                except Exception:
+                    self.driver.execute_script("arguments[0].click();", row)
                 print(f"   ✅ Selected location: {location}")
                 found = True
                 break
-            except:
+            except Exception:
                 continue
 
         if not found:
@@ -983,9 +1117,14 @@ class OracleAutomator:
 
         self._pause_for_visual_check()
 
+        _wait_glass_clear(timeout=8)
         ok_button = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, EDITION_AULA_OK_BUTTON)))
-        ok_button.click()
+        try:
+            ok_button.click()
+        except Exception as e:
+            print(f"   Aula OK normal click failed, JS click: {e}")
+            self.driver.execute_script("arguments[0].click();", ok_button)
         print("Confirmed the selected course location")
         self._pause_for_visual_check()
 
@@ -1080,74 +1219,184 @@ class OracleAutomator:
             print(f"   ⚠️ Could not find supplier Cerca/Search link")
 
     def _fill_edition_price(self, price):
-        """Helper: fill the Price field in edition form."""
+        """
+        Helper: fill the Price ('Determinazione prezzi') section.
+
+        FIX for the hang at 'Aggiungi voce linea' (reported by all testers):
+          - Wait for the ADF glass panes to clear after flagging the override
+            (flagging fires a partial-page refresh that throws up an overlay;
+            the old code clicked into that overlay).
+          - Use element_to_be_clickable (not just presence) and try the LINK
+            wrapping the '+' icon first, then the raw <img> as fallback.
+          - scrollIntoView + normal click + JS-click fallback — the same
+            robust pattern already used successfully for 'Aggiungi' activities.
+          - Bounded, with clear error messages naming this step, so a failure
+            fails FAST (releasing the lock) instead of hanging.
+        """
         if not price:
             return
 
-        # ensure no overlay is blocking before clicking
-        try:
-            WebDriverWait(self.driver, 8).until(
-                EC.invisibility_of_element_located(
-                    (By.CLASS_NAME, "AFBlockingGlassPane")))
-        except:
-            pass
-        time.sleep(1)
+        def _wait_glass_clear():
+            for cls in ("AFBlockingGlassPane", "AFModalGlassPane"):
+                try:
+                    WebDriverWait(self.driver, 10).until(
+                        EC.invisibility_of_element_located((By.CLASS_NAME, cls)))
+                except Exception:
+                    pass
 
-        flag_prezzi = self.wait.until(EC.presence_of_element_located(
+        # 1) Flag 'Override determinazione prezzi'
+        _wait_glass_clear()
+        time.sleep(1)
+        flag_prezzi = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, EDITION_PRICE_FLAG_LABEL)))
         flag_prezzi.click()
         print("Flagged button 'Override determinazione prezzi'")
         self._pause_for_visual_check()
 
-        aggiungi_voce = self.wait.until(EC.presence_of_element_located(
-            (By.XPATH, EDITION_PRICE_ADD_LINE_BTN)))
-        aggiungi_voce.click()
+        # 2) Click 'Aggiungi voce linea' — the step that used to hang.
+        #    Flagging the override triggers an ADF refresh + glass pane; wait
+        #    for it to clear BEFORE clicking, then click robustly.
+        _wait_glass_clear()
+        time.sleep(1.5)  # let the pricing panel finish rendering the button
+
+        # Try the clickable LINK wrapping the '+' icon first (more reliable in
+        # ADF than clicking the raw <img>), then fall back to the img XPath.
+        add_line_xpaths = [
+            EDITION_PRICE_ADD_LINE_LINK,   # NEW in config (see note) - link/anchor
+            EDITION_PRICE_ADD_LINE_BTN,    # existing - the <img> icon
+        ]
+        aggiungi_voce = None
+        last_err = None
+        for xpath in add_line_xpaths:
+            try:
+                aggiungi_voce = WebDriverWait(self.driver, 12).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath)))
+                if aggiungi_voce:
+                    print(f"Found 'Aggiungi voce linea' with: {xpath}")
+                    break
+            except Exception as e:
+                last_err = e
+                continue
+
+        if not aggiungi_voce:
+            # Fail FAST with a clear message instead of hanging.
+            raise Exception(
+                "Bloccato all'inserimento prezzo: impossibile trovare/cliccare "
+                "'Aggiungi voce linea' (dopo aver flaggato override "
+                f"determinazione prezzi). Dettaglio: {last_err}"
+            )
+
+        # scrollIntoView + normal click + JS fallback (proven pattern)
+        try:
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});", aggiungi_voce)
+            time.sleep(0.5)
+        except Exception:
+            pass
+        try:
+            aggiungi_voce.click()
+        except Exception as click_error:
+            print(f"   Normal click failed, using JS click: {click_error}")
+            self.driver.execute_script("arguments[0].click();", aggiungi_voce)
         print("Clicked on button 'Aggiungi voce linea'")
         self._pause_for_visual_check()
 
-        dropdown_voce = self.wait.until(EC.presence_of_element_located(
+        # 3) Open the line-item type dropdown
+        _wait_glass_clear()
+        time.sleep(1)
+        dropdown_voce = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, EDITION_PRICE_LINE_DROPDOWN)))
-        dropdown_voce.click()
+        try:
+            dropdown_voce.click()
+        except Exception as e:
+            print(f"   Dropdown normal click failed, JS click: {e}")
+            self.driver.execute_script("arguments[0].click();", dropdown_voce)
         self._pause_for_visual_check()
 
-        prezzo_listino = self.wait.until(EC.presence_of_element_located(
+        # 4) Choose 'Prezzo di listino'
+        prezzo_listino = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, EDITION_PRICE_LISTINO_OPTION)))
-        prezzo_listino.click()
+        try:
+            prezzo_listino.click()
+        except Exception as e:
+            print(f"   Listino option normal click failed, JS click: {e}")
+            self.driver.execute_script("arguments[0].click();", prezzo_listino)
         self._pause_for_visual_check()
 
+        # 5) Enter the cost value
+        _wait_glass_clear()
         costo = self.wait.until(EC.presence_of_element_located(
             (By.XPATH, EDITION_PRICE_COST_INPUT)))
+        costo.clear()
         costo.send_keys(str(price))
         print(f"   ✅ Price set: {price}")
 
     def _fill_edition_language(self):
-        """Helper: fill the Language field in edition form."""
-        try:
-            WebDriverWait(self.driver, 15).until(
-                EC.invisibility_of_element_located(
-                    (By.CLASS_NAME, "AFBlockingGlassPane")))
-        except:
-            pass
-        try:
-            WebDriverWait(self.driver, 10).until(
-                EC.invisibility_of_element_located(
-                    (By.CLASS_NAME, "AFModalGlassPane")))
-        except:
-            pass
+        """
+        Helper: fill the Language field in edition form.
+
+        Hardening: wait for glass panes, use element_to_be_clickable + JS-click
+        fallback for BOTH the dropdown and the language option, and fail fast
+        with a clear message naming this step.
+        """
+        def _wait_glass_clear():
+            for cls in ("AFBlockingGlassPane", "AFModalGlassPane"):
+                try:
+                    WebDriverWait(self.driver, 12).until(
+                        EC.invisibility_of_element_located((By.CLASS_NAME, cls)))
+                except Exception:
+                    pass
+
+        _wait_glass_clear()
         time.sleep(2)
-        self.wait.until(EC.presence_of_element_located(
-            (By.XPATH, EDITION_LANGUAGE_DROPDOWN)))
-        choose_lingua = self.wait.until(EC.presence_of_element_located(
-            (By.XPATH, EDITION_LANGUAGE_DROPDOWN)))
+
+        # Open the language dropdown
+        try:
+            choose_lingua = self.wait.until(EC.element_to_be_clickable(
+                (By.XPATH, EDITION_LANGUAGE_DROPDOWN)))
+        except Exception as e:
+            raise Exception(
+                f"Bloccato alla lingua: impossibile trovare il menu lingua. {e}")
         try:
             choose_lingua.click()
         except Exception as e:
-            print(f"   Normal click failed, using JS click: {e}")
+            print(f"   Lingua dropdown normal click failed, JS click: {e}")
             self.driver.execute_script("arguments[0].click();", choose_lingua)
         self._pause_for_visual_check()
-        find_lingua = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, f'//*[contains(text(), "{EDITION_LANGUAGE_DEFAULT}")]')))
-        find_lingua.click()
+        time.sleep(1)
+
+        # Choose the language option (e.g. 'Italiana').
+        # Prefer an exact, clickable match; fall back to JS click.
+        lang_xpaths = [
+            f'//li[normalize-space()="{EDITION_LANGUAGE_DEFAULT}"]',
+            f'//*[contains(@id, "lngSel")]//*[normalize-space()='
+            f'"{EDITION_LANGUAGE_DEFAULT}"]',
+            f'//*[contains(text(), "{EDITION_LANGUAGE_DEFAULT}")]',
+        ]
+        find_lingua = None
+        last_err = None
+        for xpath in lang_xpaths:
+            try:
+                find_lingua = WebDriverWait(self.driver, 8).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath)))
+                if find_lingua:
+                    print(f"   Found language option with: {xpath}")
+                    break
+            except Exception as e:
+                last_err = e
+                continue
+
+        if not find_lingua:
+            raise Exception(
+                f"Bloccato alla lingua: impossibile selezionare "
+                f"'{EDITION_LANGUAGE_DEFAULT}'. Dettaglio: {last_err}")
+
+        try:
+            find_lingua.click()
+        except Exception as e:
+            print(f"   Lingua option normal click failed, JS click: {e}")
+            self.driver.execute_script("arguments[0].click();", find_lingua)
+
         print(f"Confirmed the selected language: {EDITION_LANGUAGE_DEFAULT}")
         self._pause_for_visual_check()
 
@@ -1580,6 +1829,11 @@ class OracleAutomator:
             if activities and len(activities) > 0:
                 print(f"\n[7] Creating {len(activities)} activities...")
                 for act_idx, activity in enumerate(activities):
+                    try:
+                        automation_lock.heartbeat(
+                            step=f"attività {act_idx + 1}/{len(activities)}")
+                    except Exception:
+                        pass
                     print(f"\n--- Creating activity {act_idx + 1} of {len(activities)} ---")
                     act_date = activity.get('date', '')
                     if isinstance(act_date, str):
@@ -1961,6 +2215,14 @@ class OracleAutomator:
             # Extra wait for page to be fully interactive
             time.sleep(3)
 
+            def _wait_glass_clear(timeout=12):
+                for cls in ("AFBlockingGlassPane", "AFModalGlassPane"):
+                    try:
+                        WebDriverWait(self.driver, timeout).until(
+                            EC.invisibility_of_element_located((By.CLASS_NAME, cls)))
+                    except Exception:
+                        pass
+
             allievi_tab = self.wait.until(EC.element_to_be_clickable(
                 (By.XPATH, STUDENT_ALLIEVI_TAB)))
             self.driver.execute_script(
@@ -2138,8 +2400,14 @@ class OracleAutomator:
                     continue
 
             if not aggiungi_dropdown:
-                raise Exception("Could not find 'Aggiungi' dropdown on Seleziona allievi page")
-            aggiungi_dropdown.click()
+                raise Exception(
+                    "Bloccato a 'Seleziona allievi': menu 'Aggiungi' non "
+                    "trovato.")
+            try:
+                aggiungi_dropdown.click()
+            except Exception as e:
+                print(f"   'Aggiungi' normal click failed, JS click: {e}")
+                self.driver.execute_script("arguments[0].click();", aggiungi_dropdown)
             print("   ✅ Clicked 'Aggiungi' dropdown")
             self._pause_for_visual_check()
 
@@ -2157,10 +2425,17 @@ class OracleAutomator:
                     continue
 
             if not elenco_option:
-                raise Exception("Could not find 'Elenco numeri persona' option")
-            elenco_option.click()
+                raise Exception(
+                    "Bloccato a 'Elenco numeri persona': opzione non trovata "
+                    "nel menu Aggiungi.")
+            try:
+                elenco_option.click()
+            except Exception as e:
+                print(f"   'Elenco' normal click failed, JS click: {e}")
+                self.driver.execute_script("arguments[0].click();", elenco_option)
             print("   ✅ Selected 'Elenco numeri persona'")
             self._pause_for_visual_check()
+            _wait_glass_clear()
             time.sleep(2)
 
             # Step 1.3: Fill Nome field
@@ -2177,7 +2452,11 @@ class OracleAutomator:
                     continue
 
             if not nome_field:
-                raise Exception("Could not find 'Nome' field")
+                raise Exception(
+                    "Bloccato all'inserimento codice edizione: campo 'Nome' "
+                    "(elenco numeri persona) non trovato.")
+
+            _wait_glass_clear()
 
             time.sleep(2)
             self.driver.execute_script(
@@ -2196,8 +2475,9 @@ class OracleAutomator:
                     nome_field, lista_nome)
             print(f"   ✅ Filled 'Nome' field with: {lista_nome}")
 
-            # Step 1.4: Click + button
+            # Step 1.4: Click '+' to add attachment row...
             print("Step 1.4: Clicking '+' to add attachment row...")
+            _wait_glass_clear()
             plus_button_xpaths = [STUDENT_PLUS_BUTTON]
             plus_button = None
             for xpath in plus_button_xpaths:
@@ -2269,31 +2549,47 @@ class OracleAutomator:
             time.sleep(3)
             self._pause_for_visual_check()
 
-            # PART 2: Submit student list
+            # PART 2: Submit student list (stale-safe)
             print("\n=== PART 2: Submitting student list ===")
 
             print("Step 2.1: Clicking 'Successivo'...")
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, STUDENT_NEXT_BUTTON))).click()
-            print("   ✅ Clicked 'Successivo'")
-            time.sleep(2)
+            self._click_when_ready(STUDENT_NEXT_BUTTON, "Successivo (Part 2)")
+            time.sleep(3)  # let the submit screen finish rendering
             self._pause_for_visual_check()
 
             print("Step 2.2: Clicking 'Sottometti'...")
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, STUDENT_SUBMIT_BUTTON))).click()
-            print("   ✅ Clicked 'Sottometti'")
+            self._click_when_ready(STUDENT_SUBMIT_BUTTON, "Sottometti")
             time.sleep(2)
 
             print("Step 2.3: Confirming submission...")
-            self.wait.until(EC.invisibility_of_element_located(
-                (By.CLASS_NAME, "AFBlockingGlassPane")))
-            self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, STUDENT_CONFIRM_DIALOG_OK))).click()
-            print("   ✅ Confirmed submission")
+            # confirm dialog may or may not appear; try but don't hang
+            try:
+                self._click_when_ready(STUDENT_CONFIRM_DIALOG_OK,
+                                       "Conferma invio (OK)", attempts=3)
+            except Exception as confirm_err:
+                # Some flows submit without a confirm dialog — don't fail the
+                # whole run if the dialog simply wasn't there.
+                print(f"   ℹ️ No confirm dialog to click (ok): {confirm_err}")
             time.sleep(2)
 
-            # PART 3: Verify students were added (refresh + scroll-and-collect)
+            # PART 3: Verify students were added (OPTIONAL — toggle above).
+            if not getattr(self, "verify_students_after_add", False):
+                print("\n=== PART 3 SKIPPED (verify_students_after_add=False) ===")
+                print("   Invio completato. La verifica in-flow è disattivata "
+                      "per velocità — usa 'Verifica Allievi' se vuoi controllare.")
+                # Clear any overlay, then finish successfully.
+                try:
+                    WebDriverWait(self.driver, 5).until(
+                        EC.invisibility_of_element_located(
+                            (By.CLASS_NAME, "AFBlockingGlassPane")))
+                except Exception:
+                    pass
+                print("\n" + "=" * 50)
+                print("✅ COMPLETE: Students submitted.")
+                print("=" * 50)
+                return True
+
+            # (in-flow verification enabled)
             print("\n=== PART 3: Verifying students were added ===")
 
             verification_matricole = []
@@ -2392,6 +2688,51 @@ class OracleAutomator:
                 pass
             return False
 
+    def _click_when_ready(self, xpath, description="element",
+                          attempts=4, per_wait=10):
+        """
+        Click an element by XPath, tolerant of ADF re-renders:
+          - waits for glass panes to clear,
+          - waits for the element to be clickable,
+          - retries if the element goes stale between find and click,
+          - JS-click fallback.
+        Raises with a clear message if it truly can't click.
+        """
+        last_err = None
+        for i in range(1, attempts + 1):
+            # clear overlays first
+            for cls in ("AFBlockingGlassPane", "AFModalGlassPane"):
+                try:
+                    WebDriverWait(self.driver, per_wait).until(
+                        EC.invisibility_of_element_located((By.CLASS_NAME, cls)))
+                except Exception:
+                    pass
+            try:
+                el = WebDriverWait(self.driver, per_wait).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath)))
+                try:
+                    el.click()
+                except StaleElementReferenceException:
+                    # element re-rendered between find and click → retry
+                    raise
+                except Exception:
+                    self.driver.execute_script("arguments[0].click();", el)
+                print(f"   ✅ Clicked {description}")
+                return True
+            except StaleElementReferenceException as e:
+                last_err = e
+                print(f"   ⚠️ {description} stale (attempt {i}/{attempts}), "
+                      f"retrying...")
+                time.sleep(2)
+                continue
+            except Exception as e:
+                last_err = e
+                time.sleep(2)
+                continue
+        raise Exception(
+            f"Bloccato a '{description}': impossibile cliccare dopo "
+            f"{attempts} tentativi. Dettaglio: {last_err}")
+
     def _read_all_visible_matricole(self):
         """
         Read all numero persona in the Allievi table.
@@ -2418,6 +2759,10 @@ class OracleAutomator:
                 pass
 
         for i in range(max_iterations):
+            try:
+                automation_lock.heartbeat(step=f"lettura allievi (scroll {i + 1})")
+            except Exception:
+                pass
             # Read what's currently visible
             visible = self._read_visible_rows_once()
 
@@ -2598,6 +2943,11 @@ class OracleAutomator:
         total_visible = 0
 
         for attempt in range(1, max_attempts + 1):
+            try:
+                automation_lock.heartbeat(
+                    step=f"verifica allievi (tentativo {attempt}/{max_attempts})")
+            except Exception:
+                pass
             print(f"\n   Refresh {attempt}/{max_attempts}...")
 
             try:
@@ -2801,6 +3151,11 @@ class OracleAutomator:
 
             # Process each row
             for row_idx, row in enumerate(activity_rows):
+                try:
+                    automation_lock.heartbeat(
+                        step=f"riga attività {row_idx + 1}/{len(activity_rows)}")
+                except Exception:
+                    pass
                 print(f"\n   Processing activity row {row_idx + 1}...")
 
                 try:
@@ -3053,6 +3408,12 @@ class OracleAutomator:
 
         # === PROCESS EACH STUDENT (with isolation via keyword search) ===
         for idx, person_number in enumerate(students):
+            try:
+                automation_lock.heartbeat(
+                    step=f"presenza allievo {idx + 1}/{len(students)} "
+                         f"({person_number})")
+            except Exception:
+                pass
             print(f"\n[{idx + 1}/{len(students)}] Student: {person_number}")
 
             try:
