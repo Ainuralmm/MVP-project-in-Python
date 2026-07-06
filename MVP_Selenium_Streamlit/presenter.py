@@ -138,6 +138,13 @@ class CoursePresenter:
                 )
 
                 try:
+                    # Re-navigate to a CLEAN Corsi page before each course.
+                    # Single-course works because it always searches on a fresh
+                    # page; batch was searching on stale results from the previous
+                    # course, which wedged Oracle on the "not found → create" path.
+                    if not self.model.navigate_to_courses_page():
+                        raise Exception("Navigazione alla pagina corsi fallita")
+
                     if self.model.search_course(course_title):
                         results['skipped'].append({
                             'course': course_title,
