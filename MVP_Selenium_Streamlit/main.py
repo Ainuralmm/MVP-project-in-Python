@@ -162,13 +162,7 @@ if __name__ == "__main__":
         "RUNNING_BATCH_PRESENZA": "Assegnazione Presenza (batch)",
     }
 
-    # ── WAITING STATE: user is parked on the busy page. Show the live,
-    #    auto-refreshing message. NEVER try to acquire/launch here — this is
-    #    the key that prevents auto-launch when the server frees. ──
-    if current_state == "WAITING_FOR_SERVER":
-        holder = automation_lock.current_holder()  # None if server free
-        view.render_busy_page(holder)
-        st.stop()
+
 
     # ── LAUNCH STATE: user explicitly clicked an operation button. ──
     if current_state != "IDLE":
@@ -179,13 +173,18 @@ if __name__ == "__main__":
         acquired, holder = automation_lock.try_acquire(username, operation_label)
 
         if not acquired:
-            # Server busy. Park the user in WAITING state (remember what they
-            # wanted so the busy page can show a nice label), then show the
-            # live busy page. We do NOT launch a browser.
-            st.session_state.pending_operation = st.session_state.app_state
-            st.session_state.app_state = "WAITING_FOR_SERVER"
+            # Server busy → plain static message, NO busy page, NO auto-refresh.
+            # (The auto-refresh was causing reruns that abandoned running
+            # automations.) One user at a time.
+            who = holder.get("username", "un altro utente") if holder else "un altro utente"
+            st.error(
+                f"⏳ **Server occupato** — un'altra automazione è in corso "
+                f"(utente: {who}).\n\n"
+                f"Attendi qualche minuto, poi **ricarica la pagina** e riprova. "
+                f"**Usare l'automatore una persona alla volta.**"
+            )
+            st.session_state.app_state = "IDLE"
             st.session_state.automation_in_progress = False
-            view.render_busy_page(holder)
             st.stop()
         # We hold the lock. Record our holder PID so a late finally from an
         # OLD run cannot delete OUR lock.
