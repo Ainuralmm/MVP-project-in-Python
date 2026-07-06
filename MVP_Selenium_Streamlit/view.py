@@ -706,18 +706,7 @@ class CourseView:
                 import automation_lock
                 from model import OracleAutomator
 
-                # Serialize the check through the same VM-global lock, so a
-                # verification browser can't collide with a running automation.
-                acquired, holder = automation_lock.try_acquire(
-                    username.strip(), "Verifica credenziali"
-                )
-                if not acquired:
-                    st.warning(
-                        "⏳ Il server è occupato da un'altra automazione in "
-                        "questo momento. Attendi qualche istante e riprova ad "
-                        "accedere."
-                    )
-                    return False
+                # (Lock removed — one user at a time by scheduling.)
 
                 verify_ok = False
                 verify_error = None
@@ -749,12 +738,7 @@ class CourseView:
                     verify_error = str(e)
                     verify_ok = False
                 finally:
-                    # Always release the lock after the check.
-                    try:
-                        import os
-                        automation_lock.release(expected_holder_pid=os.getpid())
-                    except Exception:
-                        pass
+                    pass
 
                 if not verify_ok:
                     if verify_error:

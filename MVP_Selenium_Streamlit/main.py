@@ -162,64 +162,22 @@ if __name__ == "__main__":
         "RUNNING_BATCH_PRESENZA": "Assegnazione Presenza (batch)",
     }
 
-
-
     # ── LAUNCH STATE: user explicitly clicked an operation button. ──
     if current_state != "IDLE":
-        username = st.session_state.get("oracle_username", "sconosciuto")
-        operation_label = _op_labels.get(st.session_state.app_state, "Automazione")
-
-        # ── Try to acquire the VM-GLOBAL lock (across ALL sessions) ──
-        acquired, holder = automation_lock.try_acquire(username, operation_label)
-
-        if not acquired:
-            # Server busy → stop quietly with a small note. Keep it simple:
-            # one user at a time. (If this is a stale lock from a dead run,
-            # delete automation.lock on the server, or wait for the 8-min
-            # auto-reclaim.)
-            st.info(
-                "⏳ Server occupato — un'altra operazione è in corso. "
-                "Riprova tra qualche minuto. Usare l'automatore una persona "
-                "alla volta."
-            )
-            st.session_state.app_state = "IDLE"
-            st.session_state.automation_in_progress = False
-            st.stop()
-
-        my_holder_pid = holder["holder_pid"]
-
         model = None
         try:
             st.session_state.automation_in_progress = True
 
-            # If a PREVIOUS run in this session was abandoned by a Streamlit
-            # rerun, its driver may still be alive. Kill it by the PID we
-            # recorded, so we never stack browsers.
-            try:
-                prev_pid = st.session_state.get("last_driver_pid")
-                if prev_pid:
-                    automation_lock.kill_driver_pid(prev_pid)
-                    st.session_state.last_driver_pid = None
-            except Exception:
-                pass
-
-            model  = OracleAutomator(
+            model = OracleAutomator(
                 driver_path=DRIVER_PATH,
                 debug_mode=debug_mode,
                 debug_pause=debug_pause,
                 headless=headless
             )
 
-            try:
-                driver_pid = model.driver.service.process.pid
-                automation_lock.set_driver_pid(driver_pid)
-                st.session_state.last_driver_pid = driver_pid  # for self-cleanup
-            except Exception:
-                pass  # non-fatal; heartbeat/holder-death still protect us
-
             presenter = CoursePresenter(model, view)
 
-            # ─────────── DISPATCH (unchanged from your code) ───────────
+            # ─────────── DISPATCH ───────────
             if st.session_state.app_state == "RUNNING_COURSE":
                 presenter.run_create_course(st.session_state.get("course_details"))
             elif st.session_state.app_state == "RUNNING_BATCH_COURSE":
@@ -238,7 +196,7 @@ if __name__ == "__main__":
                 presenter.run_assign_presenza()
             elif st.session_state.app_state == "RUNNING_BATCH_PRESENZA":
                 presenter.run_assign_presenza_batch()
-            # ───────────────────────────────────────────────────────────
+            # ─────────────────────────────────
 
             st.session_state.automation_in_progress = False
 
@@ -255,20 +213,4 @@ if __name__ == "__main__":
                 f"❌ Si è verificato un errore imprevisto: {global_error}\n\n"
                 f"L'app è stata ripristinata. Puoi riprovare l'operazione."
             )
-            # release the lock we hold, then rerun
-            try:
-                automation_lock.release(expected_holder_pid=my_holder_pid)
-            except Exception:
-                pass
             st.rerun()
-
-        finally:
-            # SAFETY NET: normally the presenter releases the lock in ITS
-            # finally (see presenter edits). But if the presenter somehow
-            # returns without releasing, or dispatch matched nothing, we
-            # release here too. release() is holder-checked, so this cannot
-            # delete a lock that a newer run already took.
-            try:
-                automation_lock.release(expected_holder_pid=my_holder_pid)
-            except Exception:
-                pass
