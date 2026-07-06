@@ -173,21 +173,19 @@ if __name__ == "__main__":
         acquired, holder = automation_lock.try_acquire(username, operation_label)
 
         if not acquired:
-            # Server busy → plain static message, NO busy page, NO auto-refresh.
-            # (The auto-refresh was causing reruns that abandoned running
-            # automations.) One user at a time.
-            who = holder.get("username", "un altro utente") if holder else "un altro utente"
-            st.error(
-                f"⏳ **Server occupato** — un'altra automazione è in corso "
-                f"(utente: {who}).\n\n"
-                f"Attendi qualche minuto, poi **ricarica la pagina** e riprova. "
-                f"**Usare l'automatore una persona alla volta.**"
+            # Server busy → stop quietly with a small note. Keep it simple:
+            # one user at a time. (If this is a stale lock from a dead run,
+            # delete automation.lock on the server, or wait for the 8-min
+            # auto-reclaim.)
+            st.info(
+                "⏳ Server occupato — un'altra operazione è in corso. "
+                "Riprova tra qualche minuto. Usare l'automatore una persona "
+                "alla volta."
             )
             st.session_state.app_state = "IDLE"
             st.session_state.automation_in_progress = False
             st.stop()
-        # We hold the lock. Record our holder PID so a late finally from an
-        # OLD run cannot delete OUR lock.
+
         my_holder_pid = holder["holder_pid"]
 
         model = None
