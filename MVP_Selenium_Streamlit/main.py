@@ -195,18 +195,28 @@ if __name__ == "__main__":
         try:
             st.session_state.automation_in_progress = True
 
-            model = OracleAutomator(
+            # If a PREVIOUS run in this session was abandoned by a Streamlit
+            # rerun, its driver may still be alive. Kill it by the PID we
+            # recorded, so we never stack browsers.
+            try:
+                prev_pid = st.session_state.get("last_driver_pid")
+                if prev_pid:
+                    automation_lock.kill_driver_pid(prev_pid)
+                    st.session_state.last_driver_pid = None
+            except Exception:
+                pass
+
+            model  = OracleAutomator(
                 driver_path=DRIVER_PATH,
                 debug_mode=debug_mode,
                 debug_pause=debug_pause,
                 headless=headless
             )
 
-            # Record the driver PID into the lock so, if THIS run later hangs,
-            # the next user can kill exactly this driver (targeted, not blanket).
             try:
                 driver_pid = model.driver.service.process.pid
                 automation_lock.set_driver_pid(driver_pid)
+                st.session_state.last_driver_pid = driver_pid  # for self-cleanup
             except Exception:
                 pass  # non-fatal; heartbeat/holder-death still protect us
 
