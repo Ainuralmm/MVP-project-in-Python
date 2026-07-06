@@ -163,6 +163,18 @@ if __name__ == "__main__":
     }
 
     # ── LAUNCH STATE: user explicitly clicked an operation button. ──
+    # Launch ONLY if a run isn't already in progress in this session.
+    # This guard survives Streamlit reruns, so a rerun during a long/frozen
+    # automation will NOT start a second browser (prevents the zombie loop).
+    already_running = st.session_state.get("automation_in_progress", False)
+
+    if current_state != "IDLE" and already_running:
+        # A run is already active in this session. A rerun re-entered here —
+        # do NOT launch again. Just show a simple status and stop.
+        st.info("⏳ Automazione in corso… attendi il completamento. "
+                "Non ricaricare la pagina né cliccare altri pulsanti.")
+        st.stop()
+
     if current_state != "IDLE":
         model = None
         try:
