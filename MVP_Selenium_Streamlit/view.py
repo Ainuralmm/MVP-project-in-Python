@@ -3249,7 +3249,7 @@ class CourseView:
             st.subheader("Dettagli Attività")
 
             # ✅ Add note about mandatory fields
-            st.caption("* I campi Titolo, Descrizione e Data sono obbligatori per ogni attività")
+            st.caption("* I campi Titolo e Data sono obbligatori per ogni attività. La Descrizione è facoltativa.")
 
             for i in range(num_activities):
                 st.markdown(f"**Giorno {i + 1}**")
@@ -3264,7 +3264,7 @@ class CourseView:
                 with cols[3]:
                     st.text_input(f"Ora Fine (HH.MM)", key=f"activity_end_time_{i}")
 
-                st.text_area(f"Descrizione Attività", key=f"activity_desc_{i}", height=100)
+                st.text_area(f"Descrizione Attività (facoltativa)", key=f"activity_desc_{i}", height=100)
                 st.text_input(f"Impegno previsto in ore", key=f"impegno_previsto_in_ore_{i}")
                 st.markdown("---")
 
@@ -3427,8 +3427,7 @@ class CourseView:
             if not title:
                 activity_errors.append("**Titolo** è obbligatorio")
 
-            if not act_desc:
-                activity_errors.append("**Descrizione** è obbligatoria")
+
 
             if not act_date_str:
                 activity_errors.append("**Data** è obbligatoria")
