@@ -1755,6 +1755,16 @@ class CourseView:
         st.session_state.edition_location_key = ""
         st.session_state.edition_supplier_key = ""
         st.session_state.edition_price_key = ""
+
+        # Clear the "Attributi Aggiuntivi" fields too (these were missed before,
+        # which is why some fields stayed filled after Pulisci).
+        st.session_state.edition_centro_costo_key = ""
+        st.session_state.edition_societa_pagante_key = ""
+        st.session_state.edition_direzione_pagante_key = ""
+        st.session_state.edition_servizio_pagante_key = ""
+        st.session_state.edition_sottotipologia_key = ""
+        st.session_state.edition_finanziata_key = ""
+
         st.session_state.num_activities = 1
 
         # ✅ Clear preserved data to prevent restoration of old values
