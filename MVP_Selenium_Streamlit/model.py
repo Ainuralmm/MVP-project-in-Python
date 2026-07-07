@@ -889,9 +889,70 @@ class OracleAutomator:
                 if not click_success:
                     raise Exception("All click strategies failed for OK button")
 
-                # Wait for popup to close
-                print("       Waiting for popup to close...")
-                popup_closed = False
+                    # ── CHECK FOR "ATTENZIONE" ERROR POPUP FIRST ──
+                    # If the activity date is outside the offer window, Oracle
+                    # shows an error popup and does NOT save the activity.
+                    # We must detect this and report the activity as FAILED.
+                    time.sleep(1.5)  # let the error popup render if it will
+                    try:
+                        err_title = self.driver.find_elements(
+                            By.XPATH, ACTIVITY_ERROR_POPUP_TITLE)
+                        if err_title and any(e.is_displayed() for e in err_title):
+                            # Read the specific reason
+                            reason = "Data attività non valida (fuori dal periodo dell'offerta)."
+                            try:
+                                msg_els = self.driver.find_elements(
+                                    By.XPATH, ACTIVITY_ERROR_POPUP_MESSAGE)
+                                for m in msg_els:
+                                    if m.is_displayed() and m.text.strip():
+                                        reason = m.text.strip()
+                                        break
+                            except Exception:
+                                pass
+
+                            print(f"       ⚠️ ATTENZIONE popup: activity REJECTED — {reason}")
+
+                            # Close the error popup (click its OK)
+                            try:
+                                err_ok = self.driver.find_elements(
+                                    By.XPATH, ACTIVITY_ERROR_POPUP_OK)
+                                for b in err_ok:
+                                    if b.is_displayed():
+                                        b.click()
+                                        time.sleep(1)
+                                        break
+                            except Exception:
+                                pass
+
+                            # Also cancel/close the activity dialog so the next
+                            # activity starts clean.
+                            try:
+                                cancel_btns = self.driver.find_elements(
+                                    By.XPATH,
+                                    "//button[contains(text(),'Annulla') or "
+                                    "contains(text(),'Cancel') or "
+                                    "contains(@id,'cancel')]")
+                                for c in cancel_btns:
+                                    if c.is_displayed():
+                                        c.click()
+                                        time.sleep(1)
+                                        break
+                            except Exception:
+                                pass
+
+                            # Return a structured FAILURE (not True).
+                            return {
+                                "success": False,
+                                "title": unique_title,
+                                "date": activity_date_str,
+                                "reason": reason,
+                            }
+                    except Exception as check_err:
+                        print(f"       (error-popup check skipped: {check_err})")
+
+                    # Wait for popup to close
+                    print("       Waiting for popup to close...")
+                    popup_closed = False
 
                 try:
                     WebDriverWait(self.driver, 15).until(
@@ -938,7 +999,8 @@ class OracleAutomator:
 
                 self._pause_for_visual_check()
                 print(f"  ✅ Activity '{unique_title}' on {activity_date_str} created successfully!")
-                return True
+                return {"success": True, "title": unique_title,
+                        "date": activity_date_str, "reason": None}
 
             except Exception as e:
                 print(f"       ✗ FAILED during OK/close: {e}")
@@ -974,7 +1036,9 @@ class OracleAutomator:
             except:
                 pass
 
-            return False
+            return {"success": False, "title": unique_title,
+                    "date": activity_date_str,
+                    "reason": f"Errore tecnico: {str(e)[:100]}"}
 
     def _fill_edition_location(self, location):
         """
@@ -1627,12 +1691,14 @@ class OracleAutomator:
             print("Model: Edition saved successfully. Starting activity creation.")
             self._pause_for_visual_check()
 
-            # Create all activities
+            # Create all activities — collect successes AND failures.
             total_activities = len(activities)
             created_count = 0
+            failed_activities = []  # list of {title, date, reason}
+
             for i, activity in enumerate(activities):
                 print(f"--- Creating activity {i + 1} of {total_activities} ---")
-                success = self._create_single_activity(
+                result = self._create_single_activity(
                     unique_title=activity['title'],
                     full_description=activity['description'],
                     activity_date_obj=activity['date'],
@@ -1640,19 +1706,54 @@ class OracleAutomator:
                     end_time_str=activity['end_time'],
                     impegno_previsto_in_ore=activity.get('impegno_ore', '')
                 )
-                if not success:
-                    return (f"‼️👩🏻‍✈️ Errore durante la creazione dell'attività {i + 1} "
-                            f"('{activity['title']}'). Le attività precedenti potrebbero "
-                            f"essere state create.")
-                created_count += 1
+
+                # Backward-compatible: accept dict OR bool
+                if isinstance(result, dict):
+                    ok = result.get("success", False)
+                else:
+                    ok = bool(result)
+
+                if ok:
+                    created_count += 1
+                else:
+                    reason = (result.get("reason") if isinstance(result, dict)
+                              else "Errore sconosciuto")
+                    failed_activities.append({
+                        "title": activity['title'],
+                        "date": (activity['date'].strftime('%d/%m/%Y')
+                                 if hasattr(activity['date'], 'strftime')
+                                 else str(activity['date'])),
+                        "reason": reason or "Attività non creata",
+                    })
+                    print(f"   ⚠️ Activity {i + 1} FAILED: {reason}")
+                    # continue to next activity (don't abort the whole edition)
 
             edition_display_name = (
                 edition_title_optional
                 if edition_title_optional and edition_title_optional.strip()
                 else f"Edizione del {edition_start_date.strftime('%d/%m/%Y')}"
             )
-            return (f"✅🤩 Successo! Edizione '{edition_display_name}' per '{course_name}' "
-                    f"creata con {created_count} attività.")
+
+            # Build an HONEST message: edition created, but flag failed activities.
+            if not failed_activities:
+                return (f"✅🤩 Successo! Edizione '{edition_display_name}' per "
+                        f"'{course_name}' creata con {created_count} attività.")
+            else:
+                lines = [
+                    f"⚠️ Edizione '{edition_display_name}' per '{course_name}' "
+                    f"CREATA, ma {len(failed_activities)} attività su "
+                    f"{total_activities} NON sono state create:",
+                    ""
+                ]
+                for fa in failed_activities:
+                    lines.append(f"  • '{fa['title']}' ({fa['date']}): {fa['reason']}")
+                lines.append("")
+                lines.append(f"✅ Attività create con successo: {created_count}/{total_activities}")
+                lines.append("")
+                lines.append("👉 Controlla in Oracle e correggi le date delle "
+                             "attività non create (devono rientrare nel periodo "
+                             "dell'offerta).")
+                return "\n".join(lines)
 
         except Exception as e:
             print(f"ERROR in create_edition_and_activities: {e}")
@@ -1680,6 +1781,8 @@ class OracleAutomator:
             societa_pagante: str = "",
     ) -> bool:
         """Create a single edition with activities for BATCH processing."""
+        self.last_activities_created = 0
+        self.last_activities_failed = []
         try:
             print(f"\n{'=' * 60}")
             print(f"BATCH: Creating edition '{edition_title}' for course '{course_name}'")
@@ -1828,6 +1931,9 @@ class OracleAutomator:
             # Step 7: Create all activities
             if activities and len(activities) > 0:
                 print(f"\n[7] Creating {len(activities)} activities...")
+                activities_created = 0
+                activities_failed = []  # {title, date, reason}
+
                 for act_idx, activity in enumerate(activities):
                     try:
                         automation_lock.heartbeat(
@@ -1841,7 +1947,7 @@ class OracleAutomator:
                     else:
                         act_date_obj = act_date
 
-                    success = self._create_single_activity(
+                    result = self._create_single_activity(
                         unique_title=activity.get('title', f'Attività {act_idx + 1}'),
                         full_description=activity.get('description', ''),
                         activity_date_obj=act_date_obj,
@@ -1849,8 +1955,31 @@ class OracleAutomator:
                         end_time_str=activity.get('end_time', '11.00'),
                         impegno_previsto_in_ore=activity.get('impegno_ore', '')
                     )
-                    if not success:
-                        print(f"   ⚠️ Activity may have failed, continuing...")
+
+                    # accept dict OR bool (backward compatible)
+                    if isinstance(result, dict):
+                        ok = result.get("success", False)
+                        reason = result.get("reason") or "Attività non creata"
+                    else:
+                        ok = bool(result)
+                        reason = "Attività non creata"
+
+                    if ok:
+                        activities_created += 1
+                    else:
+                        date_str = (act_date_obj.strftime('%d/%m/%Y')
+                                    if hasattr(act_date_obj, 'strftime')
+                                    else str(act_date_obj))
+                        activities_failed.append({
+                            "title": activity.get('title', f'Attività {act_idx + 1}'),
+                            "date": date_str,
+                            "reason": reason,
+                        })
+                        print(f"   ⚠️ Activity {act_idx + 1} FAILED: {reason}")
+
+                # Expose the counts/failures so the presenter can report them.
+                self.last_activities_created = activities_created
+                self.last_activities_failed = activities_failed
             else:
                 print(f"\n[7] No activities to create")
 

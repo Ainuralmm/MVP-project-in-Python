@@ -138,12 +138,6 @@ class CoursePresenter:
                 )
 
                 try:
-                    # Re-navigate to a CLEAN Corsi page before each course.
-                    # Single-course works because it always searches on a fresh
-                    # page; batch was searching on stale results from the previous
-                    # course, which wedged Oracle on the "not found → create" path.
-                    if not self.model.navigate_to_courses_page():
-                        raise Exception("Navigazione alla pagina corsi fallita")
 
                     if self.model.search_course(course_title):
                         results['skipped'].append({
@@ -305,11 +299,27 @@ class CoursePresenter:
                     )
 
                     if success:
-                        results.append({
-                            'edition': display_name,
-                            'status': '✅ Successo',
-                            'activities': len(activities)
-                        })
+                        created = getattr(self.model, "last_activities_created",
+                                          len(activities))
+                        failed = getattr(self.model, "last_activities_failed", [])
+                        if failed:
+                            fail_txt = "; ".join(
+                                f"{f['title']} ({f['date']}): {f['reason']}"
+                                for f in failed
+                            )
+                            results.append({
+                                'edition': display_name,
+                                'status': (f'⚠️ Edizione creata, ma '
+                                           f'{len(failed)} attività NON create'),
+                                'activities': created,
+                                'failures': fail_txt,
+                            })
+                        else:
+                            results.append({
+                                'edition': display_name,
+                                'status': '✅ Successo',
+                                'activities': created,
+                            })
                     else:
                         results.append({
                             'edition': display_name,
@@ -365,6 +375,11 @@ class CoursePresenter:
                 summary_parts.append(
                     f"- **{r['edition']}**: {r['status']} ({r['activities']} attività)"
                 )
+                if r.get('failures'):
+                    summary_parts.append(f"    ⚠️ Attività non create: {r['failures']}")
+                    summary_parts.append(
+                        "    👉 Correggi le date in Oracle (devono rientrare nel "
+                        "periodo dell'offerta).")
 
             final_message = "\n".join(summary_parts)
 
