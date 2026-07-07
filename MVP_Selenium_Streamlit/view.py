@@ -5387,7 +5387,9 @@ class CourseView:
 
 
         # === ACTION BUTTONS ===
-        col1, col2, col3 = st.columns([2, 1, 1])
+        # Verifica Allievi button removed from UI (colleagues check directly in
+        # Oracle — faster). The verify code is kept but no longer exposed here.
+        col1, col3 = st.columns([2, 1])
 
         with col1:
             btn_text = (
@@ -5416,19 +5418,16 @@ class CourseView:
                 st.session_state.student_show_summary = False
                 st.rerun()
 
-        with col2:
-            verify_text = (
-                f"🔍 Verifica {total_students} Allievi"
-            )
-            if st.button(verify_text, width='stretch', key="batch_student_verify_btn"):
-                st.session_state.verify_student_data = {
-                    'editions': editions,
-                }
-                st.session_state.app_state = "RUNNING_VERIFY_STUDENTS"
-                st.session_state.student_message = ""
-                st.session_state.student_parsed_data = None
-                st.session_state.student_show_summary = False
-                st.rerun()
+        # --- Verifica Allievi button removed from UI (kept in code, not shown) ---
+        # with col2:
+        #     verify_text = f"🔍 Verifica {total_students} Allievi"
+        #     if st.button(verify_text, width='stretch', key="batch_student_verify_btn"):
+        #         st.session_state.verify_student_data = {'editions': editions}
+        #         st.session_state.app_state = "RUNNING_VERIFY_STUDENTS"
+        #         st.session_state.student_message = ""
+        #         st.session_state.student_parsed_data = None
+        #         st.session_state.student_show_summary = False
+        #         st.rerun()
 
         with col3:
             if st.button("❌ Annulla", width='stretch', key="batch_student_cancel_btn"):
