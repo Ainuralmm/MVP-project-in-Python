@@ -3222,18 +3222,50 @@ class OracleAutomator:
             except:
                 pass
 
-            gestisci_btn = WebDriverWait(self.driver, 15).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, PRESENZA_GESTISCI_BTN)))
+            # Stale-safe: Oracle re-renders the row after selecting it, which
+            # can make 'Gestisci attività' stale between find and click. Retry
+            # by RE-FINDING the button each attempt. (This is the VM race that
+            # made the first student fail intermittently.)
+            gestisci_clicked = False
+            for attempt in range(4):
+                try:
+                    # clear any overlay first
+                    try:
+                        WebDriverWait(self.driver, 8).until(
+                            EC.invisibility_of_element_located(
+                                (By.CLASS_NAME, "AFBlockingGlassPane")))
+                    except:
+                        pass
 
-            self.driver.execute_script(
-                "arguments[0].scrollIntoView({block: 'center'});", gestisci_btn)
-            time.sleep(0.5)
+                    # RE-FIND fresh each attempt (avoids stale reference)
+                    gestisci_btn = WebDriverWait(self.driver, 15).until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, PRESENZA_GESTISCI_BTN)))
+                    self.driver.execute_script(
+                        "arguments[0].scrollIntoView({block: 'center'});",
+                        gestisci_btn)
+                    time.sleep(0.5)
 
-            try:
-                gestisci_btn.click()
-            except:
-                self.driver.execute_script("arguments[0].click();", gestisci_btn)
+                    try:
+                        gestisci_btn.click()
+                    except StaleElementReferenceException:
+                        raise  # re-find on next loop
+                    except Exception:
+                        self.driver.execute_script(
+                            "arguments[0].click();", gestisci_btn)
+
+                    gestisci_clicked = True
+                    break
+                except StaleElementReferenceException:
+                    print(f"   ⚠️ 'Gestisci attività' stale "
+                          f"(attempt {attempt + 1}/4), re-finding...")
+                    time.sleep(2)
+                    continue
+
+            if not gestisci_clicked:
+                raise Exception(
+                    "Impossibile cliccare 'Gestisci attività' (elemento "
+                    "instabile dopo 4 tentativi).")
 
             print("   ✅ Clicked 'Gestisci attività'")
             time.sleep(3)
@@ -3277,6 +3309,9 @@ class OracleAutomator:
                 stato_display = "Esente"
             else:  # non passato / failed
                 stato_display = "Non passato"
+
+            rows_filled = 0  # rows we actually completed
+            rows_future = 0  # rows skipped because date is in the future
 
             # Process each row
             for row_idx, row in enumerate(activity_rows):
@@ -3323,6 +3358,7 @@ class OracleAutomator:
                         if activity_date_obj > today:
                             print(f"      ⚠️ Activity date {data_attivita} is in the future, "
                                   f"skipping row (attività non ancora avvenuta)")
+                            rows_future += 1
                             continue
                     except ValueError:
                         print(f"      ⚠️ Could not parse date '{data_attivita}', "
@@ -3394,6 +3430,8 @@ class OracleAutomator:
 
                         # Click the option using the robust JS+keyboard helper
                         clicked = self._click_stato_option(stato_display)
+                        if clicked:
+                            rows_filled += 1
                         if not clicked:
                             print(f"      ❌ Could not set Stato to: {stato_display}")
 
@@ -3466,12 +3504,26 @@ class OracleAutomator:
                 # Oracle needs time to refresh the Allievi table
                 time.sleep(3)
 
-                print(f"   ✅ Presenza saved for student {person_number}")
-                return True
+                # Honest result: if we filled NOTHING and everything was future,
+                # this is NOT a real success — report it distinctly.
+                if rows_filled == 0 and rows_future > 0:
+                    print(f"   ⚠️ Student {person_number}: nessuna attività "
+                          f"completata — {rows_future} attività in data futura.")
+                    return {"status": "future",
+                            "reason": f"{rows_future} attività in data futura "
+                                      f"(non ancora avvenute)"}
+                elif rows_filled == 0:
+                    print(f"   ⚠️ Student {person_number}: nessuna attività compilata.")
+                    return {"status": "nothing",
+                            "reason": "nessuna attività da completare"}
+
+                print(f"   ✅ Presenza saved for student {person_number} "
+                      f"({rows_filled} attività)")
+                return {"status": "ok", "reason": None}
 
             except Exception as e:
                 print(f"   ❌ Could not click 'Salva e chiudi': {e}")
-                return False
+                return {"status": "error", "reason": "Salva e chiudi non riuscito"}
 
         except Exception as e:
             print(f"\n❌ ERROR in _assign_presenza_for_student: {e}")
@@ -3482,7 +3534,7 @@ class OracleAutomator:
                 self.driver.save_screenshot(f"error_presenza_{timestamp}.png")
             except:
                 pass
-            return False
+            return {"status": "error", "reason": f"Errore: {str(e)[:80]}"}
 
     def assign_presenza_batch(self, edition_code: str,
                               students: list,
@@ -3495,6 +3547,7 @@ class OracleAutomator:
         results = {
             'success': [],
             'failed': [],
+            'future': [],
             'total': len(students)
         }
 
@@ -3553,13 +3606,25 @@ class OracleAutomator:
                     continue
 
                 # Process this single isolated student
-                success = self._assign_presenza_for_student(
-                    person_number, stato)
+                result = self._assign_presenza_for_student(person_number, stato)
 
-                if success:
+                # backward compatible: accept dict OR bool
+                if isinstance(result, dict):
+                    status = result.get("status", "error")
+                    reason = result.get("reason")
+                else:
+                    status = "ok" if result else "error"
+                    reason = None
+
+                if status == "ok":
                     results['success'].append(person_number)
+                elif status == "future":
+                    results.setdefault('future', []).append(
+                        {"pn": person_number, "reason": reason})
                 else:
                     results['failed'].append(person_number)
+
+
 
                 # Reset search for next student
                 self._reset_student_search()

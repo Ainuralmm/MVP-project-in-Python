@@ -1052,6 +1052,21 @@ class CoursePresenter:
             if 'error' in results:
                 summary_parts.append(f"\n‼️ **Errore generale:** {results['error']}")
 
+            future_list = results.get('future', [])
+            if future_list:
+                summary_parts.append(
+                    f"\n⏭️ **Non completati — attività in data futura "
+                    f"({len(future_list)}):**"
+                )
+                for f in future_list:
+                    pn = f['pn'] if isinstance(f, dict) else f
+                    reason = f.get('reason', '') if isinstance(f, dict) else ''
+                    summary_parts.append(f"  • {pn}: {reason}")
+                summary_parts.append(
+                    "  👉 Queste presenze potranno essere assegnate quando le "
+                    "attività saranno avvenute (data non futura)."
+                )
+
             final_message = "\n".join(summary_parts)
 
             st.session_state.presenza_message = self._add_timestamp(
@@ -1155,6 +1170,7 @@ class CoursePresenter:
                         'total': num_students,
                     })
 
+
                     students_done += num_students
 
                     if idx < total_jobs - 1:
@@ -1218,7 +1234,8 @@ class CoursePresenter:
             total_success = sum(len(r.get('success', [])) for r in all_results)
             total_failed_students = sum(
                 len(r.get('failed', [])) for r in all_results)
-            total_processed = total_success + total_failed_students
+            total_future = sum(len(r.get('future', [])) for r in all_results)
+            total_processed = total_success + total_failed_students + total_future
             jobs_with_errors = sum(
                 1 for r in all_results if r.get('note', '').startswith('❌'))
 
@@ -1229,6 +1246,7 @@ class CoursePresenter:
                 f"- **Allievi processati con successo:** "
                 f"{total_success}/{total_processed}",
                 f"- **Allievi falliti:** {total_failed_students}\n",
+                f"- **Non completati (data futura):** {total_future}\n",
                 "### Dettagli per job:"
             ]
 
@@ -1258,6 +1276,16 @@ class CoursePresenter:
                             f"  - Falliti: `{', '.join(failed[:10])}` "
                             f"... e altri {len(failed) - 10}"
                         )
+                # Show students not completed due to FUTURE activity dates
+                future = r.get('future', [])
+                if future:
+                    future_pns = [
+                        (f['pn'] if isinstance(f, dict) else f) for f in future
+                    ]
+                    summary_parts.append(
+                        f"  - ⏭️ Non completati (attività in data futura): "
+                        f"`{', '.join(future_pns)}`"
+                    )
 
             final_message = "\n".join(summary_parts)
 
