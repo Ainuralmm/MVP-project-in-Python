@@ -472,6 +472,8 @@ class CoursePresenter:
             edition_code = student_details['edition_code']
             student_list = student_details['students']
             num_students = len(student_list)
+            # Optional manual scadenza date (TXT method). If None → auto (tomorrow).
+            manual_scadenza = student_details.get('data_scadenza')
 
             self.view.update_progress("student", f"Preparazione elenco {num_students} allievi...", 5)
 
@@ -510,6 +512,7 @@ class CoursePresenter:
                 lista_nome=lista_nome,
                 edition_start_date=edition_start_date,
                 edition_end_date=edition_end_date,
+                manual_scadenza=manual_scadenza,
             )
 
             self.view.update_progress("student", "Processo completato!", 100)
@@ -608,6 +611,8 @@ class CoursePresenter:
                 student_list = edition['students']
                 num_students = len(student_list)
                 edition_num = idx + 1
+                # Optional manual scadenza from Excel column (per edition).
+                manual_scadenza = edition.get('data_scadenza')
 
                 progress_pct = int((idx / total_editions) * 80) + 15
                 update_progress(
@@ -628,6 +633,7 @@ class CoursePresenter:
 
                     lista_nome = f"{edition_code}"
 
+                    edition_opened = False
                     edition_result = self.model._search_and_open_edition(edition_code)
                     if not edition_result:
                         results.append({
@@ -636,6 +642,7 @@ class CoursePresenter:
                             'students': 0
                         })
                         continue
+                    edition_opened = True
 
                     edition_start_date = edition_result.get('start_date') if isinstance(edition_result, dict) else None
                     edition_end_date = edition_result.get('end_date') if isinstance(edition_result, dict) else None
@@ -645,6 +652,7 @@ class CoursePresenter:
                         lista_nome=lista_nome,
                         edition_start_date=edition_start_date,
                         edition_end_date=edition_end_date,
+                        manual_scadenza=manual_scadenza,
                     )
 
                     if success:
@@ -659,9 +667,6 @@ class CoursePresenter:
                             'status': '⚠️ Invio non confermato',
                             'students': num_students
                         })
-
-                    if idx < total_editions - 1:
-                        self.model._reset_edition_search()
 
                 except Exception as e:
                     error_msg = str(e)[:80]
@@ -690,13 +695,19 @@ class CoursePresenter:
                     except:
                         pass
                 finally:
-                    # Always reset for next iteration — even after `continue` or exception
+                    # Always return to the edition SEARCH page for the next iteration.
+                    # (We're on the allievi page here — _reset_edition_search would
+                    # click the wrong 'Reimposta' and get stuck.)
                     if idx < total_editions - 1:
                         try:
-                            self.model._reset_edition_search()
+                            if not self.model._click_back_to_edition_search():
+                                self.model.navigate_to_edition_page()
                         except Exception as reset_err:
-                            print(f"   ⚠️ Reset failed: {reset_err}")
-
+                            print(f"   ⚠️ Return to search failed: {reset_err}")
+                            try:
+                                self.model.navigate_to_edition_page()
+                            except Exception:
+                                pass
             update_progress("Processo completato!", 100)
 
         except Exception as e:

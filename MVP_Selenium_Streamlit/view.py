@@ -4306,6 +4306,17 @@ class CourseView:
                     person_col = name
                     break
 
+            # --- Find OPTIONAL scadenza column ---
+            scadenza_col_names = [
+                'data scadenza', 'data_scadenza', 'scadenza',
+                'data di scadenza', 'due date'
+            ]
+            scadenza_col = None
+            for name in scadenza_col_names:
+                if name in df.columns:
+                    scadenza_col = name
+                    break
+
             # --- Validate ---
             if not edition_col:
                 st.error(
@@ -4356,11 +4367,27 @@ class CourseView:
                 ]
 
                 if students:
+                    # Optional scadenza: take the first non-empty value for this edition
+                    edition_scadenza = None
+                    if scadenza_col:
+                        for v in group[scadenza_col].tolist():
+                            v_str = str(v).strip()
+                            if v_str and v_str.lower() != 'nan':
+                                # Excel dates may come as datetime; normalize to GG/MM/AAAA
+                                try:
+                                    if hasattr(v, 'strftime'):
+                                        edition_scadenza = v.strftime('%d/%m/%Y')
+                                    else:
+                                        edition_scadenza = v_str
+                                except Exception:
+                                    edition_scadenza = v_str
+                                break
+
                     editions_list.append({
                         'edition_code': edition_code_str,
-                        'students': students
+                        'students': students,
+                        'data_scadenza': edition_scadenza
                     })
-
             if not editions_list:
                 st.error("❌ Nessun dato valido trovato dopo il parsing.")
                 return None
@@ -4631,6 +4658,12 @@ class CourseView:
                     key="student_edition_code_key"
                 )
 
+                st.text_input(
+                    "Data scadenza (facoltativa, GG/MM/AAAA)",
+                    placeholder="Es: 31/12/2026 — se vuoto, verrà usato domani",
+                    key="student_scadenza_key"
+                )
+
                 st.divider()
                 st.subheader("2. Carica Elenco Numero Persona")
 
@@ -4657,10 +4690,20 @@ class CourseView:
                 import re
 
                 edition_code = st.session_state.student_edition_code_key.strip()
+                manual_scadenza = st.session_state.get("student_scadenza_key", "").strip()
 
                 if not edition_code:
                     st.error("❌ Il campo **Codice Edizione** è obbligatorio.")
                     st.stop()
+
+                # Optional: validate the manual date format if provided
+                if manual_scadenza:
+                    import re as _re
+                    # accept GG/MM/AAAA, GG.MM.AAAA, GG-MM-AAAA
+                    if not _re.match(r'^\d{2}[/.\-]\d{2}[/.\-]\d{4}$', manual_scadenza):
+                        st.error("❌ Data scadenza non valida. Usa il formato "
+                                 "GG/MM/AAAA (es: 31/12/2026).")
+                        st.stop()
 
                 uploaded_txt = st.session_state.get("student_txt_uploader")
                 if uploaded_txt is None:
@@ -4690,7 +4733,8 @@ class CourseView:
                 st.session_state.student_parsed_data = {
                     'editions': [{
                         'edition_code': edition_code,
-                        'students': student_list
+                        'students': student_list,
+                        'data_scadenza': manual_scadenza if manual_scadenza else None
                     }],
                     'total_editions': 1,
                     'total_students': len(student_list)
@@ -4702,12 +4746,6 @@ class CourseView:
         # ══════════════════════════════════════════════════
         elif student_method == "excel":
             st.info(
-                "**Formato Excel richiesto** (foglio `ALLIEVI`):\n\n"
-                "| CODICE EDIZIONE | PERSON NUMBER |\n"
-                "|-----------------|---------------|\n"
-                "| OLC466201       | 1168          |\n"
-                "| OLC466201       | 1189          |\n"
-                "| OLC466202       | 1247          |\n\n"
                 "Il file può contenere allievi per **più edizioni**.\n"
                 "I dati vengono letti dal foglio **ALLIEVI** (4° foglio).",
                 icon="📊"
@@ -4754,7 +4792,11 @@ class CourseView:
                 "Il sistema estrarrà automaticamente il codice edizione e numero persona.",
                 icon="💬"
             )
-
+            st.caption(
+                "ℹ️ Con il metodo AI la **data scadenza** sarà sempre *domani*. "
+                "Per impostare una data scadenza personalizzata, usa il metodo "
+                "**TXT** o **Excel**."
+            )
             # Initialize key state
             if "student_nlp_text_area" not in st.session_state:
                 st.session_state.student_nlp_text_area = ""
@@ -5377,10 +5419,17 @@ class CourseView:
         # Show each edition in an expander
         for idx, edition in enumerate(editions):
             students = edition.get('students', [])
+            scadenza = edition.get('data_scadenza')
             with st.expander(
                     f"📚 Edizione {edition['edition_code']} — {len(students)} allievi",
                     expanded=(idx == 0)
             ):
+                # Show the scadenza that will be used
+                if scadenza:
+                    st.info(f"📅 **Data scadenza:** {scadenza} (impostata dall'utente)")
+                else:
+                    st.caption("📅 Data scadenza: *domani* (predefinita — nessuna data specificata)")
+
                 # Show students in a table
                 student_data = [{'#': i + 1, 'Numero persona': s} for i, s in enumerate(students)]
                 st.dataframe(
@@ -5415,6 +5464,7 @@ class CourseView:
                     st.session_state.student_details = {
                         "edition_code": edition['edition_code'],
                         "students": edition['students'],
+                        "data_scadenza": edition.get('data_scadenza'),
                     }
                     st.session_state.app_state = "RUNNING_STUDENTS"
                 else:

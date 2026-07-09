@@ -2141,6 +2141,17 @@ class OracleAutomator:
             # EARLY EXIT: check for "no results" message
             # Prevents 40s of wasted retry attempts on invalid codes
             # ═══════════════════════════════════════════════════════
+            # IMPORTANT: wait for Oracle to FINISH the search first, otherwise
+            # we read the stale "Nessun dato" from the pre-search empty table
+            # and wrongly conclude the edition doesn't exist (race condition).
+            for _cls in ("AFBlockingGlassPane", "AFModalGlassPane"):
+                try:
+                    WebDriverWait(self.driver, 15).until(
+                        EC.invisibility_of_element_located((By.CLASS_NAME, _cls)))
+                except Exception:
+                    pass
+            time.sleep(2)  # let the results table render
+
             no_data_xpaths = [
                 "//*[contains(text(), 'Nessun dato da visualizzare')]",
                 "//*[contains(text(), 'Nessuna riga')]",
@@ -2323,7 +2334,8 @@ class OracleAutomator:
             return False
 
     def _perform_student_addition_steps(self, student_file_path, lista_nome,
-                                        edition_start_date=None, edition_end_date=None):
+                                        edition_start_date=None, edition_end_date=None,
+                                        manual_scadenza=None):
         try:
             # PART 0: Navigate to Seleziona Allievi page
             print("\n=== PART 0: Navigating to Seleziona Allievi page ===")
@@ -2438,7 +2450,13 @@ class OracleAutomator:
             today = datetime.now().date()
             data_scadenza_str = ""
 
-            if edition_start_date and edition_end_date:
+            # ── MANUAL DATE takes priority if the user provided one ──
+            if manual_scadenza and str(manual_scadenza).strip():
+                # Normalize separators: accept 10.07.2026 or 10-07-2026 → 10/07/2026
+                data_scadenza_str = (str(manual_scadenza).strip()
+                                     .replace('.', '/').replace('-', '/'))
+                print(f"   ✅ Using MANUAL scadenza provided by user: {data_scadenza_str}")
+            elif edition_start_date and edition_end_date:
                 try:
                     start_date_obj = datetime.strptime(edition_start_date, "%d/%m/%Y").date()
                     end_date_obj = datetime.strptime(edition_end_date, "%d/%m/%Y").date()
@@ -2456,7 +2474,7 @@ class OracleAutomator:
                     data_scadenza_str = (today + timedelta(days=1)).strftime("%d/%m/%Y")
             else:
                 data_scadenza_str = (today + timedelta(days=1)).strftime("%d/%m/%Y")
-                print(f"   ⚠️ Edition dates not available, using fallback: {data_scadenza_str}")
+                print(f"   ⚠️ Edition dates not available, using fallback (tomorrow): {data_scadenza_str}")
 
             scadenza_xpaths = [
                 STUDENT_SCADENZA_FIELD_1,
