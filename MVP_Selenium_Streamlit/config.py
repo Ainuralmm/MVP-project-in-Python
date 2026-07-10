@@ -177,11 +177,18 @@ ACTIVITY_CANCEL_BTN_1       = '//a[@role="button"][.//span[text()="Annulla"]]'
 ACTIVITY_CANCEL_BTN_2       = '//span[text()="Annulla"]/parent::a'
 # "Attenzione" error popup shown when an activity date is outside the offer
 # window (or otherwise invalid). Used to detect a rejected activity.
-ACTIVITY_ERROR_POPUP_TITLE = "//div[normalize-space(text())='Attenzione']"
+ACTIVITY_ERROR_POPUP_TITLE = (
+    "//div[normalize-space(text())='Attenzione' or "
+    "normalize-space(text())='Errore' or "
+    "normalize-space(text())='Error']"
+)
 ACTIVITY_ERROR_POPUP_MESSAGE = (
     "//div[contains(text(), 'data attività') or "
     "contains(text(), 'data di inizio') or "
-    "contains(text(), \"dell''offerta\")]"
+    "contains(text(), \"dell''offerta\") or "
+    "contains(text(), 'necessario immettere') or "
+    "contains(text(), 'formato di questo esempio') or "
+    "contains(text(), 'non è valido')]"
 )
 ACTIVITY_ERROR_POPUP_OK = (
     "//button[normalize-space(text())='OK' or normalize-space(text())='Ok']"

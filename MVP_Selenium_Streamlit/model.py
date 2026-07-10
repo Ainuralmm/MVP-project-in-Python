@@ -2,7 +2,9 @@ import time
 import os
 import sys
 import tempfile
+import re
 from datetime import timedelta, datetime, date
+from datetime import time as _dt_time
 from dateutil.relativedelta import relativedelta
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
@@ -20,7 +22,54 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import *
 
 
+def normalize_time(value):
+    """
+    Normalize ANY time input into Oracle's required 'HH.MM' format.
 
+    Oracle HCM rejects '09:00' with:
+      "Immettere un'ora nel formato di questo esempio: 15.45"
+
+    Accepts: '9', '09', '9:00', '9.00', '930', '0900', '09:00:00', '15,45',
+             '9h30', datetime.time, datetime, Excel float (0.375 = 09:00),
+             Excel int hour (9).
+    Returns 'HH.MM', or None if the value cannot be parsed.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (_dt_time, datetime)):
+        return f"{value.hour:02d}.{value.minute:02d}"
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        if 0 <= value < 1:                       # Excel fraction of a day
+            total = int(round(value * 24 * 60))
+        elif 0 <= value <= 23 and float(value).is_integer():
+            total = int(value) * 60              # plain hour: 9 -> 09.00
+        else:
+            return None
+        return f"{(total // 60) % 24:02d}.{total % 60:02d}"
+
+    s = str(value).strip()
+    if not s:
+        return None
+    parts = [p for p in re.split(r"[.:,;hH\s-]+", s) if p]
+    if len(parts) == 1:
+        d = parts[0]
+        if not d.isdigit():
+            return None
+        if len(d) <= 2:
+            h, m = int(d), 0
+        elif len(d) in (3, 4):
+            h, m = int(d[:-2]), int(d[-2:])
+        else:
+            return None
+    else:
+        if not (parts[0].isdigit() and parts[1].isdigit()):
+            return None
+        h, m = int(parts[0]), int(parts[1])
+    if not (0 <= h <= 23 and 0 <= m <= 59):
+        return None
+    return f"{h:02d}.{m:02d}"
 
 class OracleAutomator:
     def __init__(self, driver_path, debug_mode=False, debug_pause=1, headless=False):
@@ -658,6 +707,21 @@ class OracleAutomator:
         """Create a single activity in Oracle."""
         try:
             activity_date_str = activity_date_obj.strftime('%d/%m/%Y')
+
+            # ── NORMALIZE TIMES TO ORACLE'S 'HH.MM' FORMAT ──
+            # Single choke point: covers structured form, NLP, Excel and batch.
+            _raw_start, _raw_end = start_time_str, end_time_str
+            start_time_str = normalize_time(start_time_str)
+            end_time_str = normalize_time(end_time_str)
+            if start_time_str is None or end_time_str is None:
+                return {"success": False, "title": unique_title,
+                        "date": activity_date_str,
+                        "reason": (f"Formato ora non valido "
+                                   f"(inizio='{_raw_start}', fine='{_raw_end}'). "
+                                   f"Usa HH.MM, es. 09.00")}
+            print(f"  Orari normalizzati: {_raw_start} -> {start_time_str} | "
+                  f"{_raw_end} -> {end_time_str}")
+
             print(f"  Preparing to create activity '{unique_title}' on {activity_date_str}...")
 
             # Wait for blocking overlay
@@ -777,8 +841,13 @@ class OracleAutomator:
                 data_attivita = WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, ACTIVITY_DATE_INPUT)))
                 data_attivita.clear()
+                # Setting .value via JS does NOT notify ADF's client model.
+                # Dispatch input+change so Oracle actually commits the date.
                 self.driver.execute_script(
-                    "arguments[0].value = arguments[1];", data_attivita, activity_date_str)
+                    "arguments[0].value = arguments[1];"
+                    "arguments[0].dispatchEvent(new Event('input',  {bubbles:true}));"
+                    "arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
+                    data_attivita, activity_date_str)
                 data_attivita.send_keys(Keys.TAB)
                 print(f"       ✓ Entered date: {activity_date_str}")
             except Exception as e:
@@ -889,70 +958,77 @@ class OracleAutomator:
                 if not click_success:
                     raise Exception("All click strategies failed for OK button")
 
-                    # ── CHECK FOR "ATTENZIONE" ERROR POPUP FIRST ──
-                    # If the activity date is outside the offer window, Oracle
-                    # shows an error popup and does NOT save the activity.
-                    # We must detect this and report the activity as FAILED.
-                    time.sleep(1.5)  # let the error popup render if it will
-                    try:
-                        err_title = self.driver.find_elements(
-                            By.XPATH, ACTIVITY_ERROR_POPUP_TITLE)
-                        if err_title and any(e.is_displayed() for e in err_title):
-                            # Read the specific reason
-                            reason = "Data attività non valida (fuori dal periodo dell'offerta)."
-                            try:
-                                msg_els = self.driver.find_elements(
-                                    By.XPATH, ACTIVITY_ERROR_POPUP_MESSAGE)
-                                for m in msg_els:
-                                    if m.is_displayed() and m.text.strip():
-                                        reason = m.text.strip()
-                                        break
-                            except Exception:
-                                pass
+                # ── CHECK FOR ORACLE ERROR POPUP ("Attenzione" / "Errore") ──
+                # If the activity date is outside the offer window, or a field
+                # is invalid, Oracle shows a popup and does NOT save the
+                # activity. We must detect this and report it as FAILED.
+                time.sleep(1.5)  # let the error popup render if it will
+                try:
+                    err_title = self.driver.find_elements(
+                        By.XPATH, ACTIVITY_ERROR_POPUP_TITLE)
+                    if err_title and any(e.is_displayed() for e in err_title):
+                        reason = "Oracle ha rifiutato l'attività (dati non validi)."
+                        try:
+                            msg_els = self.driver.find_elements(
+                                By.XPATH, ACTIVITY_ERROR_POPUP_MESSAGE)
+                            found = [m.text.strip() for m in msg_els
+                                     if m.is_displayed() and m.text.strip()]
+                            if found:
+                                reason = " | ".join(found[:3])
+                        except Exception:
+                            pass
 
-                            print(f"       ⚠️ ATTENZIONE popup: activity REJECTED — {reason}")
+                        print(f"       ⚠️ Popup Oracle: attività RIFIUTATA — {reason}")
 
-                            # Close the error popup (click its OK)
-                            try:
-                                err_ok = self.driver.find_elements(
-                                    By.XPATH, ACTIVITY_ERROR_POPUP_OK)
-                                for b in err_ok:
-                                    if b.is_displayed():
-                                        b.click()
-                                        time.sleep(1)
-                                        break
-                            except Exception:
-                                pass
+                        # Close the error popup (click its OK)
+                        try:
+                            err_ok = self.driver.find_elements(
+                                By.XPATH, ACTIVITY_ERROR_POPUP_OK)
+                            for b in err_ok:
+                                if b.is_displayed():
+                                    b.click()
+                                    time.sleep(1)
+                                    break
+                        except Exception:
+                            pass
 
-                            # Also cancel/close the activity dialog so the next
-                            # activity starts clean.
-                            try:
-                                cancel_btns = self.driver.find_elements(
-                                    By.XPATH,
-                                    "//button[contains(text(),'Annulla') or "
-                                    "contains(text(),'Cancel') or "
-                                    "contains(@id,'cancel')]")
-                                for c in cancel_btns:
-                                    if c.is_displayed():
-                                        c.click()
-                                        time.sleep(1)
-                                        break
-                            except Exception:
-                                pass
+                        # Also cancel/close the activity dialog so the next
+                        # activity starts clean.
+                        try:
+                            cancel_btns = self.driver.find_elements(
+                                By.XPATH,
+                                "//button[contains(text(),'Annulla') or "
+                                "contains(text(),'Cancel') or "
+                                "contains(@id,'cancel')]")
+                            for c in cancel_btns:
+                                if c.is_displayed():
+                                    c.click()
+                                    time.sleep(1)
+                                    break
+                        except Exception:
+                            pass
+                        # Fallback: ESC if the dialog is still open
+                        try:
+                            if self.driver.find_elements(
+                                    By.XPATH, ACTIVITY_TITLE_INPUT):
+                                self.driver.find_element(
+                                    By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
+                                time.sleep(1)
+                        except Exception:
+                            pass
 
-                            # Return a structured FAILURE (not True).
-                            return {
-                                "success": False,
-                                "title": unique_title,
-                                "date": activity_date_str,
-                                "reason": reason,
-                            }
-                    except Exception as check_err:
-                        print(f"       (error-popup check skipped: {check_err})")
+                        return {
+                            "success": False,
+                            "title": unique_title,
+                            "date": activity_date_str,
+                            "reason": reason,
+                        }
+                except Exception as check_err:
+                    print(f"       (error-popup check skipped: {check_err})")
 
-                    # Wait for popup to close
-                    print("       Waiting for popup to close...")
-                    popup_closed = False
+                # Wait for popup to close
+                print("       Waiting for popup to close...")
+                popup_closed = False
 
                 try:
                     WebDriverWait(self.driver, 15).until(

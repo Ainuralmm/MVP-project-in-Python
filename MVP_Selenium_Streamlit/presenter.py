@@ -1178,6 +1178,7 @@ class CoursePresenter:
                         'stato': stato,
                         'success': result.get('success', []),
                         'failed': result.get('failed', []),
+                        'future': result.get('future', []),
                         'total': num_students,
                     })
 

@@ -3457,26 +3457,24 @@ class CourseView:
                 all_valid = False
                 continue
 
-            # Validate time format
-            try:
-                if start_time:
-                    datetime.strptime(start_time, "%H.%M")
-                else:
-                    start_time = "09.00"
-            except ValueError:
+            # ── AUTO-FIX time format (Oracle requires HH.MM, e.g. 15.45) ──
+            from model import normalize_time
+
+            start_time = normalize_time(start_time) if start_time else "09.00"
+            if start_time is None:
                 st.error(
-                    f"❌ **Attività Giorno {i + 1}**: Formato ora inizio non valido '{start_time}'. Usa HH.MM (es: 09.00)")
+                    f"❌ **Attività Giorno {i + 1}**: Ora inizio non "
+                    f"riconosciuta '{st.session_state.get(f'activity_start_time_{i}')}'. "
+                    f"Usa HH.MM (es: 09.00)")
                 all_valid = False
                 continue
 
-            try:
-                if end_time:
-                    datetime.strptime(end_time, "%H.%M")
-                else:
-                    end_time = "11.00"
-            except ValueError:
+            end_time = normalize_time(end_time) if end_time else "11.00"
+            if end_time is None:
                 st.error(
-                    f"❌ **Attività Giorno {i + 1}**: Formato ora fine non valido '{end_time}'. Usa HH.MM (es: 11.00)")
+                    f"❌ **Attività Giorno {i + 1}**: Ora fine non "
+                    f"riconosciuta '{st.session_state.get(f'activity_end_time_{i}')}'. "
+                    f"Usa HH.MM (es: 11.00)")
                 all_valid = False
                 continue
 
