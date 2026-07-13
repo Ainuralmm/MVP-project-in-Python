@@ -689,6 +689,19 @@ class CoursePresenter:
                                 cancel_btn.click()
                                 print("   🔄 Closed open dialog")
                                 time.sleep(2)
+                                # Confirm Oracle's "processo verrà annullato" popup,
+                                # otherwise the modal blocks the next edition.
+                                try:
+                                    from selenium.webdriver.support.ui import WebDriverWait as _W
+                                    from selenium.webdriver.support import expected_conditions as _EC
+                                    _ok = _W(self.model.driver, 5).until(
+                                        _EC.element_to_be_clickable(
+                                            (By.XPATH, "//button[normalize-space()='OK']")))
+                                    _ok.click()
+                                    print("   🔄 Confirmed cancellation popup (OK)")
+                                    time.sleep(2)
+                                except Exception:
+                                    pass
                                 break
                             except:
                                 continue

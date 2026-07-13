@@ -27,12 +27,12 @@ def safe_extract_text(original_text: str, normalized_text: str, match_start: int
     Returns:
         Extracted text from original, properly aligned
     """
-    # ### HASHTAG: VERIFY LENGTHS MATCH ###
+    # VERIFICATION LENGTHS MATCH
     if len(original_text) != len(normalized_text):
         # If lengths differ (due to accent removal), fall back to normalized extraction
         return normalized_text[match_start:match_end].strip()
 
-    # ### HASHTAG: SAFE EXTRACTION WITH BOUNDS CHECK ###
+    # SAFE EXTRACTION WITH BOUNDS CHECK ###
     safe_start = max(0, match_start)
     safe_end = min(len(original_text), match_end)
 
@@ -64,7 +64,7 @@ def parse_italian_date(date_str: str) -> Optional[str]:
     """
     import re
 
-    # ### HASHTAG: PATTERN FOR "12 gennaio 2024" FORMAT ###
+    # PATTERN FOR "12 gennaio 2024" FORMAT ###
     month_name_pattern = r'(\d{1,2})\s+(\w+)\s+(\d{4})'
     match = re.search(month_name_pattern, date_str.lower())
 
@@ -101,7 +101,7 @@ def normalize_two_digit_year(year_str: str) -> str:
 
     if len(year_str) == 2:
         year_int = int(year_str)
-        # ### HASHTAG: PIVOT RULE FOR CENTURY DETERMINATION ###
+        # PIVOT RULE FOR CENTURY DETERMINATION ###
         if year_int <= 69:
             return f"20{year_str}"
         else:
@@ -124,15 +124,15 @@ def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optiona
     Returns:
         Normalized date string or None if parsing fails
     """
-    # ### HASHTAG: CASE 1 - ALREADY A DATETIME OBJECT ###
+    # CASE 1 - ALREADY A DATETIME OBJECT
     if isinstance(date_value, datetime):
         return date_value.strftime(default_format)
 
-    # ### HASHTAG: CASE 2 - PANDAS TIMESTAMP ###
+    # CASE 2 - PANDAS TIMESTAMP
     if hasattr(date_value, 'strftime'):  # Pandas Timestamp
         return date_value.strftime(default_format)
 
-    # ### HASHTAG: CASE 3 - STRING WITH VARIOUS FORMATS ###
+    # CASE 3 - STRING WITH VARIOUS FORMATS
     if isinstance(date_value, str):
         date_str = date_value.strip()
 
@@ -141,7 +141,7 @@ def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optiona
         if italian_date:
             return italian_date
 
-        # ### HASHTAG: TRY COMMON FORMATS IN ORDER ###
+        # TRY COMMON FORMATS IN ORDER
         formats_to_try = [
             "%d/%m/%Y",  # 15/03/2024
             "%d-%m-%Y",  # 15-03-2024
@@ -155,7 +155,7 @@ def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optiona
         for fmt in formats_to_try:
             try:
                 parsed = datetime.strptime(date_str, fmt)
-                # ### HASHTAG: HANDLE TWO-DIGIT YEARS ###
+                # HANDLE TWO-DIGIT YEARS
                 if fmt.endswith("%y"):
                     year_normalized = normalize_two_digit_year(str(parsed.year)[-2:])
                     parsed = parsed.replace(year=int(year_normalized))
@@ -163,7 +163,7 @@ def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optiona
             except ValueError:
                 continue
 
-        # ### HASHTAG: FALLBACK - PANDAS TO_DATETIME (VERY FLEXIBLE) ###
+        # FALLBACK - PANDAS TO_DATETIME
         try:
             parsed = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
             if pd.notna(parsed):
@@ -171,80 +171,7 @@ def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optiona
         except:
             pass
 
-    # ### HASHTAG: CASE 4 - NUMERIC (EXCEL SERIAL DATE) ###
-    if isinstance(date_value, (int, float)):
-        try:
-            # Excel dates are days since 1899-12-30
-            parsed = pd.to_datetime('1899-12-30') + pd.Timedelta(days=date_value)
-            return parsed.strftime(default_format)
-        except:
-            pass
-
-    return None
-
-# ========== UTILITY 4: CENTRALIZED DATE NORMALIZATION ==========
-def normalize_date(date_value: Any, default_format: str = "%d/%m/%Y") -> Optional[str]:
-    """
-    Universal date normalizer - handles ANY date format and converts to DD/MM/YYYY.
-
-    WHY: Dates come in many forms (datetime objects, strings, Excel dates).
-    This single function handles all cases consistently.
-
-    Args:
-        date_value: Can be datetime object, string, int (Excel date), etc.
-        default_format: Output format (default: DD/MM/YYYY)
-
-    Returns:
-        Normalized date string or None if parsing fails
-    """
-    # ### HASHTAG: CASE 1 - ALREADY A DATETIME OBJECT ###
-    if isinstance(date_value, datetime):
-        return date_value.strftime(default_format)
-
-    # ### HASHTAG: CASE 2 - PANDAS TIMESTAMP ###
-    if hasattr(date_value, 'strftime'):  # Pandas Timestamp
-        return date_value.strftime(default_format)
-
-    # ### HASHTAG: CASE 3 - STRING WITH VARIOUS FORMATS ###
-    if isinstance(date_value, str):
-        date_str = date_value.strip()
-
-        # Try Italian month names first
-        italian_date = parse_italian_date(date_str)
-        if italian_date:
-            return italian_date
-
-        # ### HASHTAG: TRY COMMON FORMATS IN ORDER ###
-        formats_to_try = [
-            "%d/%m/%Y",  # 15/03/2024
-            "%d-%m-%Y",  # 15-03-2024
-            "%d/%m/%y",  # 15/03/24
-            "%d-%m-%y",  # 15-03-24
-            "%Y-%m-%d",  # 2024-03-15 (ISO format)
-            "%d.%m.%Y",  # 15.03.2024
-            "%d %m %Y",  # 15 03 2024
-        ]
-
-        for fmt in formats_to_try:
-            try:
-                parsed = datetime.strptime(date_str, fmt)
-                # ### HASHTAG: HANDLE TWO-DIGIT YEARS ###
-                if fmt.endswith("%y"):
-                    year_normalized = normalize_two_digit_year(str(parsed.year)[-2:])
-                    parsed = parsed.replace(year=int(year_normalized))
-                return parsed.strftime(default_format)
-            except ValueError:
-                continue
-
-        # ### HASHTAG: FALLBACK - PANDAS TO_DATETIME (VERY FLEXIBLE) ###
-        try:
-            parsed = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
-            if pd.notna(parsed):
-                return parsed.strftime(default_format)
-        except:
-            pass
-
-    # ### HASHTAG: CASE 4 - NUMERIC (EXCEL SERIAL DATE) ###
+    # CASE 4 - NUMERIC (EXCEL SERIAL DATE)
     if isinstance(date_value, (int, float)):
         try:
             # Excel dates are days since 1899-12-30
@@ -284,7 +211,7 @@ def extract_with_spacy_matcher(text: str, nlp_model) -> Dict[str, str]:
         'date': ""
     }
 
-    # ### HASHTAG: DEFINE PATTERNS FOR TITLE ###
+    # DEFINE PATTERNS FOR TITLE
     # Pattern: "titolo" + optional ":" + text until comma or end
     title_patterns = [
         [{"LOWER": "titolo"}, {"IS_PUNCT": True, "OP": "?"}, {"IS_ALPHA": True, "OP": "+"}],
@@ -293,14 +220,14 @@ def extract_with_spacy_matcher(text: str, nlp_model) -> Dict[str, str]:
 
     matcher.add("TITLE", title_patterns)
 
-    # ### HASHTAG: DEFINE PATTERNS FOR DESCRIPTION ###
+    # DEFINE PATTERNS FOR DESCRIPTION
     desc_patterns = [
         [{"LOWER": "descrizione"}, {"IS_PUNCT": True, "OP": "?"}, {"IS_ALPHA": True, "OP": "+"}],
     ]
 
     matcher.add("DESCRIPTION", desc_patterns)
 
-    # ### HASHTAG: RUN MATCHER ###
+    # RUN MATCHER
     matches = matcher(doc)
 
     for match_id, start, end in matches:
@@ -316,7 +243,7 @@ def extract_with_spacy_matcher(text: str, nlp_model) -> Dict[str, str]:
             desc_tokens = [token.text for token in span if token.lower_ not in ['descrizione', ':']]
             results['description'] = ' '.join(desc_tokens)
 
-    # ### HASHTAG: DATE EXTRACTION WITH REGEX (SPACY DOESN'T HANDLE THIS WELL) ###
+    # DATE EXTRACTION WITH REGEX (SPACY DOESN'T HANDLE THIS WELL)
     import re
     date_pattern = r'\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b'
     date_match = re.search(date_pattern, text)
@@ -789,7 +716,7 @@ class CourseView:
         Callback function for NLP text area.
         Streamlit automatically updates session_state when key is used.
         """
-        # ### HASHTAG: CALLBACK TO ENSURE TEXT AREA UPDATES ARE CAPTURED ###
+        # CALLBACK TO ENSURE TEXT AREA UPDATES ARE CAPTURED
         pass  # No action needed, key parameter handles state update
 
     def _clear_nlp_input_callback(self):
@@ -1012,18 +939,18 @@ class CourseView:
         standard spreadsheet practices.
         """
         try:
-            # ### HASHTAG: READ EXCEL WITH HEADER ROW ###
+            # READ EXCEL WITH HEADER ROW
             # Read with first row as header
             df = pd.read_excel(uploaded_file, header=0, engine='openpyxl')
 
-            # ### HASHTAG: NORMALIZE COLUMN NAMES ###
+            # NORMALIZE COLUMN NAMES
             # Remove extra spaces, convert to lowercase for matching
             df.columns = df.columns.str.strip().str.lower()
 
-            # ### HASHTAG: SHOW WHAT COLUMNS WERE FOUND ###
+            # SHOW WHAT COLUMNS WERE FOUND
             st.info(f"📊 Colonne trovate nel file: {', '.join(df.columns)}")
 
-            # ### HASHTAG: DEFINE EXPECTED COLUMN MAPPINGS ###
+            # DEFINE EXPECTED COLUMN MAPPINGS
             # Support multiple possible column names for flexibility
             column_mappings = {
                 'title': ['nome corso', 'titolo', 'corso', 'nome', 'title'],
@@ -1032,7 +959,7 @@ class CourseView:
                          'data', 'pubblicazione', 'date', 'start date']
             }
 
-            # ### HASHTAG: FIND ACTUAL COLUMN NAMES IN FILE ###
+            # FIND ACTUAL COLUMN NAMES IN FILE
             found_columns = {}
             for field, possible_names in column_mappings.items():
                 for possible_name in possible_names:
@@ -1040,7 +967,7 @@ class CourseView:
                         found_columns[field] = possible_name
                         break
 
-            # ### HASHTAG: VALIDATE REQUIRED COLUMNS EXIST ###
+            # VALIDATE REQUIRED COLUMNS EXIST
             missing_columns = []
             for field in ['title', 'description', 'date']:
                 if field not in found_columns:
@@ -1056,7 +983,7 @@ class CourseView:
                 """)
                 return None
 
-            # ### HASHTAG: EXTRACT ALL COURSES FROM ROWS ###
+            # EXTRACT ALL COURSES FROM ROWS
             courses_list = []
             skipped_rows = []
 
@@ -1066,11 +993,11 @@ class CourseView:
                 desc_val = row[found_columns['description']]
                 date_val = row[found_columns['date']]
 
-                # ### HASHTAG: SKIP EMPTY ROWS ###
+                #SKIP EMPTY ROWS
                 if pd.isna(title_val) and pd.isna(desc_val) and pd.isna(date_val):
                     continue  # Skip completely empty rows
 
-                # ### HASHTAG: VALIDATE ROW DATA ###
+                # VALIDATE ROW DATA
                 if pd.isna(title_val) or not str(title_val).strip():
                     skipped_rows.append(f"Riga {index + 2}: Titolo mancante")
                     continue
@@ -1083,14 +1010,14 @@ class CourseView:
                     skipped_rows.append(f"Riga {index + 2}: Data mancante")
                     continue
 
-                # ### HASHTAG: NORMALIZE DATE USING CENTRALIZED FUNCTION ###
+                # NORMALIZE DATE USING CENTRALIZED FUNCTION
                 normalized_date = normalize_date(date_val)
 
                 if not normalized_date:
                     skipped_rows.append(f"Riga {index + 2}: Formato data non valido ({date_val})")
                     continue
 
-                # ### HASHTAG: ADD VALID COURSE TO LIST ###
+                # ADD VALID COURSE TO LIST
                 courses_list.append({
                     'title': str(title_val).strip(),
                     'short_description': str(desc_val).strip(),
@@ -1099,7 +1026,7 @@ class CourseView:
                     'row_number': index + 2  # Excel row number for reference
                 })
 
-            # ### HASHTAG: SHOW SUMMARY OF PARSING RESULTS ###
+            # SHOW SUMMARY OF PARSING RESULTS
             if skipped_rows:
                 st.warning(f"⚠️ {len(skipped_rows)} righe saltate:")
                 for skip_msg in skipped_rows:
@@ -1111,7 +1038,7 @@ class CourseView:
 
             st.success(f"✅ {len(courses_list)} corsi estratti con successo!")
 
-            # ### HASHTAG: RETURN DATA STRUCTURE FOR BATCH PROCESSING ###
+            # RETURN DATA STRUCTURE FOR BATCH PROCESSING
             return {
                 'courses': courses_list,
                 'total_count': len(courses_list),
@@ -1818,7 +1745,7 @@ class CourseView:
         """
         if not st.session_state.course_parsed_data:
             return
-            # ### HASHTAG: CHECK IF BATCH OR SINGLE ###
+            # CHECK IF BATCH OR SINGLE
         if 'courses' in st.session_state.course_parsed_data:
                 # Batch format - show preview table
                 self._render_batch_course_preview(st.session_state.course_parsed_data)
@@ -1827,7 +1754,7 @@ class CourseView:
 
         st.subheader("Riepilogo Corso")
 
-        # ### HASHTAG: DISPLAY PARSED DATA IN EDITABLE FORMAT ###
+        # DISPLAY PARSED DATA IN EDITABLE FORMAT
         with st.form(key='course_summary_form'):
             title = st.text_input(
                 "Titolo del Corso",
@@ -1864,7 +1791,7 @@ class CourseView:
             with col3:
                 cancel = st.form_submit_button("❌ Annulla", width='stretch')
 
-        # ### HASHTAG: HANDLE FORM ACTIONS ###
+        # HANDLE FORM ACTIONS
         if confirm:
             # Validate and submit
             if not all([title.strip(), short_desc.strip(), date_str.strip()]):
@@ -1922,7 +1849,7 @@ class CourseView:
             self._render_course_summary()
             return  # Don't show input selection while summary is displayed
 
-        # ### HASHTAG: INPUT METHOD SELECTION ###
+        # INPUT METHOD SELECTION
         st.subheader("Scegli il Metodo di Inserimento")
 
         input_method = st.radio(
@@ -1994,7 +1921,7 @@ class CourseView:
 
         # ========== METHOD 2: EXCEL FILE UPLOAD ==========
         elif input_method == "excel":
-            # ### HASHTAG: CHECK IF SHOWING BATCH PREVIEW ###
+            # CHECK IF SHOWING BATCH PREVIEW
             if st.session_state.course_show_summary and st.session_state.course_parsed_data:
                 # Show batch preview instead of single course summary
                 if 'courses' in st.session_state.course_parsed_data:
@@ -2031,7 +1958,7 @@ class CourseView:
 
                 with col1:
                     if st.button("📊 Analizza File Excel", type="primary", width='stretch'):
-                        # ### HASHTAG: PARSE EXCEL AND SHOW PREVIEW ###
+                        #  PARSE EXCEL AND SHOW PREVIEW
                         with st.spinner("🔍 Lettura file Excel..."):
                             parsed_data = self._parse_excel_file(uploaded_file)
 
@@ -2048,7 +1975,7 @@ class CourseView:
 
         # ========== METHOD 3: NATURAL LANGUAGE PROCESSING ==========
         elif input_method == "nlp":
-            # ### HASHTAG: TEMPORARY DEBUG - REMOVE AFTER FIXING ###
+            # TEMPORARY DEBUG - REMOVE AFTER FIXING
             # with st.expander("🔍 Debug - Stato NLP (rimuovi dopo test)", expanded=False):
             #     st.write("**Session State Values:**")
             #     st.write(f"- `course_nlp_input`: `{st.session_state.get('course_nlp_input', 'NOT SET')}`")
@@ -2107,7 +2034,7 @@ class CourseView:
                 )
 
                 if analyze_clicked:
-                    # ### HASHTAG: VALIDATION CHECKS ###
+                    # VALIDATION CHECKS
                     if not nlp_text or not nlp_text.strip():
                         st.error("⚠️ Per favore, inserisci del testo prima di analizzare.")
                         st.stop()
@@ -2116,16 +2043,16 @@ class CourseView:
                         st.error("⚠️ Il testo è troppo corto. Scrivi una frase più completa.")
                         st.stop()
 
-                    # ### HASHTAG: CLEAR ANY OLD PARSED DATA BEFORE NEW ANALYSIS ###
+                    #  CLEAR ANY OLD PARSED DATA BEFORE NEW ANALYSIS
                     # This prevents the "nothing happens" issue
                     st.session_state.course_parsed_data = None
                     st.session_state.course_show_summary = False
 
-                    # ### HASHTAG: PERFORM ANALYSIS ###
+                    # PERFORM ANALYSIS
                     with st.spinner("🤖 Analisi del testo in corso..."):
                         parsed_data = self._parse_nlp_input(nlp_text)
 
-                    # ### HASHTAG: HANDLE ANALYSIS RESULTS ###
+                    # HANDLE ANALYSIS RESULTS
                     if parsed_data:
                         st.session_state.course_parsed_data = parsed_data
                         st.session_state.course_show_summary = True
@@ -2140,7 +2067,7 @@ class CourseView:
                             - **Data** di inizio (es: "data inizio 01/01/2023" o "pubblicazione 01/01/2023")
                             """)
             with col2:
-                # ### HASHTAG: CLEAR BUTTON WITH CALLBACK ###
+                # CLEAR BUTTON WITH CALLBACK
                 if st.button("🧹 Cancella Testo", width='stretch',
                              on_click=self._clear_nlp_input_callback,
                              key="clear_nlp_text_button"):

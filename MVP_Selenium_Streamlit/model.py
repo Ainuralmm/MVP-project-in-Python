@@ -2575,35 +2575,15 @@ class OracleAutomator:
             self._pause_for_visual_check()
 
             # Step 0.7: Click Successivo
+            # Uses _click_when_ready (same helper as Part 2's Successivo):
+            # it clears ADF glass panes, retries on StaleElementReference
+            # (the TAB after Data scadenza triggers a server-side validation
+            # re-render that can invalidate the button mid-check), falls back
+            # to JS click, and reports the REAL exception on failure.
             print("Step 0.7: Clicking 'Successivo'...")
             time.sleep(2)
-            successivo_xpaths = [STUDENT_SUCCESSIVO_BUTTON]
-            successivo_btn = None
-            for xpath in successivo_xpaths:
-                try:
-                    successivo_btn = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, xpath)))
-                    break
-                except:
-                    continue
-
-            if not successivo_btn:
-                raise Exception("Could not find 'Successivo' button")
-
-            try:
-                successivo_btn.click()
-            except StaleElementReferenceException:
-                print("   ⚠️ Stale element, re-finding Successivo...")
-                time.sleep(2)
-                for xpath in successivo_xpaths:
-                    try:
-                        successivo_btn = WebDriverWait(self.driver, 10).until(
-                            EC.element_to_be_clickable((By.XPATH, xpath)))
-                        successivo_btn.click()
-                        break
-                    except:
-                        continue
-            print("   ✅ Clicked 'Successivo'")
+            self._click_when_ready(STUDENT_SUCCESSIVO_BUTTON,
+                                   "Successivo (Part 0)")
             self._pause_for_visual_check()
 
             # PART 1: Upload student list
@@ -2893,6 +2873,19 @@ class OracleAutomator:
                         break
                     except:
                         continue
+                        # Clicking Annulla makes Oracle ask:
+                        # "Il processo selezionato verrà annullato. Continuare?"
+                        # We MUST answer OK, or the wizard stays open behind a modal
+                        # popup and blocks the NEXT edition in the batch.
+                        try:
+                            confirm_ok = WebDriverWait(self.driver, 5).until(
+                                EC.element_to_be_clickable(
+                                    (By.XPATH, "//button[normalize-space()='OK']")))
+                            confirm_ok.click()
+                            print("   🔄 Confirmed cancellation popup (OK)")
+                            time.sleep(2)
+                        except Exception:
+                            pass  # popup didn't appear — nothing to confirm
             except:
                 pass
 
