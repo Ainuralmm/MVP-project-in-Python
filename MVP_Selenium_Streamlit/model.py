@@ -1780,7 +1780,7 @@ class OracleAutomator:
                     activity_date_obj=activity['date'],
                     start_time_str=activity['start_time'],
                     end_time_str=activity['end_time'],
-                    impegno_previsto_in_ore=activity.get('impegno_ore', '')
+                    impegno_previsto_in_ore=activity.get('impegno_ore', '') or activity.get('impegno_previsto_in_ore', '')
                 )
 
                 # Backward-compatible: accept dict OR bool
@@ -2029,7 +2029,7 @@ class OracleAutomator:
                         activity_date_obj=act_date_obj,
                         start_time_str=activity.get('start_time', '09.00'),
                         end_time_str=activity.get('end_time', '11.00'),
-                        impegno_previsto_in_ore=activity.get('impegno_ore', '')
+                        impegno_previsto_in_ore=activity.get('impegno_ore', '') or activity.get('impegno_previsto_in_ore', '')
                     )
 
                     # accept dict OR bool (backward compatible)
