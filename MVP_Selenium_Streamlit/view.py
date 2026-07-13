@@ -2851,8 +2851,9 @@ class CourseView:
          SERVIZIO PAGANTE - Impianti di Cogenerazione UT Verona,
          SOTTOTIPOLOGIA-	Office Automation & Produttività,
          SOCIETA' PAGANTE - Magis Calore S.r.l.
-         attività: primo giorno 12/02/2026 ore 09.00-11.00,
-         secondo giorno 13/02/2026 ore 10.00-12.00"
+         attività: primo giorno 12/02/2026 ore 09.00-11.00 8 ore,
+         secondo giorno 13/02/2026 ore 10.00-12.00 4 ore"
+
         """
         import re
 
@@ -3229,8 +3230,11 @@ class CourseView:
          SERVIZIO PAGANTE - Impianti di Cogenerazione UT Verona,
          SOTTOTIPOLOGIA-	Office Automation & Produttività,
          SOCIETA' PAGANTE - Magis Calore S.r.l.
-         attività: primo giorno 12/02/2026 ore 09.00-11.00,
-         secondo giorno 13/02/2026 ore 10.00-12.00"
+         attività: primo giorno 12/02/2026 ore 09.00-11.00 8 ore,
+         secondo giorno 13/02/2026 ore 10.00-12.00 4 ore"
+
+        **Nota:** l'impegno in ore è opzionale (es: "...ore 09.00-11.00 8 ore").
+        Per aggiungere una **descrizione** all'edizione, usa il Form o l'Excel.
         """, icon="💡")
 
         # ✅ Initialize the key-based state if not exists
